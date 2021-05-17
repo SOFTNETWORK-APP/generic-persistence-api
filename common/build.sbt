@@ -53,3 +53,12 @@ libraryDependencies ++= Seq(
   "commons-codec" % "commons-codec" % "1.10",
   "org.apache.commons" % "commons-text" % "1.4" excludeAll ExclusionRule(organization = "org.apache.commons", name = "commons-lang3")
 ) ++ configDependencies ++ json4s ++ logging ++ scalatest ++ dockerTestKit
+
+// enable publishing the test jar
+publishArtifact in (Test, packageBin) := true
+
+// enable publishing the test API jar
+publishArtifact in (Test, packageDoc) := true
+
+// enable publishing the test sources jar
+publishArtifact in (Test, packageSrc) := true

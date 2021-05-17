@@ -37,3 +37,12 @@ val logback = Seq(
 libraryDependencies ++= Seq(
   "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.15.2"  excludeAll ExclusionRule(organization = "com.typesafe.akka")
 ) ++ akka ++ akkaPersistence ++ kryo ++ chill ++ logback
+
+// enable publishing the test jar
+publishArtifact in (Test, packageBin) := true
+
+// enable publishing the test API jar
+publishArtifact in (Test, packageDoc) := true
+
+// enable publishing the test sources jar
+publishArtifact in (Test, packageSrc) := true
