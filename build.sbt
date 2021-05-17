@@ -60,12 +60,29 @@ lazy val common = project.in(file("common"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
 
+lazy val commonTestkit = project.in(file("common-testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    common % "compile->compile;test->test;it->it"
+  )
+
 lazy val core = project.in(file("core"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, BuildInfoSettings.settings)
   .enablePlugins(BuildInfoPlugin)
   .dependsOn(
     common % "compile->compile;test->test;it->it"
+  )
+
+lazy val coreTestkit = project.in(file("core-testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    core % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    commonTestkit % "compile->compile;test->test;it->it"
   )
 
 lazy val jdbc = project.in(file("jdbc"))
@@ -75,18 +92,28 @@ lazy val jdbc = project.in(file("jdbc"))
     core % "compile->compile;test->test;it->it"
   )
 
+lazy val jdbcTestkit = project.in(file("jdbc-testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    jdbc % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "compile->compile;test->test;it->it"
+  )
+
 lazy val counter = project.in(file("counter"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
   .dependsOn(
-    core % "compile->compile;test->test;it->it"
+    coreTestkit % "compile->compile;test->test;it->it"
   )
 
 lazy val scheduler = project.in(file("scheduler"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
   .dependsOn(
-    core % "compile->compile;test->test;it->it"
+    coreTestkit % "compile->compile;test->test;it->it"
   )
 
 lazy val server = project.in(file("server"))
@@ -96,14 +123,28 @@ lazy val server = project.in(file("server"))
     core % "compile->compile;test->test;it->it"
   )
 
+lazy val serverTestkit = project.in(file("server-testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "compile->compile;test->test;it->it"
+  )
+
 lazy val root = project.in(file("."))
   .aggregate(
     common,
+    commonTestkit,
     core,
+    coreTestkit,
     jdbc,
+    jdbcTestkit,
     counter,
     scheduler,
-    server
+    server,
+    serverTestkit
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
