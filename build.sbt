@@ -31,7 +31,7 @@ organization in ThisBuild := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-version in ThisBuild := "0.1-SNAPSHOT"
+version in ThisBuild := "0.1.1"
 
 scalaVersion in ThisBuild := "2.12.11"
 
@@ -106,14 +106,20 @@ lazy val counter = project.in(file("counter"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
   .dependsOn(
-    coreTestkit % "compile->compile;test->test;it->it"
+    core % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "test->test;it->it"
   )
 
 lazy val scheduler = project.in(file("scheduler"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
   .dependsOn(
-    coreTestkit % "compile->compile;test->test;it->it"
+    core % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "test->test;it->it"
   )
 
 lazy val server = project.in(file("server"))
