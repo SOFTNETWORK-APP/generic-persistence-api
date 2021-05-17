@@ -1,0 +1,70 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+import "model/schedule.proto";
+
+package org.softnetwork.akka.message.SchedulerEvents;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "org.softnetwork.akka.message.scheduler._"
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.scheduler.message._"
+    import: "app.softnetwork.scheduler.model._"
+    preamble: "sealed trait SchedulerEvent extends Event"
+    preamble: "trait SchedulerEventWrapper[E <: SchedulerEvent] extends SchedulerEvent {def event: E}"
+    preamble: "trait SchedulerEventWithCommand extends SchedulerEvent {def command: SchedulerCommand}"
+};
+
+// Events
+message ScheduleAddedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    required org.softnetwork.akka.model.Schedule schedule = 1;
+}
+
+message ScheduleTriggeredEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    required org.softnetwork.akka.model.Schedule schedule = 1;
+}
+
+message ScheduleRemovedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    option (scalapb.message).extends = "SchedulerItem";
+    required string persistenceId = 1;
+    required string entityId = 2;
+    required string key = 3;
+}
+
+message CronTabAddedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    required org.softnetwork.akka.model.CronTab cronTab = 1;
+}
+
+message CronTabTriggeredEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    required org.softnetwork.akka.model.CronTab cronTab = 1;
+}
+
+message CronTabRemovedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    option (scalapb.message).extends = "SchedulerItem";
+    required string persistenceId = 1;
+    required string entityId = 2;
+    required string key = 3;
+}
+
+message CronTabsResetedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    required string persistenceId = 1;
+    required string entityId = 2;
+    repeated string keys = 3;
+}

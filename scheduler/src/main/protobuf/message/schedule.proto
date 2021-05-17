@@ -1,0 +1,46 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+import "model/schedule.proto";
+
+package org.softnetwork.akka.message.scheduler;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "org.softnetwork.akka.message.scheduler._"
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.scheduler.message._"
+    import: "app.softnetwork.scheduler.model._"
+};
+
+message AddSchedule {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerCommand";
+    required org.softnetwork.akka.model.Schedule schedule = 1;
+}
+
+message RemoveSchedule {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerCommand";
+    option (scalapb.message).extends = "SchedulerItem";
+    required string persistenceId = 1;
+    required string entityId = 2;
+    required string key = 3;
+}
+
+message AddCronTab {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerCommand";
+    required org.softnetwork.akka.model.CronTab cronTab = 1;
+}
+
+message RemoveCronTab {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerCommand";
+    option (scalapb.message).extends = "SchedulerItem";
+    required string persistenceId = 1;
+    required string entityId = 2;
+    required string key = 3;
+}

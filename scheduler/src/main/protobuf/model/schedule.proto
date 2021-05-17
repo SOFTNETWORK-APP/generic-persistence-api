@@ -1,0 +1,49 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+import "google/protobuf/timestamp.proto";
+
+package org.softnetwork.akka.model;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.serialization._"
+    import: "app.softnetwork.scheduler.model._"
+};
+
+// Schedule
+message Schedule {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "SchedulerItem";
+    required string persistenceId = 1;
+    required string entityId = 2;
+    required string key = 3;
+    required int64 delay = 4 [default = 60];
+    optional bool repeatedly = 5;
+    optional google.protobuf.Timestamp scheduledDate = 6 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp lastTriggered = 7 [(scalapb.field).type = "java.util.Date"];
+}
+
+// CronTab
+message CronTab {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "SchedulerItem";
+    option (scalapb.message).extends = "CronTabItem";
+    required string persistenceId = 1;
+    required string entityId = 2;
+    required string key = 3;
+    required string cron = 4;
+    optional google.protobuf.Timestamp lastTriggered = 5 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp nextTriggered = 6 [(scalapb.field).type = "java.util.Date"];
+}
+
+// Scheduler
+message Scheduler {
+    option (scalapb.message).extends = "ProtobufStateObject";
+    required string uuid = 1;
+    repeated Schedule schedules = 2;
+    repeated CronTab cronTabs = 3;
+}
