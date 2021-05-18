@@ -32,3 +32,5 @@ val jest = Seq(
 libraryDependencies ++= Seq(
   "org.apache.tika" % "tika-core" % "1.18"
 ) ++ elastic ++ jest
+
+unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"

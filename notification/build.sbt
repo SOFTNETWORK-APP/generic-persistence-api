@@ -13,3 +13,5 @@ libraryDependencies ++= Seq(
   "com.google.firebase" % "firebase-admin" % "7.1.0" excludeAll(ExclusionRule(organization = "io.opencensus", name="opencensus-contrib-http-util"), ExclusionRule(organization = "com.google.auth", name = "google-auth-library-oauth2-http")/*, ExclusionRule(organization = "org.apache.commons", name = "commons-lang3")*/, ExclusionRule(organization = "io.netty")),
   "com.eatthepath" % "pushy" % "0.14.2"
 )
+
+unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"
