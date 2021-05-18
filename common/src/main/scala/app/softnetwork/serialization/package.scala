@@ -63,7 +63,7 @@ package object serialization {
     * @param opt - an option
     * @return a string
     */
-  implicit def option2String(opt: Option[String]): String = if(opt.isDefined) opt.get else ""
+  implicit def option2String(opt: Option[String]): String = opt.getOrElse("")
 
   implicit def toTimestamp(date: Date): Timestamp = {
     val instant = Instant.ofEpochMilli(date.getTime)
