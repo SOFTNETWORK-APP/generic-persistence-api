@@ -1,17 +1,10 @@
 package app.softnetwork
 
-import java.time.Instant
-import java.util.Date
-
-import com.google.protobuf.timestamp.Timestamp
-
 import org.json4s.ext.{JavaTypesSerializers, JodaTimeSerializers}
 import org.json4s.jackson.Serialization
 import org.json4s._
 
 import scala.language.implicitConversions
-
-import scalapb.TypeMapper
 
 /**
   * Created by smanciot on 14/05/2020.
@@ -64,24 +57,5 @@ package object serialization {
     * @return a string
     */
   implicit def option2String(opt: Option[String]): String = opt.getOrElse("")
-
-  implicit def toTimestamp(date: Date): Timestamp = {
-    val instant = Instant.ofEpochMilli(date.getTime)
-    Timestamp(instant.getEpochSecond, instant.getNano)
-  }
-
-  implicit def toDate(timestamp: Timestamp): Date =
-    new Date(
-      Instant.ofEpochSecond(
-        timestamp.seconds,
-        timestamp.nanos
-      ).toEpochMilli
-    )
-
-  implicit val tsTypeMapper: TypeMapper[Timestamp, Date] = new TypeMapper[Timestamp, Date] {
-    override def toBase(custom: Date): Timestamp = custom
-
-    override def toCustom(base: Timestamp): Date = base
-  }
 
 }

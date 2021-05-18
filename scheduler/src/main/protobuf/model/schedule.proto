@@ -11,6 +11,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.message._"
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.serialization._"
+    import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "app.softnetwork.scheduler.model._"
 };
 

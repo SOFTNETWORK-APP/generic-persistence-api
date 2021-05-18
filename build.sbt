@@ -31,7 +31,7 @@ organization in ThisBuild := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-version in ThisBuild := "0.1.1"
+version in ThisBuild := "0.1.2"
 
 scalaVersion in ThisBuild := "2.12.11"
 
@@ -60,7 +60,7 @@ lazy val common = project.in(file("common"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
 
-lazy val commonTestkit = project.in(file("common-testkit"))
+lazy val commonTestkit = project.in(file("common/testkit"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
   .dependsOn(
@@ -75,7 +75,7 @@ lazy val core = project.in(file("core"))
     common % "compile->compile;test->test;it->it"
   )
 
-lazy val coreTestkit = project.in(file("core-testkit"))
+lazy val coreTestkit = project.in(file("core/testkit"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
   .dependsOn(
@@ -92,7 +92,7 @@ lazy val jdbc = project.in(file("jdbc"))
     core % "compile->compile;test->test;it->it"
   )
 
-lazy val jdbcTestkit = project.in(file("jdbc-testkit"))
+lazy val jdbcTestkit = project.in(file("jdbc/testkit"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
   .dependsOn(
@@ -129,7 +129,7 @@ lazy val server = project.in(file("server"))
     core % "compile->compile;test->test;it->it"
   )
 
-lazy val serverTestkit = project.in(file("server-testkit"))
+lazy val serverTestkit = project.in(file("server/testkit"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
   .dependsOn(
