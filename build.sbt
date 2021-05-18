@@ -31,7 +31,7 @@ organization in ThisBuild := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-version in ThisBuild := "0.1.2"
+version in ThisBuild := "0.1.3"
 
 scalaVersion in ThisBuild := "2.12.11"
 
@@ -122,6 +122,46 @@ lazy val scheduler = project.in(file("scheduler"))
     coreTestkit % "test->test;it->it"
   )
 
+lazy val session = project.in(file("session"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    core % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "test->test;it->it"
+  )
+
+lazy val notification = project.in(file("notification"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    scheduler % "compile->compile;test->test;it->it"
+  )
+
+lazy val elasticTestkit = project.in(file("elastic/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    common % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    commonTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val elastic = project.in(file("elastic"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    core % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "test->test;it->it"
+  )
+  .dependsOn(
+    elasticTestkit % "test->test;it->it"
+  )
+
 lazy val server = project.in(file("server"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
@@ -149,6 +189,10 @@ lazy val root = project.in(file("."))
     jdbcTestkit,
     counter,
     scheduler,
+    session,
+    notification,
+    elasticTestkit,
+    elastic,
     server,
     serverTestkit
   )

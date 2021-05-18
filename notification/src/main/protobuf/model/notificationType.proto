@@ -1,0 +1,17 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+
+package org.softnetwork.notification.model;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+};
+
+enum NotificationType {
+    UNKNOWN_NOTIFICATION_TYPE = 0;
+    MAIL_TYPE = 1;
+    SMS_TYPE = 2;
+    PUSH_TYPE = 3;
+}

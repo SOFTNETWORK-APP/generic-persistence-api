@@ -10,6 +10,8 @@ object Versions {
 
   val akkaPersistenceJdbc = "3.5.2"
 
+  val akkaHttpSession = "0.5.11"
+
   val postgresql = "42.2.18" //"9.4.1210"
 
   val scalatest = "3.1.1"
@@ -31,6 +33,12 @@ object Versions {
   val log4s = "1.8.2"
 
   val chill = "0.9.5"
+
+  val elasticSearch = "6.7.2"
+
+  val elastic4s = "6.7.6"
+
+  val jest = "6.3.1"
 
   val dockerTestKit = "0.9.9"
 

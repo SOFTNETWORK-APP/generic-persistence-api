@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+
+package org.softnetwork.session.model;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.serialization._"
+    import: "app.softnetwork.session.model._"
+};
+
+message Session {
+    option (scalapb.message).extends = "SessionData";
+    option (scalapb.message).extends = "SessionDecorator";
+    option (scalapb.message).companion_extends = "SessionCompanion";
+    map<string, string> data = 1 [(scalapb.field).map_type="collection.mutable.Map"];
+    bool refreshable = 2;
+}
