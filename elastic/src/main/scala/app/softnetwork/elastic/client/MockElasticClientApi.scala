@@ -152,7 +152,7 @@ trait MockElasticClientApi extends ElasticClientApi with StrictLogging {
 
   override def multiSearchWithInnerHits[U, I](sqlQueries: SQLQueries, innerField: String)(implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]] = List.empty
 
-  override def search[U](jsonQuery: JSONQuery, indices: Seq[String], types: Seq[String])(implicit m: Manifest[U], formats: Formats): List[U] = List.empty
+  override def search[U](jsonQuery: JSONQuery)(implicit m: Manifest[U], formats: Formats): List[U] = List.empty
 
   override def searchWithInnerHits[U, I](jsonQuery: JSONQuery, innerField: String)(implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[(U, List[I])] = List.empty
 

@@ -408,8 +408,7 @@ trait GetApi {
 
 trait SearchApi {
 
-  def search[U](jsonQuery: JSONQuery, indices: Seq[String], types: Seq[String])(
-    implicit m: Manifest[U], formats: Formats): List[U]
+  def search[U](jsonQuery: JSONQuery)(implicit m: Manifest[U], formats: Formats): List[U]
 
   def search[U](sqlQuery: SQLQuery)(implicit m: Manifest[U], formats: Formats): List[U]
 

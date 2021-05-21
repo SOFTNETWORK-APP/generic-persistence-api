@@ -341,9 +341,10 @@ trait JestSearchApi extends SearchApi with JestClientCompanion {
 
   import JestClientApi._
 
-  override def search[U](jsonQuery: JSONQuery, indices: Seq[String], types: Seq[String])(
+  override def search[U](jsonQuery: JSONQuery)(
     implicit m: Manifest[U], formats: Formats): List[U] = {
-    val search = new Search.Builder(jsonQuery.query)
+    import jsonQuery._
+    val search = new Search.Builder(query)
     for (indice <- indices) search.addIndex(indice)
     for (t      <- types) search.addType(t)
     Try(apply().execute(search.build()).getSourceAsStringList.asScala.map(
