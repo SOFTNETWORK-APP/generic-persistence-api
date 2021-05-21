@@ -11,21 +11,16 @@ import app.softnetwork.serialization._
 import akka.persistence.typed.scaladsl.Effect
 import com.typesafe.scalalogging.StrictLogging
 
-import io.searchbox.core.search.aggregation.RootAggregation
-
 import app.softnetwork.persistence.typed.EntityBehavior
 
-import app.softnetwork.elastic.client.ElasticApi
+import app.softnetwork.elastic.client.ElasticClientApi
 
 import app.softnetwork.elastic.message._
 
 import app.softnetwork.persistence.model.Timestamped
 import app.softnetwork.elastic.persistence.query.ElasticProvider
 
-import app.softnetwork.elastic.sql.ElasticQuery
 import org.softnetwork.elastic.message.{DocumentUpsertedEvent, ElasticEvent}
-
-import scala.concurrent.{Await, Future, Promise}
 
 import scala.language.implicitConversions
 import scala.language.postfixOps
@@ -38,7 +33,7 @@ import scala.util.{Failure, Success, Try}
   * Created by smanciot on 16/05/2020.
   */
 trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, S, ElasticEvent, ElasticResult] 
-  with ManifestWrapper[S] with ElasticProvider[S] with StrictLogging {_: ElasticApi[S] =>
+  with ManifestWrapper[S] with ElasticProvider[S] with StrictLogging {_: ElasticClientApi =>
 
   private[this] val defaultAtMost = 10.second
 
@@ -107,9 +102,8 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
 
       case cmd: LookupDocuments =>
         import cmd._
-        implicit val jestClient = apply()
         implicit val m = manifestWrapper.wrapped
-        Try(getAll[S](sqlQuery)) match {
+        Try(search[S](sqlQuery)) match {
           case Success(documents) =>
             documents match {
               case Nil => Effect.none.thenRun(state => NoResultsFound ~> replyTo)
@@ -117,79 +111,20 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
             }
           case Failure(f) =>
             context.log.error(f.getMessage, f)
-            jestClient.close()
             Effect.none.thenRun(state => NoResultsFound ~> replyTo)
         }
 
       case cmd: Count =>
         import cmd._
-        implicit val jestClient = apply()
         implicit val ec = context.system.executionContext
-        val futures = for (elasticCount <- ElasticQuery.count(query)) yield {
-          val promise: Promise[CountResponse] = Promise()
-          import collection.immutable.Seq
-          val _field = elasticCount.field
-          val _sourceField = elasticCount.sourceField
-          val _agg = elasticCount.agg
-          val _query = elasticCount.query
-          val _sources = elasticCount.sources
-          _sourceField match {
-            case "_id" =>
-              countAsync(
-                _query,
-                Seq(_sources: _*),
-                Seq.empty[String]
-              ).onComplete {
-                case Success(result) => promise.success(new CountResponse(_field, result.getCount.toInt, None))
-                case Failure(f) =>
-                  logger.error(f.getMessage, f.fillInStackTrace())
-                  promise.success(new CountResponse(_field, 0, Some(f.getMessage)))
-              }
-            case _ =>
-              searchAsync(
-                _query,
-                Seq(_sources: _*),
-                Seq.empty[String]
-              ).onComplete {
-                case Success(result) =>
-                  val agg = _agg.split("\\.").last
-
-                  val itAgg = _agg.split("\\.").iterator
-
-                  var root =
-                    if (elasticCount.nested)
-                      result.getAggregations.getAggregation(itAgg.next(), classOf[RootAggregation])
-                    else
-                      result.getAggregations
-
-                  if (elasticCount.filtered) {
-                    root = root.getAggregation(itAgg.next(), classOf[RootAggregation])
-                  }
-
-                  promise.success(
-                    new CountResponse(
-                      _field,
-                      if (elasticCount.distinct)
-                        root.getCardinalityAggregation(agg).getCardinality.toInt
-                      else
-                        root.getValueCountAggregation(agg).getValueCount.toInt,
-                      None
-                    )
-                  )
-
-                case Failure(f) =>
-                  logger.error(f.getMessage, f.fillInStackTrace())
-                  promise.success(new CountResponse(_field, 0, Some(f.getMessage)))
-              }
-          }
-          promise.future
-        }
-        Effect.none.thenRun(state => (Try(Await.result(Future.sequence(futures.toSeq), defaultAtMost)) match {
-          case Success(s) => ElasticCountResult(s)
-          case Failure(f) =>
-            logger.error(f.getMessage, f.fillInStackTrace())
-            CountFailure
-        }) ~> replyTo)
+        Effect.none.thenRun(state =>
+          (countAsync(sqlQuery) complete() match {
+            case Success(s) => ElasticCountResult(s)
+            case Failure(f) =>
+              logger.error(f.getMessage, f.fillInStackTrace())
+              CountFailure
+          }) ~> replyTo
+        )
 
       case cmd: BulkUpdateDocuments =>
         import cmd._
@@ -230,7 +165,6 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
         }
 
       case cmd: RefreshIndex =>
-        implicit val jestClient = apply()
         Try(refresh(cmd.index.getOrElse(index))) match {
           case Success(_) => Effect.none.thenRun(state => IndexRefreshed ~> replyTo)
           case Failure(f) =>
@@ -239,7 +173,6 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
         }
 
       case cmd: FlushIndex =>
-        implicit val jestClient = apply()
         Try(flush(cmd.index.getOrElse(index))) match {
           case Success(_) => Effect.none.thenRun(state => IndexFlushed ~> replyTo)
           case Failure(f) =>

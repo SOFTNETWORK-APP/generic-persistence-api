@@ -3,7 +3,6 @@
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>softnetwork.log</file>
-        <immediateFlush>false</immediateFlush>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>softnetwork_%d{yyyy-MM-dd}.log</fileNamePattern>
         </rollingPolicy>

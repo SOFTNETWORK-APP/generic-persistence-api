@@ -173,17 +173,17 @@ object SQLParser extends RegexParsers {
 
   def limit = _limit ~ int ^^ {case l ~ i => SQLLimit(i.value)}
 
-  def tokens: Parser[_ <: SQLQuery] = {
+  def tokens: Parser[_ <: SQLSelectQuery] = {
     phrase((selectCount | select) ~ from ~ where.? ~ limit.?) ^^ {
       case s ~ f ~ w ~ l =>
         s match {
           case x:SQLSelectCount => new SQLCountQuery(x, f, w, l)
-          case _                => SQLQuery(s, f, w, l)
+          case _                => SQLSelectQuery(s, f, w, l)
         }
     }
   }
 
-  def apply(query: String): Either[SQLParserError, SQLQuery] = {
+  def apply(query: String): Either[SQLParserError, SQLSelectQuery] = {
     parse(tokens, query) match {
       case NoSuccess(msg, next) =>
         println(msg)

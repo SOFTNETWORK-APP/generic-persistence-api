@@ -1,6 +1,7 @@
 package app.softnetwork.elastic.handlers
 
 import akka.actor.typed.ActorSystem
+import app.softnetwork.elastic.sql.SQLQuery
 import app.softnetwork.persistence.message._
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
@@ -60,7 +61,7 @@ trait ElasticDao[T <: Timestamped] {_: ElasticHandler[T] =>
     }
   }
 
-  def search(query: String)(implicit system: ActorSystem[_]) = {
+  def search(query: SQLQuery)(implicit system: ActorSystem[_]) = {
     implicit val ec = system.executionContext
     this !? LookupDocuments(query) map {
       case r: DocumentsFound[_] => Right(r)
@@ -68,7 +69,7 @@ trait ElasticDao[T <: Timestamped] {_: ElasticHandler[T] =>
     }
   }
 
-  def count(query: String)(implicit system: ActorSystem[_]) = {
+  def count(query: SQLQuery)(implicit system: ActorSystem[_]) = {
     implicit val ec = system.executionContext
     this !? Count(query) map {
       case r: CountResult => Right(r)

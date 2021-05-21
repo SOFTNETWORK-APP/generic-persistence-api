@@ -5,6 +5,8 @@ import java.util.concurrent.TimeUnit
 import java.util.{Date, UUID}
 
 import akka.actor.ActorSystem
+import app.softnetwork.elastic.client.jest.JestProvider
+import app.softnetwork.elastic.sql.SQLQuery
 import com.fasterxml.jackson.core.JsonParseException
 import com.sksamuel.elastic4s.searches.queries.matches.MatchAllQuery
 import io.searchbox.client.JestClient
@@ -25,6 +27,7 @@ import app.softnetwork.elastic.utils._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import scala.util.{Success, Failure}
 
 /**
   * Created by smanciot on 28/06/2018.
@@ -39,9 +42,13 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
   lazy val esCredentials = ElasticCredentials(elasticURL, "", "")
 
-  lazy val pClient = new PersonApi(esCredentials)
-  lazy val sClient = new SampleApi(esCredentials)
-  lazy val bClient = new BinaryApi(esCredentials)
+  lazy val pClient = new PersonProvider(esCredentials)
+  lazy val sClient = new SampleProvider(esCredentials)
+  lazy val bClient = new BinaryProvider(esCredentials)
+
+  import scala.language.implicitConversions
+
+  implicit def toSQLQuery(sqlQuery: String): SQLQuery = SQLQuery(sqlQuery)
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -192,7 +199,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person-1967-11-21", "person-1969-05-09").query(MatchAllQuery())
-    } complete()  
+    } complete()
 
     response.result.hits.hits.foreach { h =>
       h.id shouldBe h.sourceField("uuid")
@@ -226,7 +233,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person4").query(MatchAllQuery())
-    } complete()  
+    } complete()
 
     response.result.hits.hits.foreach { h =>
       h.id shouldBe h.sourceField("uuid")
@@ -252,7 +259,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person5-1967-11-21", "person5-1969-05-09").query(MatchAllQuery())
-    } complete()  
+    } complete()
 
     response.result.hits.hits.foreach { h =>
       h.id shouldBe h.sourceField("uuid")
@@ -277,9 +284,10 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     import scala.collection.immutable.Seq
 
-    val response = pClient.countAsync("{}", Seq[String]("person6"), Seq[String]()) complete()  
-
-    response.getCount should ===(3)
+    pClient.countAsync(JSONQuery("{}", Seq[String]("person6"), Seq[String]())) complete() match {
+      case Success(s) => s.getOrElse(0D).toInt should ===(3)
+      case Failure(f) => fail(f.getMessage)
+    }
   }
 
   "Search" should "work" in {
@@ -295,14 +303,12 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     "person7" should haveCount(3)
 
-    pClient.searchAsync("select * from person7") assert {
-      case Some(s) => s.getTotal should ===(3)
-      case _ => fail()
+    pClient.searchAsync[Person](SQLQuery("select * from person7")) assert {
+      _.size should ===(3)
     }
 
-    pClient.searchAsync("select * from person7 where _id=\"A16\"") assert {
-      case Some(s) => s.getTotal should ===(1)
-      case _ => fail()
+    pClient.searchAsync[Person](SQLQuery("select * from person7 where _id=\"A16\"")) assert {
+      _.size should ===(1)
     }
 
   }
@@ -320,7 +326,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     "person8" should haveCount(3)
 
-    val response = pClient.getAll[Person]("select * from person8")
+    val response = pClient.search[Person]("select * from person8")
 
     response.size should ===(3)
 
@@ -351,7 +357,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     val uuid = UUID.randomUUID().toString
     val sample = Sample(uuid)
     val result = sClient.index(sample)
-    result shouldBe uuid
+    result shouldBe true
 
     val result2 = sClient.get[Sample](uuid)
     result2.isDefined shouldBe true
@@ -363,7 +369,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     val uuid = UUID.randomUUID().toString
     val sample = Sample(uuid)
     val result = sClient.update(sample)
-    result shouldBe uuid
+    result shouldBe true
 
     val result2 = sClient.get[Sample](uuid)
     result2.isDefined shouldBe true
@@ -375,7 +381,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     val uuid = UUID.randomUUID().toString
     val sample = Sample(uuid)
     val result = sClient.index(sample)
-    result shouldBe uuid
+    result shouldBe true
 
     val result2 = sClient.delete(sample.uuid, Some("sample"), Some("sample"))
     result2 shouldBe true
@@ -419,7 +425,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
       import Base64Tools._
       val encoded = encodeImageBase64(file).getOrElse("")
       val binary = Binary(uuid, content=encoded, md5 = hashStream(new ByteArrayInputStream(decodeBase64(encoded))).getOrElse(""))
-      bClient.index(binary) shouldBe uuid
+      bClient.index(binary) shouldBe true
       bClient.get[Binary](uuid) match {
         case Some(result) =>
           val decoded = decodeBase64(result.content)
@@ -440,19 +446,19 @@ extends Timestamped
 case class Binary(uuid: String, var createdDate: Date = now(), var lastUpdated: Date = now(), val content: String, val md5: String)
   extends Timestamped
 
-class PersonApi(ec: ElasticCredentials) extends ElasticApi[Person] with ManifestWrapper[Person]{
+class PersonProvider(ec: ElasticCredentials) extends JestProvider[Person] with ManifestWrapper[Person]{
   override protected val manifestWrapper: ManifestW = ManifestW()
   override protected def credentials: Option[ElasticCredentials] = Some(ec)
   implicit lazy val jestClient: JestClient = apply(ec, multithreaded = false)
 }
 
-class SampleApi(ec: ElasticCredentials) extends ElasticApi[Sample] with ManifestWrapper[Sample]{
+class SampleProvider(ec: ElasticCredentials) extends JestProvider[Sample] with ManifestWrapper[Sample]{
   override protected val manifestWrapper: ManifestW = ManifestW()
   override protected def credentials: Option[ElasticCredentials] = Some(ec)
   implicit lazy val jestClient: JestClient = apply(ec, multithreaded = false)
 }
 
-class BinaryApi(ec: ElasticCredentials) extends ElasticApi[Binary] with ManifestWrapper[Binary]{
+class BinaryProvider(ec: ElasticCredentials) extends JestProvider[Binary] with ManifestWrapper[Binary]{
   override protected val manifestWrapper: ManifestW = ManifestW()
   override protected def credentials: Option[ElasticCredentials] = Some(ec)
   implicit lazy val jestClient: JestClient = apply(ec, multithreaded = false)

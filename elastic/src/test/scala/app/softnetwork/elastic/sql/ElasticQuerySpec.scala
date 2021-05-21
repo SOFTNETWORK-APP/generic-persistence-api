@@ -11,7 +11,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   import scala.language.implicitConversions
 
   "ElasticQuery" should "perform native count" in {
-    val results = ElasticQuery.count("select count($t.id) as c2 from Table as t where $t.nom = \"Nom\"")
+    val results = ElasticQuery.count(SQLQuery("select count($t.id) as c2 from Table as t where $t.nom = \"Nom\""))
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe false
@@ -46,7 +46,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform count distinct" in {
-    val results = ElasticQuery.count("select count(distinct $t.id) as c2 from Table as t where $t.nom = \"Nom\"")
+    val results = ElasticQuery.count(SQLQuery("select count(distinct $t.id) as c2 from Table as t where $t.nom = \"Nom\""))
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe false
@@ -81,7 +81,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform nested count" in {
-    val results = ElasticQuery.count("select count(email.value) as email from index where nom = \"Nom\"")
+    val results = ElasticQuery.count(SQLQuery("select count(email.value) as email from index where nom = \"Nom\""))
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -123,7 +123,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform nested count with nested criteria" in {
-    val results = ElasticQuery.count("select count(email.value) as email from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))")
+    val results = ElasticQuery.count(SQLQuery("select count(email.value) as email from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))"))
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -179,7 +179,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform nested count with filter" in {
-    val results = ElasticQuery.count("select count(email.value) as email filter[email.context = \"profile\"] from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))")
+    val results = ElasticQuery.count(SQLQuery("select count(email.value) as email filter[email.context = \"profile\"] from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))"))
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -246,7 +246,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "accept and not operator" in {
-    val results = ElasticQuery.count("select count(distinct email.value) as email from index where (profile.postalCode = \"33600\" and not profile.postalCode = \"75001\")")
+    val results = ElasticQuery.count(SQLQuery("select count(distinct email.value) as email from index where (profile.postalCode = \"33600\" and not profile.postalCode = \"75001\")"))
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -310,7 +310,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "accept date filtering" in {
-    val results = ElasticQuery.count("select count(distinct email.value) as email from index where profile.postalCode = \"33600\" and profile.createdDate <= \"now-35M/M\"")
+    val results = ElasticQuery.count(SQLQuery("select count(distinct email.value) as email from index where profile.postalCode = \"33600\" and profile.createdDate <= \"now-35M/M\""))
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -373,7 +373,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
 
   it should "perform select" in {
     val select = ElasticQuery.select(
-      """
+      SQLQuery("""
         |SELECT
         |profileId,
         |profile_ccm.email as email,
@@ -387,7 +387,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
         |profile_ccm.postalCode BETWEEN "10" AND "99999"
         |AND
         |profile_ccm.birthYear <= 2000
-        |limit 100""".stripMargin
+        |limit 100""".stripMargin)
     )
     select.isDefined shouldBe true
     val result = select.get

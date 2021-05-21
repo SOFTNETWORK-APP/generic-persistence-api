@@ -31,16 +31,16 @@ organization in ThisBuild := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-version in ThisBuild := "0.1.3.1"
+version in ThisBuild := "0.1.4-SNAPSHOT"
 
 scalaVersion in ThisBuild := "2.12.11"
 
 scalacOptions in ThisBuild ++= Seq("-deprecation", "-feature")
 
 resolvers in ThisBuild ++= Seq(
+  "Softnetwork Server" at "https://softnetwork.jfrog.io/artifactory/releases/",
   "Maven Central Server" at "https://repo1.maven.org/maven2",
-  "Typesafe Server" at "https://repo.typesafe.com/typesafe/releases",
-  "Softnetwork Server" at "https://softnetwork.jfrog.io/artifactory/releases/"
+  "Typesafe Server" at "https://repo.typesafe.com/typesafe/releases"
 )
 
 libraryDependencies in ThisBuild ++= Seq(

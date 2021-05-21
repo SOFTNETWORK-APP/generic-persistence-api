@@ -12,8 +12,10 @@ object ElasticQuery {
   import ElasticFilters._
   import SQLImplicits._
 
-  def select(query: String): Option[ElasticSelect] = {
-    val select: Option[SQLQuery] = query
+  def select(sqlQuery: SQLQuery): Option[ElasticSelect] = select(sqlQuery.query)
+
+  private[this]def select(query: String): Option[ElasticSelect] = {
+    val select: Option[SQLSelectQuery] = query
     select match {
 
       case Some(s) =>
@@ -49,7 +51,12 @@ object ElasticQuery {
     }
   }
 
-  def count(select: Option[SQLQuery]): Seq[ElasticCount] = {
+  def count(sqlQuery: SQLQuery): Seq[ElasticCount] = {
+    val select: Option[SQLSelectQuery] = sqlQuery.query
+    count(select)
+  }
+
+  private[this] def count(select: Option[SQLSelectQuery]): Seq[ElasticCount] = {
     select match {
       case Some(s: SQLCountQuery) =>
         val criteria = s.where match {
@@ -152,10 +159,6 @@ object ElasticQuery {
     }
   }
 
-  def count(query: String): Seq[ElasticCount] = {
-    val select: Option[SQLQuery] = query
-    count(select)
-  }
 }
 
 case class ElasticCount(

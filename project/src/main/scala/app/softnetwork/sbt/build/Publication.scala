@@ -1,5 +1,7 @@
 package app.softnetwork.sbt.build
-  
+
+import java.util.Date
+
 import sbt._
 
 object Publication {
@@ -14,9 +16,9 @@ object Publication {
 
   val releasesRepository = "releases" at artifactoryUrl + "libs-release-local"
 
-  val snapshotsRepository = "snapshots" at artifactoryUrl + "libs-snapshot-local"
+  lazy val snapshotsRepository = "snapshots" at (artifactoryUrl + "libs-snapshot-local;build.timestamp=" + new Date())
 
-  private def selectDestination(version: String) =
+  private def selectDestination(version: String): Option[Resolver] =
     if(version.trim.toUpperCase.endsWith("SNAPSHOT")) {
       Some(snapshotsRepository)
     }

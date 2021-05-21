@@ -325,9 +325,13 @@ package object sql {
     }
   }
 
-  case class SQLQuery(select: SQLSelect = SQLSelect(), from: SQLFrom, where: Option[SQLWhere], limit: Option[SQLLimit] = None) extends SQLToken{
+  case class SQLSelectQuery(select: SQLSelect = SQLSelect(), from: SQLFrom, where: Option[SQLWhere], limit: Option[SQLLimit] = None) extends SQLToken{
     override def sql: String = s"${select.sql}${from.sql}${asString(where)}${asString(limit)}"
   }
 
-  class SQLCountQuery(val selectCount: SQLSelectCount = new SQLSelectCount(), from: SQLFrom, where: Option[SQLWhere], limit: Option[SQLLimit] = None) extends SQLQuery(selectCount, from, where)
+  class SQLCountQuery(val selectCount: SQLSelectCount = new SQLSelectCount(), from: SQLFrom, where: Option[SQLWhere], limit: Option[SQLLimit] = None) extends SQLSelectQuery(selectCount, from, where)
+
+  case class SQLQuery(query: String)
+
+  case class SQLQueries(queries: List[SQLQuery])
 }

@@ -1,5 +1,6 @@
 package app.softnetwork.elastic
 
+import app.softnetwork.elastic.sql.SQLQuery
 import app.softnetwork.persistence.message._
 import app.softnetwork.persistence.model.Timestamped
 
@@ -21,10 +22,10 @@ package object message {
   case class LoadDocumentAsync(id: String) extends ElasticCommand
 
   @SerialVersionUID(0L)
-  case class LookupDocuments(sqlQuery: String) extends ElasticCommand with AllEntities
+  case class LookupDocuments(sqlQuery: SQLQuery) extends ElasticCommand with AllEntities
 
   @SerialVersionUID(0L)
-  case class LookupDocumentsAsync(sqlQuery: String) extends ElasticCommand with AllEntities
+  case class LookupDocumentsAsync(sqlQuery: SQLQuery) extends ElasticCommand with AllEntities
 
   @SerialVersionUID(0L)
   case class DeleteDocument(id: String) extends ElasticCommand
@@ -48,7 +49,7 @@ package object message {
   case class FlushIndex(index: Option[String]) extends ElasticCommand with AllEntities
 
   @SerialVersionUID(0L)
-  case class Count(query: String) extends ElasticCommand with AllEntities
+  case class Count(sqlQuery: SQLQuery) extends ElasticCommand with AllEntities
 
   /** Crud Commands **/
 
