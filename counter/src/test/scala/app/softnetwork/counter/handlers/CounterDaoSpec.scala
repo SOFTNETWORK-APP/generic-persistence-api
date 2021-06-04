@@ -15,7 +15,7 @@ class CounterDaoSpec extends AnyWordSpecLike with InMemoryPersistenceTestKit wit
 
   implicit lazy val ec = system.executionContext
 
-  "Counter handler" must {
+  "CounterDao" must {
     "increments counter" in {
       counterDao.inc() assert (_.right.get shouldBe 1)
     }

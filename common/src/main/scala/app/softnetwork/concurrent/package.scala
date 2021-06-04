@@ -61,6 +61,8 @@ package object concurrent {
 
   }
 
+  object Completion extends Completion
+
   /**
     * Created by smanciot on 10/05/2021.
     */

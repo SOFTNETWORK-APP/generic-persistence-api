@@ -33,6 +33,10 @@ val logback = Seq(
   "org.slf4j"      % "log4j-over-slf4j" % Versions.slf4j
 )
 
+val akkaTestKit = Seq(
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % Versions.akka % Test
+)
+
 libraryDependencies ++= Seq(
   "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.15.2"  excludeAll ExclusionRule(organization = "com.typesafe.akka")
-) ++ akka ++ akkaPersistence ++ kryo ++ chill ++ logback
+) ++ akka ++ akkaPersistence ++ kryo ++ chill ++ logback ++ akkaTestKit
