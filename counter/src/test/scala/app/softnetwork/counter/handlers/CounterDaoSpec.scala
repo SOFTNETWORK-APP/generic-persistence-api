@@ -1,6 +1,8 @@
 package app.softnetwork.counter.handlers
 
+import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
+import app.softnetwork.persistence.typed.Singleton
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -14,6 +16,12 @@ class CounterDaoSpec extends AnyWordSpecLike with InMemoryPersistenceTestKit wit
   implicit lazy val system = typedSystem()
 
   implicit lazy val ec = system.executionContext
+
+  /**
+    *
+    * initialize all singletons
+    */
+  override def singletons: ActorSystem[_] => Seq[Singleton[_]] = _ => Seq(counterDao)
 
   "CounterDao" must {
     "increments counter" in {

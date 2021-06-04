@@ -2,9 +2,9 @@ package app.softnetwork.persistence.service
 
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.ActorSystem
-import app.softnetwork.concurrent.Completion
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed.scaladsl._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.util.{Failure, Success}
@@ -15,11 +15,15 @@ import scala.util.{Failure, Success}
 class SingletonServiceSpec extends SingletonService[SampleCommand, SampleCommandResult]
   with SamplePattern
   with AnyWordSpecLike
-  with Completion {
+  with BeforeAndAfterAll {
 
   lazy val systemName: String = generateUUID()
 
   private[this] lazy val testKit = ActorTestKit(systemName)
+
+  override protected def beforeAll(): Unit = {
+    init(testKit)
+  }
 
   implicit lazy val system: ActorSystem[Nothing] = testKit.system
 

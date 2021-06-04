@@ -1,5 +1,6 @@
 package app.softnetwork.counter.handlers
 
+import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.cluster.ddata.PNCounterKey
 import app.softnetwork.persistence.typed.scaladsl.SingletonPattern
@@ -16,7 +17,9 @@ trait CounterDao extends SingletonPattern[CounterCommand, CounterResult]{
   implicit def command2Request(command: CounterCommand): Request = replyTo =>
     new CounterCommandWrapper(command, replyTo)
 
-  override lazy val singleton: Behavior[CounterCommand] = Counter(PNCounterKey(name))
+  override lazy val behavior: Behavior[CounterCommand] = Counter(PNCounterKey(name))
+
+  override lazy val key = ServiceKey[CounterCommand](name)
 
   def inc()(implicit system: ActorSystem[_])  = {
     this ! IncrementCounter
@@ -53,6 +56,6 @@ trait CounterDao extends SingletonPattern[CounterCommand, CounterResult]{
 
 object CounterDao{
   def apply(counter: String): CounterDao = new CounterDao() {
-    override protected def name: String = counter
+    override lazy val name: String = counter
   }
 }

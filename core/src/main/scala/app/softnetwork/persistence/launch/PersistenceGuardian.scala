@@ -9,6 +9,7 @@ import app.softnetwork.persistence._
 import app.softnetwork.persistence.config.Settings
 import app.softnetwork.persistence.query.{EventProcessor, EventProcessorStream, SchemaProvider}
 import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed.Singleton
 
 /**
   * Created by smanciot on 15/05/2020.
@@ -20,6 +21,12 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
     *
     */
   def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => Seq.empty
+
+  /**
+    *
+    * initialize all singletons
+    */
+  def singletons: ActorSystem[_] => Seq[Singleton[_]] = _ => Seq.empty
 
   /**
     * initialize all event processor streams
@@ -65,6 +72,11 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
       // initialize behaviors
       for(behavior <- behaviors(system)) {
         behavior.init(system)
+      }
+
+      // initialize singletons
+      for(singleton <- singletons(system)) {
+        singleton.init(context)
       }
 
       // join the cluster

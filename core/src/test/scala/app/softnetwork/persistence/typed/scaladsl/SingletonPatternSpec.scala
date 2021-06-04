@@ -6,6 +6,7 @@ import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.receptionist.ServiceKey
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.message.{CommandWrapper, CommandResult, Command}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.language.implicitConversions
@@ -14,11 +15,16 @@ import scala.util.{Failure, Success}
 /**
   * Created by smanciot on 02/06/2021.
   */
-class SingletonPatternSpec extends SamplePattern with AnyWordSpecLike {
+class SingletonPatternSpec extends SamplePattern with AnyWordSpecLike with BeforeAndAfterAll {
 
   lazy val systemName: String = generateUUID()
 
   private[this] lazy val testKit = ActorTestKit(systemName)
+
+
+  override protected def beforeAll(): Unit = {
+    init(testKit)
+  }
 
   implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
@@ -46,9 +52,9 @@ trait SamplePattern extends SingletonPattern[SampleCommand, SampleCommandResult]
   implicit def command2Request(command: SampleCommand): Request = replyTo =>
     new SampleCommandWrapper(command, replyTo)
 
-  override protected val name = "Sample"
+  override lazy val name = "Sample"
 
-  override protected val SingletonKey = Some(ServiceKey[SampleCommand](name))
+  override lazy val key = ServiceKey[SampleCommand](name)
 
   override def handleCommand(command: SampleCommand, replyTo: Option[ActorRef[SampleCommandResult]])(
     implicit context: ActorContext[SampleCommand]): Unit = {

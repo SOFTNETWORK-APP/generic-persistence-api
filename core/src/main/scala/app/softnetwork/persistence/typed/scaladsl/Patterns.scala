@@ -10,7 +10,7 @@ import app.softnetwork.concurrent.{Completion, Retryable}
 import app.softnetwork.config.Settings
 import app.softnetwork.persistence.message._
 import app.softnetwork.persistence.model.Entity
-import app.softnetwork.persistence.typed.CommandTypeKey
+import app.softnetwork.persistence.typed.{CommandTypeKey, Singleton}
 import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.Future
@@ -81,9 +81,12 @@ trait CommandHandler[C <: Command, R <: CommandResult]{
   def handleCommand(command: C, replyTo: Option[ActorRef[R]])(implicit context: ActorContext[C]) = {}
 }
 
-trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] with CommandHandler[C, R] with Completion {
+trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R]
+  with CommandHandler[C, R]
+  with Singleton[C]
+  with Completion {
 
-  import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
+  import akka.actor.typed.receptionist.Receptionist
 
   type Recipient = Behavior[C]
 
@@ -91,20 +94,15 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] 
 
   type WR = CommandWithReply[R] with C
 
-  protected def name: String
-
-  protected def SingletonKey: Option[ServiceKey[C]] = None
-
-  protected def singleton: Behavior[C] = Behaviors.setup { context =>
-    if(SingletonKey.isDefined){
-      context.system.receptionist ! Receptionist.Register(SingletonKey.get, context.self)
+  override def behavior: Behavior[C] =
+    Behaviors.setup { context =>
+      context.system.receptionist ! Receptionist.Register(key, context.self)
+      Behaviors.receiveMessage {
+        case w: W   => handleCommand(w.command, Some(w.replyTo))(context)
+        case wr: WR => handleCommand(wr, Some(wr.replyTo))(context)
+        case other  => handleCommand(other, None)(context)
+      }
     }
-    Behaviors.receiveMessage {
-      case w: W   => handleCommand(w.command, Some(w.replyTo))(context)
-      case wr: WR => handleCommand(wr, Some(wr.replyTo))(context)
-      case other  => handleCommand(other, None)(context)
-    }
-  }
 
   def ?(command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Future[R] = {
     actorRef ? command
@@ -114,7 +112,7 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] 
     actorRef ! command
   }
 
-  final override implicit def key2Recipient[T](key: T): Recipient = singleton
+  final override implicit def key2Recipient[T](key: T): Recipient = behavior
 
   private[this] var maybeActorRef: Option[ActorRef[C]] = None
 
@@ -125,10 +123,8 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] 
   private[this] def supervisor: Behavior[SingletonRef] =
     Behaviors.setup[SingletonRef] { context =>
       context.log.info(s"spawn singleton [$name]")
-      val child = context.spawn(singleton, name)
-      if(SingletonKey.isDefined) {
-        context.system.receptionist ! Receptionist.Register(SingletonKey.get, child)
-      }
+      val child = context.spawn(behavior, name)
+      context.system.receptionist ! Receptionist.Register(key, child)
       Behaviors.receiveMessage { message =>
           message.client ! SingletonRefResult(child)
           Behaviors.same
@@ -137,13 +133,17 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] 
 
   private[this] def actorRef(implicit system: ActorSystem[_]): ActorRef[C] = {
     if(maybeActorRef.isEmpty){
-      logger.warn(s"actorRef for [$name] is undefined")
-      if(SingletonKey.isDefined){
-        system.receptionist ? Find(SingletonKey.get) complete() match {
-          case Success(s) => maybeActorRef = s.serviceInstances(SingletonKey.get).headOption
+      val maybeSingletonRef = Option(singletonRef)
+      if(maybeSingletonRef.isEmpty){
+        logger.warn(s"actorRef for [$name] is undefined")
+        system.receptionist ? Find(key) complete() match {
+          case Success(s) => maybeActorRef = s.serviceInstances(key).headOption
           case Failure(f) =>
             logger.error(f.getMessage, f)
         }
+      }
+      else{
+        maybeActorRef = maybeSingletonRef
       }
     }
     maybeActorRef.getOrElse({
@@ -152,10 +152,9 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] 
       val supervisorRef = system.systemActorOf(supervisor, generateUUID())
       supervisorRef ? SingletonRef complete() match {
         case Success(s) =>
-          import s._
-          maybeActorRef = Some(singletonRef)
-          logger.info(s"actorRef for [$name] has been loaded -> ${singletonRef.path}")
-          singletonRef
+          maybeActorRef = Some(s.singletonRef)
+          logger.info(s"actorRef for [$name] has been loaded -> ${s.singletonRef.path}")
+          s.singletonRef
         case Failure(f) =>
           logger.error(f.getMessage, f)
           throw f
