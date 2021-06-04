@@ -95,7 +95,7 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] 
 
   protected def SingletonKey: Option[ServiceKey[C]] = None
 
-  protected def singleton: Behavior[C] = Behaviors.setup{context =>
+  protected def singleton: Behavior[C] = Behaviors.setup { context =>
     if(SingletonKey.isDefined){
       context.system.receptionist ! Receptionist.Register(SingletonKey.get, context.self)
     }
@@ -118,22 +118,48 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] 
 
   private[this] var maybeActorRef: Option[ActorRef[C]] = None
 
+  case class SingletonRef(client: ActorRef[SingletonRefResult])
+
+  case class SingletonRefResult(singletonRef: ActorRef[C])
+
+  private[this] def supervisor: Behavior[SingletonRef] =
+    Behaviors.setup[SingletonRef] { context =>
+      context.log.info(s"spawn singleton [$name]")
+      val child = context.spawn(singleton, name)
+      if(SingletonKey.isDefined) {
+        context.system.receptionist ! Receptionist.Register(SingletonKey.get, child)
+      }
+      Behaviors.receiveMessage { message =>
+          message.client ! SingletonRefResult(child)
+          Behaviors.same
+      }
+    }
+
   private[this] def actorRef(implicit system: ActorSystem[_]): ActorRef[C] = {
     if(maybeActorRef.isEmpty){
+      logger.warn(s"actorRef for [$name] is undefined")
       if(SingletonKey.isDefined){
-        system.receptionist.ask(Find(SingletonKey.get)) complete() match {
+        system.receptionist ? Find(SingletonKey.get) complete() match {
           case Success(s) => maybeActorRef = s.serviceInstances(SingletonKey.get).headOption
           case Failure(f) =>
+            logger.error(f.getMessage, f)
         }
       }
     }
-    else{
-      logger.info(s"actor ref for $SingletonKey has already been loaded")
-    }
     maybeActorRef.getOrElse({
-      val ref = system.systemActorOf(singleton, name)
-      maybeActorRef = Some(ref)
-      ref
+      logger.info(s"spawn supervisor for singleton [$name]")
+      import app.softnetwork.persistence._
+      val supervisorRef = system.systemActorOf(supervisor, generateUUID())
+      supervisorRef ? SingletonRef complete() match {
+        case Success(s) =>
+          import s._
+          maybeActorRef = Some(singletonRef)
+          logger.info(s"actorRef for [$name] has been loaded -> ${singletonRef.path}")
+          singletonRef
+        case Failure(f) =>
+          logger.error(f.getMessage, f)
+          throw f
+      }
     })
   }
 
