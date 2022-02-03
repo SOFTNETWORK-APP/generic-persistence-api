@@ -4,9 +4,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorSystem, Behavior}
 import akka.cluster.ClusterEvent._
 import akka.cluster.typed.{Cluster, Join, Subscribe}
+import akka.management.cluster.bootstrap.ClusterBootstrap
+import akka.management.scaladsl.AkkaManagement
 import akka.{actor => classic}
 import app.softnetwork.persistence._
-import app.softnetwork.persistence.config.Settings
+import app.softnetwork.persistence.config.Settings._
 import app.softnetwork.persistence.query.{EventProcessor, EventProcessorStream, SchemaProvider}
 import app.softnetwork.persistence.typed.EntityBehavior
 import app.softnetwork.persistence.typed.Singleton
@@ -38,7 +40,7 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
     *
     * @return join this node to the cluster explicitly
     */
-  def joinCluster(system: ActorSystem[_]) = {
+  def joinCluster(system: ActorSystem[_]): Unit = {
     // join cluster
     val cluster = Cluster(system)
     val address: classic.Address = cluster.selfMember.address
@@ -79,16 +81,8 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
         singleton.init(context)
       }
 
-      // join the cluster
-      if(Settings.AkkaClusterSeedNodes.isEmpty){
-        joinCluster(system)
-      }
-      else{
-        context.log.info("Self join will not be performed")
-      }
-
       context.log.info("Starting up cluster listener...")
-      Cluster(context.system).subscriptions ! Subscribe(context.self, classOf[ClusterDomainEvent])
+      Cluster(system).subscriptions ! Subscribe(context.self, classOf[ClusterDomainEvent])
 
       // initialize event streams
       for(eventProcessorStream <- eventProcessorStreams(system)) {
@@ -104,6 +98,21 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
 
       // start the system
       startSystem(system)
+
+      // initialize bootstrap
+      if(AkkaClusterWithBootstrap){
+        // Akka Management hosts the HTTP routes used by bootstrap
+        AkkaManagement(system).start()
+        // Starting the bootstrap process needs to be done explicitly
+        ClusterBootstrap(system).start()
+      }
+      else if(AkkaClusterSeedNodes.isEmpty){
+        // join the cluster
+        joinCluster(system)
+      }
+      else{
+        context.log.info("Self join will not be performed")
+      }
 
       Behaviors.receiveMessagePartial {
         case event: ClusterDomainEvent =>

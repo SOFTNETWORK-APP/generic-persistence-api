@@ -16,6 +16,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.Span
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
+import java.net.{InetAddress, NetworkInterface}
+import scala.collection.JavaConverters.enumerationAsScalaIteratorConverter
 import scala.language.implicitConversions
 
 /**
@@ -28,6 +30,15 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 
   lazy val systemName: String = generateUUID()
 
+  lazy val ipAddress: String = {
+    NetworkInterface.getNetworkInterfaces.asScala.toSeq.flatMap(p =>
+      p.getInetAddresses.asScala.toSeq
+    ).find { address =>
+      val host = address.getHostAddress
+      host.contains(".") && !address.isLoopbackAddress && !address.isAnyLocalAddress && !address.isLinkLocalAddress
+    }.getOrElse(InetAddress.getLocalHost).getHostAddress
+  }
+
   lazy val akka = s"""
                 |akka {
                 |  stdout-loglevel = off // defaults to WARNING can be disabled with off. The stdout-loglevel is only in effect during system startup and shutdown
@@ -37,6 +48,29 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |  log-config-on-start = off // Log the complete configuration at INFO level when the actor system is started
                 |  loggers = ["akka.event.slf4j.Slf4jLogger"]
                 |  logging-filter = "akka.event.slf4j.Slf4jLoggingFilter"
+                |}
+                |
+                |akka.discovery {
+                |  config.services = {
+                |    $systemName = {
+                |      endpoints = [
+                |        {
+                |          host = "$ipAddress"
+                |          port = 8558
+                |        }
+                |      ]
+                |    }
+                |  }
+                |}
+                |
+                |akka.management {
+                |  cluster.bootstrap {
+                |    contact-point-discovery {
+                |      service-name = "$systemName"
+                |      discovery-method = config
+                |      required-contact-point-nr = 1
+                |    }
+                |  }
                 |}
                 |
                 |akka.remote.artery.canonical.port = 0

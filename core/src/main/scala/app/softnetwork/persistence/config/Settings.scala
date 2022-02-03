@@ -11,4 +11,7 @@ object Settings {
     ConfigFactory.load().withFallback(ConfigFactory.load("softnetwork-in-memory-persistence.conf"))
 
   val AkkaClusterSeedNodes = config.getStringList("akka.cluster.seed-nodes")
+
+  val AkkaClusterWithBootstrap = AkkaClusterSeedNodes.isEmpty &&
+    !config.getIsNull("akka.management.cluster.bootstrap.contact-point-discovery.discovery-method")
 }

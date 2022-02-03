@@ -2,15 +2,17 @@ package app.softnetwork.sbt.build
 
 object Versions {
 
-  val akka = "2.6.12"
+  val akka = "2.6.18" //2.6.12 -> 2.6.18
 
-  val akkaHttp = "10.1.11"
+  val akkaHttp = "10.1.15" //10.1.11 -> 10.2.7
 
-  val akkaHttpJson4s = "1.31.0"
+  val akkaHttpJson4s = "1.33.0" //1.31.0 -> 1.39.2
 
   val akkaPersistenceJdbc = "3.5.2"
 
   val akkaHttpSession = "0.5.11"
+
+  val akkaManagement = "1.0.10" // 1.0.10 -> 1.1.2
 
   val postgresql = "42.2.18" //"9.4.1210"
 
@@ -20,9 +22,9 @@ object Versions {
 
   val kxbmap = "0.4.4"
 
-  val jackson = "2.10.1"
+  val jackson = "2.10.5" //2.10.1 -> 2.11.4
 
-  val json4s = "3.6.7"
+  val json4s = "3.6.12" // 3.6.7 -> 3.6.12
 
   val scalaLogging = "3.9.2"
 

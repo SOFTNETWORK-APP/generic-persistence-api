@@ -16,7 +16,7 @@ object Publication {
 
   val releasesRepository = "releases" at artifactoryUrl + "libs-release-local"
 
-  lazy val snapshotsRepository = "snapshots" at (artifactoryUrl + "libs-snapshot-local;build.timestamp=" + new Date())
+  lazy val snapshotsRepository = "snapshots" at artifactoryUrl + "libs-snapshot-local"
 
   private def selectDestination(version: String): Option[Resolver] =
     if(version.trim.toUpperCase.endsWith("SNAPSHOT")) {
