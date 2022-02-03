@@ -70,6 +70,54 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |}
                 |
                 |akka.management {
+                |  http {
+                |    # The hostname where the HTTP Server for Http Cluster Management will be started.
+                |    # This defines the interface to use.
+                |    # InetAddress.getLocalHost.getHostAddress is used not overriden or empty
+                |    hostname = "$ipAddress"
+                |
+                |    # The port where the HTTP Server for Http Cluster Management will be bound.
+                |    # The value will need to be from 0 to 65535.
+                |    port = 8558 # port pun, it "complements" 2552 which is often used for Akka remoting
+                |
+                |    # Use this setting to bind a network interface to a different hostname or ip
+                |    # than the HTTP Server for Http Cluster Management.
+                |    # Use "0.0.0.0" to bind to all interfaces.
+                |    # akka.management.http.hostname if empty
+                |    bind-hostname = ""
+                |
+                |    # Use this setting to bind a network interface to a different port
+                |    # than the HTTP Server for Http Cluster Management. This may be used
+                |    # when running akka nodes in a separated networks (under NATs or docker containers).
+                |    # Use 0 if you want a random available port.
+                |    #
+                |    # akka.management.http.port if empty
+                |    bind-port = ""
+                |
+                |    # path prefix for all management routes, usually best to keep the default value here. If
+                |    # specified, you'll want to use the same value for all nodes that use akka management so
+                |    # that they can know which path to access each other on.
+                |    base-path = ""
+                |
+                |    routes {
+                |      health-checks = "akka.management.HealthCheckRoutes"
+                |    }
+                |
+                |    # Should Management route providers only expose read only endpoints? It is up to each route provider
+                |    # to adhere to this property
+                |    route-providers-read-only = true
+                |  }
+                |
+                |  # Health checks for readiness and liveness
+                |  health-checks {
+                |    # When exposting health checks via Akka Management, the path to expost readiness checks on
+                |    readiness-path = "ready"
+                |    # When exposting health checks via Akka Management, the path to expost readiness checks on
+                |    liveness-path = "alive"
+                |    # All readiness checks are executed in parallel and given this long before the check is timed out
+                |    check-timeout = 1s
+                |  }
+                |
                 |  cluster.bootstrap {
                 |    contact-point-discovery {
                 |      service-name = "$systemName"
