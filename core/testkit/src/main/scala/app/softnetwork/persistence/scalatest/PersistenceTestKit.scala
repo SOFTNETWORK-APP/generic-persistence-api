@@ -31,12 +31,18 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
   lazy val systemName: String = generateUUID()
 
   lazy val ipAddress: String = {
-    NetworkInterface.getNetworkInterfaces.asScala.toSeq.flatMap(p =>
-      p.getInetAddresses.asScala.toSeq
-    ).find { address =>
-      val host = address.getHostAddress
-      host.contains(".") && !address.isLoopbackAddress && !address.isAnyLocalAddress && !address.isLinkLocalAddress
-    }.getOrElse(InetAddress.getLocalHost).getHostAddress
+    NetworkInterface.getNetworkInterfaces.asScala.toSeq
+      .filter(_.isUp)
+      .filterNot(p => {
+        val displayName = p.getDisplayName
+        log.info(s"found $displayName network interface")
+        displayName.toLowerCase.contains("docker")
+      })
+      .flatMap(p => p.getInetAddresses.asScala.toSeq)
+      .find { address =>
+        val host = address.getHostAddress
+        host.contains(".") && !address.isLoopbackAddress && !address.isAnyLocalAddress && !address.isLinkLocalAddress
+      }.getOrElse(InetAddress.getLocalHost).getHostAddress
   }
 
   lazy val akka = s"""
