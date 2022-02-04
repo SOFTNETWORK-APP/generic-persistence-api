@@ -10,14 +10,13 @@ import app.softnetwork.config.Settings
 import app.softnetwork.persistence.launch.PersistenceGuardian
 import app.softnetwork.persistence.message.Command
 import app.softnetwork.persistence.query.{InMemorySchemaProvider, SchemaProvider}
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.Span
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
-import java.net.{InetAddress, NetworkInterface}
-import scala.collection.JavaConverters.enumerationAsScalaIteratorConverter
+import java.net.InetAddress
 import scala.language.implicitConversions
 
 /**
@@ -30,22 +29,9 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 
   lazy val systemName: String = generateUUID()
 
-  lazy val ipAddress: String = {
-    NetworkInterface.getNetworkInterfaces.asScala.toSeq
-      .filter(_.isUp)
-      .filterNot(p => {
-        val displayName = p.getDisplayName
-        log.info(s"found $displayName network interface")
-        displayName.toLowerCase.contains("docker")
-      })
-      .flatMap(p => p.getInetAddresses.asScala.toSeq)
-      .find { address =>
-        val host = address.getHostAddress
-        host.contains(".") && !address.isLoopbackAddress && !address.isAnyLocalAddress && !address.isLinkLocalAddress
-      }.getOrElse(InetAddress.getLocalHost).getHostAddress
-  }
+  lazy val hostname: String = InetAddress.getLocalHost.getHostAddress
 
-  lazy val akka = s"""
+  lazy val akka: String = s"""
                 |akka {
                 |  stdout-loglevel = off // defaults to WARNING can be disabled with off. The stdout-loglevel is only in effect during system startup and shutdown
                 |  log-dead-letters-during-shutdown = on
@@ -56,12 +42,14 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |  logging-filter = "akka.event.slf4j.Slf4jLoggingFilter"
                 |}
                 |
+                |clustering.cluster.name = $systemName
+                |
                 |akka.discovery {
                 |  config.services = {
                 |    $systemName = {
                 |      endpoints = [
                 |        {
-                |          host = "$ipAddress"
+                |          host = $hostname
                 |          port = 8558
                 |        }
                 |      ]
@@ -70,59 +58,9 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |}
                 |
                 |akka.management {
-                |  http {
-                |    # The hostname where the HTTP Server for Http Cluster Management will be started.
-                |    # This defines the interface to use.
-                |    # InetAddress.getLocalHost.getHostAddress is used not overriden or empty
-                |    hostname = "$ipAddress"
-                |
-                |    # The port where the HTTP Server for Http Cluster Management will be bound.
-                |    # The value will need to be from 0 to 65535.
-                |    port = 8558 # port pun, it "complements" 2552 which is often used for Akka remoting
-                |
-                |    # Use this setting to bind a network interface to a different hostname or ip
-                |    # than the HTTP Server for Http Cluster Management.
-                |    # Use "0.0.0.0" to bind to all interfaces.
-                |    # akka.management.http.hostname if empty
-                |    bind-hostname = ""
-                |
-                |    # Use this setting to bind a network interface to a different port
-                |    # than the HTTP Server for Http Cluster Management. This may be used
-                |    # when running akka nodes in a separated networks (under NATs or docker containers).
-                |    # Use 0 if you want a random available port.
-                |    #
-                |    # akka.management.http.port if empty
-                |    bind-port = ""
-                |
-                |    # path prefix for all management routes, usually best to keep the default value here. If
-                |    # specified, you'll want to use the same value for all nodes that use akka management so
-                |    # that they can know which path to access each other on.
-                |    base-path = ""
-                |
-                |    routes {
-                |      health-checks = "akka.management.HealthCheckRoutes"
-                |    }
-                |
-                |    # Should Management route providers only expose read only endpoints? It is up to each route provider
-                |    # to adhere to this property
-                |    route-providers-read-only = true
-                |  }
-                |
-                |  # Health checks for readiness and liveness
-                |  health-checks {
-                |    # When exposting health checks via Akka Management, the path to expost readiness checks on
-                |    readiness-path = "ready"
-                |    # When exposting health checks via Akka Management, the path to expost readiness checks on
-                |    liveness-path = "alive"
-                |    # All readiness checks are executed in parallel and given this long before the check is timed out
-                |    check-timeout = 1s
-                |  }
-                |
                 |  cluster.bootstrap {
                 |    contact-point-discovery {
-                |      service-name = "$systemName"
-                |      discovery-method = config
-                |      required-contact-point-nr = 1
+                |      service-name = $systemName
                 |    }
                 |  }
                 |}
@@ -164,15 +102,15 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |
                 |""".stripMargin
 
-  lazy val akkaConfig = ConfigFactory.parseString(akka)
+  lazy val akkaConfig: Config = ConfigFactory.parseString(akka)
 
-  lazy val config = akkaConfig.withFallback(ConfigFactory.load())
+  lazy val config: Config = akkaConfig.withFallback(ConfigFactory.load())
 
   private[this] lazy val testKit = ActorTestKit(systemName, config)
 
   private[this] implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
-  def typedSystem() = system
+  def typedSystem(): ActorSystem[Nothing] = system
 
   /**
     * `PatienceConfig` from [[_root_.akka.actor.testkit.typed.TestKitSettings#DefaultTimeout]]
@@ -191,7 +129,7 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
   /**
     * init and join cluster
     */
-  final def initAndJoinCluster() = {
+  final def initAndJoinCluster(): Unit = {
     testKit.spawn(setup(), "guardian")
     // let the nodes join and become Up
     blockUntil("let the nodes join and become Up", 30, 2000)(() => Cluster(system).selfMember.status == MemberStatus.Up)
@@ -206,7 +144,7 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 }
 
 trait InMemoryPersistenceTestKit extends PersistenceTestKit with InMemorySchemaProvider { _: Suite =>
-  override lazy val config =
+  override lazy val config: Config =
     akkaConfig
       .withFallback(ConfigFactory.load("softnetwork-in-memory-persistence.conf"))
       .withFallback(ConfigFactory.load())
