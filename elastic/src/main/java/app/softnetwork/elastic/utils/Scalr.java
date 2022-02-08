@@ -2347,12 +2347,4 @@ public class Scalr {
         return result;
     }
 
-
-    public static void main(String args[]) throws Exception {
-        File file = new File("/Users/hayssams/Pictures/ebiznext2008.jpg");
-        BufferedImage src = ImageIO.read(file);
-        BufferedImage dest = Scalr.resize(src, Scalr.Method.ULTRA_QUALITY, 120, 60);
-        BufferedImage dest2 = Scalr.move(dest, 0, 30, 120, 120, Color.WHITE);
-        ImageIO.write(dest2, "png", new File("/Users/hayssams/Pictures/test.png"));
-    }
 }
