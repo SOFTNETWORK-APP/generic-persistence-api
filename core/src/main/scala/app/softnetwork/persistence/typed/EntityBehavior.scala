@@ -79,7 +79,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
   protected def subscribe(system: ActorSystem[_], subscriber: ActorRef[C])(implicit c: ClassTag[C]): Unit = {}
 
   implicit def resultToMaybeReply(r: R): MaybeReply = new MaybeReply {
-    def apply() = {
+    def apply(): Option[ActorRef[R]] => Unit = {
       case Some(subscriber) => subscriber ! r
       case _ =>
     }
@@ -88,6 +88,35 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
   sealed trait MaybeReply {
     def apply(): Option[ActorRef[R]] => Unit
     final def ~>(replyTo: Option[ActorRef[R]]): Unit = apply()(replyTo)
+  }
+
+  type CR = (C, Option[ActorRef[R]])
+
+  private[this] val cr: PartialFunction[C, CR] = {
+    case w: W => (w.command, Some(w.replyTo))
+    case wr: WR => (wr, Some(wr.replyTo))
+    case c => (c, None)
+  }
+
+  trait CommandHandler {
+    /**
+      *
+      * @param entityId - entity identity
+      * @param state - current state
+      * @param command - command to handle
+      * @param replyTo - optional actor to reply to
+      * @param timers - scheduled messages associated with this entity behavior
+      * @return effect
+      */
+    def apply(entityId: String, state: Option[S], command: C, replyTo: Option[ActorRef[R]], timers: TimerScheduler[C])(implicit context: ActorContext[C]): Effect[E, Option[S]] = {
+      handleCommand(entityId, state, command, replyTo, timers)
+    }
+  }
+
+  def commandHandler: PartialFunction[C, CommandHandler] = defaultCommandHandler
+
+  protected final val defaultCommandHandler: PartialFunction[C, CommandHandler] = {
+    case _ => new CommandHandler {}
   }
 
   final def apply(entityId: String, persistenceId: PersistenceId)(implicit c: ClassTag[C]): Behavior[C] = {
@@ -100,12 +129,8 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
           emptyState = emptyState,
           commandHandler = { (state, command) =>
             context.log.debug(s"handling command $command for ${TypeKey.name} $entityId")
-            command match {
-              case w: W => handleCommand(entityId, state, w.command, Some(w.replyTo), timers)(context)
-              case wr: WR => handleCommand(entityId, state, wr, Some(wr.replyTo), timers)(context)
-              case c: C => handleCommand(entityId, state, c, None, timers)(context)
-              case _ => Effect.unhandled
-            }
+            val _cr = cr(command)
+            commandHandler(_cr._1)(entityId, state, _cr._1, _cr._2, timers)(context)
           },
           eventHandler = { (state, event) =>
             context.log.debug(s"handling event $event for ${TypeKey.name} $entityId")
