@@ -120,7 +120,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
   }
 
   final def apply(entityId: String, persistenceId: PersistenceId)(implicit c: ClassTag[C]): Behavior[C] = {
-    Behaviors.withTimers((timers) => {
+    Behaviors.withTimers(timers => {
       Behaviors.setup { context =>
         context.log.info(s"Starting $persistenceId")
         subscribe(context.system, context.self)
@@ -153,17 +153,17 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
           to its current (i.e. latest) state. */
           .withRecovery(Recovery.withSnapshotSelectionCriteria(SnapshotSelectionCriteria.latest))
           .receiveSignal {
-            case (state, f: RecoveryFailed) =>
+            case (_, f: RecoveryFailed) =>
               context.log.error(s"Recovery failed for ${TypeKey.name} $entityId", f.failure)
             case (state, _: RecoveryCompleted) =>
               context.log.info(s"Recovery completed for ${TypeKey.name} $entityId")
               postRecoveryCompleted(state)(context)
-            case (state, _: SnapshotCompleted) => context.log.info(s"Snapshot completed for ${TypeKey.name} $entityId")
-            case (state, f: SnapshotFailed) =>
+            case (_, _: SnapshotCompleted) => context.log.info(s"Snapshot completed for ${TypeKey.name} $entityId")
+            case (_, f: SnapshotFailed) =>
               context.log.warn(s"Snapshot failed for ${TypeKey.name} $entityId", f.failure)
-            case (state, f: DeleteSnapshotsFailed) =>
+            case (_, f: DeleteSnapshotsFailed) =>
               context.log.warn(s"Snapshot deletion failed for ${TypeKey.name} $entityId", f.failure)
-            case (state, f: DeleteEventsFailed) =>
+            case (_, f: DeleteEventsFailed) =>
               context.log.warn(s"Events deletion failed for ${TypeKey.name} $entityId", f.failure)
           }
           .withTagger(event => platformTagEvent(entityId, event))
