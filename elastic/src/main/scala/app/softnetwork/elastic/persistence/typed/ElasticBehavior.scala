@@ -11,7 +11,7 @@ import app.softnetwork.serialization._
 import akka.persistence.typed.scaladsl.Effect
 import com.typesafe.scalalogging.StrictLogging
 
-import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed._
 
 import app.softnetwork.elastic.client.ElasticClientApi
 

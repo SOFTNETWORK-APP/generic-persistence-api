@@ -8,7 +8,7 @@ import akka.persistence.typed.scaladsl.Effect
 
 import app.softnetwork.persistence._
 
-import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed._
 import app.softnetwork.scheduler.message._
 
 import org.softnetwork.akka.message.SchedulerEvents._

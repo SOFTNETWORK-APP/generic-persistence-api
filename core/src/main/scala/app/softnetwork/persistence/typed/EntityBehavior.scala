@@ -93,18 +93,6 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     */
   protected def subscribe(system: ActorSystem[_], subscriber: ActorRef[C])(implicit c: ClassTag[C]): Unit = {}
 
-  implicit def resultToMaybeReply(r: R): MaybeReply = new MaybeReply {
-    def apply(): Option[ActorRef[R]] => Unit = {
-      case Some(subscriber) => subscriber ! r
-      case _ =>
-    }
-  }
-
-  sealed trait MaybeReply {
-    def apply(): Option[ActorRef[R]] => Unit
-    final def ~>(replyTo: Option[ActorRef[R]]): Unit = apply()(replyTo)
-  }
-
   type CR = (C, Option[ActorRef[R]])
 
   private[this] val cr: PartialFunction[C, CR] = {

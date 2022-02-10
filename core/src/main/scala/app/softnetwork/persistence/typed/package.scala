@@ -1,10 +1,10 @@
 package app.softnetwork.persistence
 
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
-import akka.actor.typed.{Props, ActorRef, Behavior, ActorSystem}
-import app.softnetwork.persistence.message.Command
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Props}
+import app.softnetwork.persistence.message.{Command, CommandResult}
 
-import scala.language.{reflectiveCalls, implicitConversions}
+import scala.language.{implicitConversions, reflectiveCalls}
 
 /**
   * Created by smanciot on 16/05/2020.
@@ -43,4 +43,15 @@ package object typed {
     }
   }
 
+  sealed trait MaybeReply[R <: CommandResult] {
+    def apply(): Option[ActorRef[R]] => Unit
+    final def ~>(replyTo: Option[ActorRef[R]]): Unit = apply()(replyTo)
+  }
+
+  implicit def resultToMaybeReply[R <: CommandResult](r: R): MaybeReply[R] = new MaybeReply[R] {
+    def apply(): Option[ActorRef[R]] => Unit = {
+      case Some(subscriber) => subscriber ! r
+      case _ =>
+    }
+  }
 }

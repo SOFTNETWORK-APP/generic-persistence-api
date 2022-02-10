@@ -9,7 +9,7 @@ import com.softwaremill.session.{RefreshTokenLookupResult, RefreshTokenData}
 
 import app.softnetwork.persistence.model.State
 
-import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed._
 import app.softnetwork.session.model.SessionData
 
 import app.softnetwork.session.message._

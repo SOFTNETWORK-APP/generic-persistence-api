@@ -12,7 +12,7 @@ import org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand
 import org.softnetwork.akka.message.scheduler.{RemoveSchedule, AddSchedule}
 import org.softnetwork.akka.model.Schedule
 
-import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed._
 
 import app.softnetwork.notification.handlers._
 import app.softnetwork.notification.message._
