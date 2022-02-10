@@ -26,6 +26,21 @@ trait CommandTypeKey[C <: Command] {
   def TypeKey(implicit c: ClassTag[C]): EntityTypeKey[C]
 }
 
+trait EntityCommandHandler[C <: Command, S <: State, E <: Event, R <: CommandResult] {
+  /**
+    *
+    * @param entityId - entity identity
+    * @param state - current state
+    * @param command - command to handle
+    * @param replyTo - optional actor to reply to
+    * @param timers - scheduled messages associated with this entity behavior
+    * @return effect
+    */
+  def apply(entityId: String, state: Option[S], command: C, replyTo: Option[ActorRef[R]], timers: TimerScheduler[C])(
+    implicit context: ActorContext[C]
+  ): Effect[E, Option[S]]
+}
+
 trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] extends CommandTypeKey[C]
   with InternalEntity
   with Completion {
@@ -98,7 +113,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     case c => (c, None)
   }
 
-  trait CommandHandler {
+  sealed trait DefaultEntityCommandHandler extends EntityCommandHandler[C, S, E, R] {
     /**
       *
       * @param entityId - entity identity
@@ -108,15 +123,16 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
       * @param timers - scheduled messages associated with this entity behavior
       * @return effect
       */
-    def apply(entityId: String, state: Option[S], command: C, replyTo: Option[ActorRef[R]], timers: TimerScheduler[C])(implicit context: ActorContext[C]): Effect[E, Option[S]] = {
+    def apply(entityId: String, state: Option[S], command: C, replyTo: Option[ActorRef[R]], timers: TimerScheduler[C])(
+      implicit context: ActorContext[C]): Effect[E, Option[S]] = {
       handleCommand(entityId, state, command, replyTo, timers)
     }
   }
 
-  def commandHandler: PartialFunction[C, CommandHandler] = defaultCommandHandler
+  def entityCommandHandler: PartialFunction[C, EntityCommandHandler[C, S, E, R]] = defaultEntityCommandHandler
 
-  protected final val defaultCommandHandler: PartialFunction[C, CommandHandler] = {
-    case _ => new CommandHandler {}
+  protected final val defaultEntityCommandHandler: PartialFunction[C, EntityCommandHandler[C, S, E, R]] = {
+    case _ => new DefaultEntityCommandHandler {}
   }
 
   final def apply(entityId: String, persistenceId: PersistenceId)(implicit c: ClassTag[C]): Behavior[C] = {
@@ -130,7 +146,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
           commandHandler = { (state, command) =>
             context.log.debug(s"handling command $command for ${TypeKey.name} $entityId")
             val _cr = cr(command)
-            commandHandler(_cr._1)(entityId, state, _cr._1, _cr._2, timers)(context)
+            entityCommandHandler(_cr._1)(entityId, state, _cr._1, _cr._2, timers)(context)
           },
           eventHandler = { (state, event) =>
             context.log.debug(s"handling event $event for ${TypeKey.name} $entityId")
