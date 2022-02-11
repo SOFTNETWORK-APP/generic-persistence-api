@@ -80,7 +80,7 @@ trait RefreshTokenBehavior[T <: SessionData]
     * @return new state
     */
   override def handleEvent(state: Option[RefreshTokenState[T]], event: RefreshTokenEvent)(
-    implicit context: ActorContext[RefreshTokenCommand]): Option[RefreshTokenState[T]] = {
+    implicit context: ActorContext[_]): Option[RefreshTokenState[T]] = {
     event match {
       case e: RefreshTokenStored[T] => Some(RefreshTokenState(e.data))
       case _: RefreshTokenRemoved   => emptyState
