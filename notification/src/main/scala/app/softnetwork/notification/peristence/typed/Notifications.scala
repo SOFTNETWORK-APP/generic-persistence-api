@@ -279,7 +279,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
     * @return new state
     */
   override def handleEvent(state: Option[T], event: NotificationEvent)(
-    implicit context: ActorContext[NotificationCommand]): Option[T] = {
+    implicit context: ActorContext[_]): Option[T] = {
     import context._
     event match {
       case evt: NotificationRecordedEvent[T] =>

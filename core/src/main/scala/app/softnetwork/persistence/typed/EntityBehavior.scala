@@ -41,6 +41,16 @@ trait EntityCommandHandler[C <: Command, S <: State, E <: Event, R <: CommandRes
   ): Effect[E, Option[S]]
 }
 
+trait EntityEventHandler[S <: State, E <: Event] {
+  /**
+    *
+    * @param state - current state
+    * @param event - event to hanlde
+    * @return new state
+    */
+  def apply(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S]
+}
+
 trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] extends CommandTypeKey[C]
   with InternalEntity
   with Completion {
@@ -123,6 +133,24 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     case _ => new DefaultEntityCommandHandler {}
   }
 
+  sealed trait DefaultEntityEventHandler extends EntityEventHandler[S, E]{
+    /**
+      *
+      * @param state - current state
+      * @param event - event to hanlde
+      * @return new state
+      */
+    override def apply(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S] = {
+      handleEvent(state, event)
+    }
+  }
+
+  def entityEventHandler: PartialFunction[E, EntityEventHandler[S, E]] = defaultEntityEventHandler
+
+  protected final val defaultEntityEventHandler: PartialFunction[E, EntityEventHandler[S, E]] = {
+    case _ => new DefaultEntityEventHandler {}
+  }
+
   final def apply(entityId: String, persistenceId: PersistenceId)(implicit c: ClassTag[C]): Behavior[C] = {
     Behaviors.withTimers(timers => {
       Behaviors.setup { context =>
@@ -138,7 +166,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
           },
           eventHandler = { (state, event) =>
             context.log.debug(s"handling event $event for ${TypeKey.name} $entityId")
-            handleEvent(state, event)(context)
+            entityEventHandler(event)(state, event)(context)
           }
         )
           .onPersistFailure(
@@ -196,7 +224,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     * @param event - event to hanlde
     * @return new state
     */
-  def handleEvent(state: Option[S], event: E)(implicit context: ActorContext[C]): Option[S] =
+  def handleEvent(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S] =
     event match {
       case _  => state
     }

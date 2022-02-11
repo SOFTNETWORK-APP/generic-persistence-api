@@ -124,7 +124,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               if(scheduledDate.isDefined){
                 // trigger schedule only if the scheduled date has been reached and the schedule has never been triggered
                 if(now().after(scheduledDate.get)){
-                  if(lastTriggered.isEmpty || lastTriggered.get.before(scheduledDate.get)){
+                  if(lastTriggered.isEmpty /*|| lastTriggered.get.before(scheduledDate.get)*/){
                     context.log.info(s"Triggering schedule $updatedSchedule")
                     timers.startSingleTimer(
                       uuid,
@@ -352,7 +352,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
     * @return new state
     */
   override def handleEvent(state: Option[Scheduler], event: SchedulerEvent)(
-    implicit context: ActorContext[SchedulerCommand]): Option[Scheduler] =
+    implicit context: ActorContext[_]): Option[Scheduler] =
     event match {
       case evt: ScheduleAddedEvent =>
         Some(
