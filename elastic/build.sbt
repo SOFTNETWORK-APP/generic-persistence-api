@@ -1,6 +1,6 @@
 import app.softnetwork.sbt.build.Versions
 
-parallelExecution in Test := false
+Test / parallelExecution := false
 
 organization := "app.softnetwork.persistence"
 
@@ -33,4 +33,4 @@ libraryDependencies ++= Seq(
   "org.apache.tika" % "tika-core" % "1.18"
 ) ++ elastic ++ jest
 
-unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"
+Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"

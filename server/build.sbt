@@ -1,6 +1,6 @@
 import app.softnetwork.sbt.build.Versions
 
-parallelExecution in Test := false
+Test / parallelExecution := false
 
 organization := "app.softnetwork.api"
 
