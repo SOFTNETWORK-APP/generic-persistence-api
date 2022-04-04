@@ -31,7 +31,7 @@ trait ApiRoutes extends Directives with DefaultComplete with StrictLogging {
   final def mainRoutes: ActorSystem[_] => Route = system => {
     handleExceptions(timeoutExceptionHandler) {
       logRequestResult("RestAll") {
-        pathPrefix("api") {
+        pathPrefix(config.Settings.RootPath) {
           Try(
             HealthCheckService.route ~ apiRoutes(system)
           ) match {
