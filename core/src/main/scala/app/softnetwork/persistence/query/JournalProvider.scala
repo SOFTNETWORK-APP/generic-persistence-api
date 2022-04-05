@@ -28,7 +28,7 @@ trait JournalProvider extends ReadJournal with EventStream {_: SchemaProvider =>
 
   protected def logger: Logger
 
-  protected def startOffset() = Offset.sequence(0L)
+  protected def startOffset(): Offset = Offset.sequence(0L)
 
   protected def initJournalProvider(): Unit = {}
 

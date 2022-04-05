@@ -55,7 +55,7 @@ trait State2ElasticProcessorStream[T <: Timestamped, E <: CrudEvent] extends Sta
 
       case evt: Updated[_] =>
         import evt._
-        if(!updateDocument(document.asInstanceOf[T])){
+        if(!updateDocument(document.asInstanceOf[T], upsert)){
           logger.error("document {} has not be updated by {}", document.uuid, platformEventProcessorId)
           done = false
         }

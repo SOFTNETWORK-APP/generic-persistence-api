@@ -18,7 +18,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] {_: ManifestWrapper[T] =>
     * @param t        - implicit ClassTag for T
     * @return whether the operation is successful or not
     */
-  def createDocument(document: T)(implicit t: ClassTag[T] = manifestWrapper.wrapped): Boolean
+  def createDocument(document: T)(implicit t: ClassTag[T] = manifestWrapper.wrapped): Boolean = false
 
   /**
     * Updates the unerlying document to the external system
@@ -28,7 +28,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] {_: ManifestWrapper[T] =>
     * @param t        - implicit ClassTag for T
     * @return whether the operation is successful or not
     */
-  def updateDocument(document: T, upsert: Boolean = true)(implicit t: ClassTag[T] = manifestWrapper.wrapped): Boolean
+  def updateDocument(document: T, upsert: Boolean = true)(implicit t: ClassTag[T] = manifestWrapper.wrapped): Boolean = false
 
   /**
     * Upserts the unerlying document referenced by its uuid to the external system
@@ -37,7 +37,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] {_: ManifestWrapper[T] =>
     * @param data - the document data
     * @return whether the operation is successful or not
     */
-  def upsertDocument(uuid: String, data: String): Boolean
+  def upsertDocument(uuid: String, data: String): Boolean = false
 
   /**
     * Deletes the unerlying document referenced by its uuid to the external system
@@ -45,7 +45,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] {_: ManifestWrapper[T] =>
     * @param uuid - the uuid of the document to delete
     * @return whether the operation is successful or not
     */
-  def deleteDocument(uuid: String): Boolean
+  def deleteDocument(uuid: String): Boolean = false
 
   /**
     * Load the document referenced by its uuid

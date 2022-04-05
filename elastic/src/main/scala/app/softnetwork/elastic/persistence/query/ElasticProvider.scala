@@ -21,11 +21,11 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
 
   implicit def formats: Formats = commonFormats
 
-  protected lazy val index = getIndex[T](manifestWrapper.wrapped)
+  protected lazy val index: String = getIndex[T](manifestWrapper.wrapped)
 
   protected lazy val `type`: String = getType[T](manifestWrapper.wrapped)
 
-  protected lazy val alias = getAlias[T](manifestWrapper.wrapped)
+  protected lazy val alias: String = getAlias[T](manifestWrapper.wrapped)
 
   protected def mappingPath: Option[String] = None
 
