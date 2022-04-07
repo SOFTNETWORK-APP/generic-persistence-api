@@ -179,6 +179,25 @@ lazy val serverTestkit = project.in(file("server/testkit"))
     coreTestkit % "compile->compile;test->test;it->it"
   )
 
+lazy val sequence = project.in(file("sequence"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    scheduler % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    jdbc % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    jdbcTestkit % "test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "test->test;it->it"
+  )
+
 lazy val root = project.in(file("."))
   .aggregate(
     common,
@@ -194,7 +213,8 @@ lazy val root = project.in(file("."))
     elasticTestkit,
     elastic,
     server,
-    serverTestkit
+    serverTestkit,
+    sequence
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)

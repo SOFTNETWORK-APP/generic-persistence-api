@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+
+package app.softnetwork.sequence.model;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "app.softnetwork.persistence.model._"
+};
+
+// State
+message SequenceState {
+    option (scalapb.message).extends = "ProtobufStateObject";
+    option (scalapb.message).extends = "SequenceStateDecorator";
+    string name = 1;
+    int32 value = 2;
+}
