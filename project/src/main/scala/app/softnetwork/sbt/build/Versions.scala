@@ -45,4 +45,9 @@ object Versions {
   val dockerTestKit = "0.9.9"
 
   val log4j = "2.8.2"
+
+  val slick = "3.3.3"
+
+  val lightbendAkkaPersistenceJdbc = "5.0.4"
+
 }

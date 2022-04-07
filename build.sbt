@@ -102,6 +102,13 @@ lazy val jdbcTestkit = project.in(file("jdbc/testkit"))
     coreTestkit % "compile->compile;test->test;it->it"
   )
 
+lazy val akkaJdbc = project.in(file("akka-jdbc"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    jdbc % "compile->compile;test->test;it->it"
+  )
+
 lazy val counter = project.in(file("counter"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
@@ -206,6 +213,7 @@ lazy val root = project.in(file("."))
     coreTestkit,
     jdbc,
     jdbcTestkit,
+    akkaJdbc,
     counter,
     scheduler,
     session,
