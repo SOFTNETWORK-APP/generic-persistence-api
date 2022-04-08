@@ -10,12 +10,13 @@ import app.softnetwork.config.Settings
 import app.softnetwork.persistence.launch.PersistenceGuardian
 import app.softnetwork.persistence.message.Command
 import app.softnetwork.persistence.query.{InMemorySchemaProvider, SchemaProvider}
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.Span
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
+import java.net.InetAddress
 import scala.language.implicitConversions
 
 /**
@@ -28,7 +29,9 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 
   lazy val systemName: String = generateUUID()
 
-  lazy val akka = s"""
+  lazy val hostname: String = InetAddress.getLocalHost.getHostAddress
+
+  lazy val akka: String = s"""
                 |akka {
                 |  stdout-loglevel = off // defaults to WARNING can be disabled with off. The stdout-loglevel is only in effect during system startup and shutdown
                 |  log-dead-letters-during-shutdown = on
@@ -37,6 +40,29 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |  log-config-on-start = off // Log the complete configuration at INFO level when the actor system is started
                 |  loggers = ["akka.event.slf4j.Slf4jLogger"]
                 |  logging-filter = "akka.event.slf4j.Slf4jLoggingFilter"
+                |}
+                |
+                |clustering.cluster.name = $systemName
+                |
+                |akka.discovery {
+                |  config.services = {
+                |    $systemName = {
+                |      endpoints = [
+                |        {
+                |          host = $hostname
+                |          port = 8558
+                |        }
+                |      ]
+                |    }
+                |  }
+                |}
+                |
+                |akka.management {
+                |  cluster.bootstrap {
+                |    contact-point-discovery {
+                |      service-name = $systemName
+                |    }
+                |  }
                 |}
                 |
                 |akka.remote.artery.canonical.port = 0
@@ -76,15 +102,15 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |
                 |""".stripMargin
 
-  lazy val akkaConfig = ConfigFactory.parseString(akka)
+  lazy val akkaConfig: Config = ConfigFactory.parseString(akka)
 
-  lazy val config = akkaConfig.withFallback(ConfigFactory.load())
+  lazy val config: Config = akkaConfig.withFallback(ConfigFactory.load())
 
   private[this] lazy val testKit = ActorTestKit(systemName, config)
 
   private[this] implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
-  def typedSystem() = system
+  def typedSystem(): ActorSystem[Nothing] = system
 
   /**
     * `PatienceConfig` from [[_root_.akka.actor.testkit.typed.TestKitSettings#DefaultTimeout]]
@@ -103,7 +129,7 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
   /**
     * init and join cluster
     */
-  final def initAndJoinCluster() = {
+  final def initAndJoinCluster(): Unit = {
     testKit.spawn(setup(), "guardian")
     // let the nodes join and become Up
     blockUntil("let the nodes join and become Up", 30, 2000)(() => Cluster(system).selfMember.status == MemberStatus.Up)
@@ -118,7 +144,7 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 }
 
 trait InMemoryPersistenceTestKit extends PersistenceTestKit with InMemorySchemaProvider { _: Suite =>
-  override lazy val config =
+  override lazy val config: Config =
     akkaConfig
       .withFallback(ConfigFactory.load("softnetwork-in-memory-persistence.conf"))
       .withFallback(ConfigFactory.load())

@@ -25,33 +25,33 @@ addCommandAlias("pld", ";clean;local:publishLocal;dockerComposeUp") // clean and
 
 addCommandAlias("dct", ";dockerComposeTest") // navigate the projects
 
-shellPrompt in ThisBuild := prompt
+ThisBuild / shellPrompt := prompt
 
-organization in ThisBuild := "app.softnetwork"
+ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-version in ThisBuild := "0.1.5.2"
+ThisBuild / version := "0.1.6.0-rc6"
 
-scalaVersion in ThisBuild := "2.12.11"
+ThisBuild / scalaVersion := "2.12.11"
 
-scalacOptions in ThisBuild ++= Seq("-deprecation", "-feature")
+ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature")
 
-resolvers in ThisBuild ++= Seq(
+ThisBuild / resolvers ++= Seq(
   "Softnetwork Server" at "https://softnetwork.jfrog.io/artifactory/releases/",
   "Maven Central Server" at "https://repo1.maven.org/maven2",
   "Typesafe Server" at "https://repo.typesafe.com/typesafe/releases"
 )
 
-libraryDependencies in ThisBuild ++= Seq(
+ThisBuild / libraryDependencies ++= Seq(
   "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.1"
 )
 
-parallelExecution in Test := false
+Test / parallelExecution := false
 
 val pbSettings = Seq(
-  PB.targets in Compile := Seq(
+  Compile / PB.targets := Seq(
     scalapb.gen() -> crossTarget.value / "protobuf_managed/main"
   )
 )
@@ -85,6 +85,13 @@ lazy val coreTestkit = project.in(file("core/testkit"))
     commonTestkit % "compile->compile;test->test;it->it"
   )
 
+lazy val schema = project.in(file("jdbc/schema"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    jdbc % "compile->compile;test->test;it->it"
+  )
+
 lazy val jdbc = project.in(file("jdbc"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
@@ -100,6 +107,13 @@ lazy val jdbcTestkit = project.in(file("jdbc/testkit"))
   )
   .dependsOn(
     coreTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val akkaJdbc = project.in(file("akka-jdbc"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    jdbc % "compile->compile;test->test;it->it"
   )
 
 lazy val counter = project.in(file("counter"))
@@ -179,6 +193,38 @@ lazy val serverTestkit = project.in(file("server/testkit"))
     coreTestkit % "compile->compile;test->test;it->it"
   )
 
+lazy val sequence = project.in(file("sequence"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    scheduler % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "test->test;it->it"
+  )
+
+lazy val auth = project.in(file("auth"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    scheduler % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    notification % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    session % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "test->test;it->it"
+  )
+
 lazy val root = project.in(file("."))
   .aggregate(
     common,
@@ -186,7 +232,9 @@ lazy val root = project.in(file("."))
     core,
     coreTestkit,
     jdbc,
+    schema,
     jdbcTestkit,
+    akkaJdbc,
     counter,
     scheduler,
     session,
@@ -194,7 +242,9 @@ lazy val root = project.in(file("."))
     elasticTestkit,
     elastic,
     server,
-    serverTestkit
+    serverTestkit,
+    sequence,
+    auth
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)

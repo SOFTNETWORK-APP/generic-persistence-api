@@ -9,7 +9,7 @@ import com.softwaremill.session.{RefreshTokenLookupResult, RefreshTokenData}
 
 import app.softnetwork.persistence.model.State
 
-import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed._
 import app.softnetwork.session.model.SessionData
 
 import app.softnetwork.session.message._
@@ -80,7 +80,7 @@ trait RefreshTokenBehavior[T <: SessionData]
     * @return new state
     */
   override def handleEvent(state: Option[RefreshTokenState[T]], event: RefreshTokenEvent)(
-    implicit context: ActorContext[RefreshTokenCommand]): Option[RefreshTokenState[T]] = {
+    implicit context: ActorContext[_]): Option[RefreshTokenState[T]] = {
     event match {
       case e: RefreshTokenStored[T] => Some(RefreshTokenState(e.data))
       case _: RefreshTokenRemoved   => emptyState

@@ -11,7 +11,7 @@ import app.softnetwork.serialization._
 import akka.persistence.typed.scaladsl.Effect
 import com.typesafe.scalalogging.StrictLogging
 
-import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed._
 
 import app.softnetwork.elastic.client.ElasticClientApi
 
@@ -191,7 +191,7 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
     * @return new state
     */
   override def handleEvent(state: Option[S], event: ElasticEvent)(
-    implicit context: ActorContext[ElasticCommand]): Option[S] = {
+    implicit context: ActorContext[_]): Option[S] = {
     event match {
       case evt: CrudEvent => handleElasticCrudEvent(state, evt)
       case _ => super.handleEvent(state, event)
@@ -205,7 +205,7 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
     * @return new state
     */
   private[this] def handleElasticCrudEvent(state: Option[S], event: CrudEvent)(
-    implicit context: ActorContext[ElasticCommand]): Option[S] = {
+    implicit context: ActorContext[_]): Option[S] = {
     implicit val m = manifestWrapper.wrapped
     event match {
       case e: Created[S] =>

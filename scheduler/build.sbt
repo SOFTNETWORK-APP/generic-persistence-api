@@ -1,4 +1,4 @@
-parallelExecution in Test := false
+Test / parallelExecution := false
 
 organization := "app.softnetwork.persistence"
 
@@ -9,4 +9,4 @@ libraryDependencies ++= Seq(
   "app.softnetwork.protobuf" %% "scalapb-extensions" % "0.1.3"
 )
 
-unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"
+Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"

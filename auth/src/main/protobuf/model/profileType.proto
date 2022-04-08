@@ -1,0 +1,17 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+
+package app.softnetwork.persistence.auth.model;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+};
+
+enum ProfileType {
+    UNKNOWN_PROFILE = 0;
+    ADMINISTRATOR = 1;
+    CUSTOMER = 2;
+    SELLER = 3;
+}

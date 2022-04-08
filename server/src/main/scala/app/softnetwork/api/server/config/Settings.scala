@@ -8,4 +8,5 @@ object Settings {
 
   val Interface = config.getString("softnetwork.api.server.interface")
   val Port      = config.getInt("softnetwork.api.server.port")
+  val RootPath  = config.getString("softnetwork.api.server.root-path")
 }

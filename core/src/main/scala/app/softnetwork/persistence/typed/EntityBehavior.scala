@@ -26,6 +26,31 @@ trait CommandTypeKey[C <: Command] {
   def TypeKey(implicit c: ClassTag[C]): EntityTypeKey[C]
 }
 
+trait EntityCommandHandler[C <: Command, S <: State, E <: Event, R <: CommandResult] {
+  /**
+    *
+    * @param entityId - entity identity
+    * @param state - current state
+    * @param command - command to handle
+    * @param replyTo - optional actor to reply to
+    * @param timers - scheduled messages associated with this entity behavior
+    * @return effect
+    */
+  def apply(entityId: String, state: Option[S], command: C, replyTo: Option[ActorRef[R]], timers: TimerScheduler[C])(
+    implicit context: ActorContext[C]
+  ): Effect[E, Option[S]]
+}
+
+trait EntityEventHandler[S <: State, E <: Event] {
+  /**
+    *
+    * @param state - current state
+    * @param event - event to hanlde
+    * @return new state
+    */
+  def apply(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S]
+}
+
 trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] extends CommandTypeKey[C]
   with InternalEntity
   with Completion {
@@ -78,20 +103,56 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     */
   protected def subscribe(system: ActorSystem[_], subscriber: ActorRef[C])(implicit c: ClassTag[C]): Unit = {}
 
-  implicit def resultToMaybeReply(r: R): MaybeReply = new MaybeReply {
-    def apply() = {
-      case Some(subscriber) => subscriber ! r
-      case _ =>
+  type CR = (C, Option[ActorRef[R]])
+
+  private[this] val cr: PartialFunction[C, CR] = {
+    case w: W => (w.command, Some(w.replyTo))
+    case wr: WR => (wr, Some(wr.replyTo))
+    case c => (c, None)
+  }
+
+  sealed trait DefaultEntityCommandHandler extends EntityCommandHandler[C, S, E, R] {
+    /**
+      *
+      * @param entityId - entity identity
+      * @param state - current state
+      * @param command - command to handle
+      * @param replyTo - optional actor to reply to
+      * @param timers - scheduled messages associated with this entity behavior
+      * @return effect
+      */
+    def apply(entityId: String, state: Option[S], command: C, replyTo: Option[ActorRef[R]], timers: TimerScheduler[C])(
+      implicit context: ActorContext[C]): Effect[E, Option[S]] = {
+      handleCommand(entityId, state, command, replyTo, timers)
     }
   }
 
-  sealed trait MaybeReply {
-    def apply(): Option[ActorRef[R]] => Unit
-    final def ~>(replyTo: Option[ActorRef[R]]): Unit = apply()(replyTo)
+  def entityCommandHandler: PartialFunction[C, EntityCommandHandler[C, S, E, R]] = defaultEntityCommandHandler
+
+  protected final val defaultEntityCommandHandler: PartialFunction[C, EntityCommandHandler[C, S, E, R]] = {
+    case _ => new DefaultEntityCommandHandler {}
+  }
+
+  sealed trait DefaultEntityEventHandler extends EntityEventHandler[S, E]{
+    /**
+      *
+      * @param state - current state
+      * @param event - event to hanlde
+      * @return new state
+      */
+    override def apply(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S] = {
+      handleEvent(state, event)
+    }
+  }
+
+  def entityEventHandler: PartialFunction[E, EntityEventHandler[S, E]] = defaultEntityEventHandler
+
+  protected final val defaultEntityEventHandler: PartialFunction[E, EntityEventHandler[S, E]] = {
+    case _ => new DefaultEntityEventHandler {}
   }
 
   final def apply(entityId: String, persistenceId: PersistenceId)(implicit c: ClassTag[C]): Behavior[C] = {
-    Behaviors.withTimers((timers) => {
+    Behaviors.withTimers(timers => {
       Behaviors.setup { context =>
         context.log.info(s"Starting $persistenceId")
         subscribe(context.system, context.self)
@@ -100,16 +161,12 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
           emptyState = emptyState,
           commandHandler = { (state, command) =>
             context.log.debug(s"handling command $command for ${TypeKey.name} $entityId")
-            command match {
-              case w: W => handleCommand(entityId, state, w.command, Some(w.replyTo), timers)(context)
-              case wr: WR => handleCommand(entityId, state, wr, Some(wr.replyTo), timers)(context)
-              case c: C => handleCommand(entityId, state, c, None, timers)(context)
-              case _ => Effect.unhandled
-            }
+            val _cr = cr(command)
+            entityCommandHandler(_cr._1)(entityId, state, _cr._1, _cr._2, timers)(context)
           },
           eventHandler = { (state, event) =>
             context.log.debug(s"handling event $event for ${TypeKey.name} $entityId")
-            handleEvent(state, event)(context)
+            entityEventHandler(event)(state, event)(context)
           }
         )
           .onPersistFailure(
@@ -128,17 +185,17 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
           to its current (i.e. latest) state. */
           .withRecovery(Recovery.withSnapshotSelectionCriteria(SnapshotSelectionCriteria.latest))
           .receiveSignal {
-            case (state, f: RecoveryFailed) =>
+            case (_, f: RecoveryFailed) =>
               context.log.error(s"Recovery failed for ${TypeKey.name} $entityId", f.failure)
             case (state, _: RecoveryCompleted) =>
               context.log.info(s"Recovery completed for ${TypeKey.name} $entityId")
               postRecoveryCompleted(state)(context)
-            case (state, _: SnapshotCompleted) => context.log.info(s"Snapshot completed for ${TypeKey.name} $entityId")
-            case (state, f: SnapshotFailed) =>
+            case (_, _: SnapshotCompleted) => context.log.info(s"Snapshot completed for ${TypeKey.name} $entityId")
+            case (_, f: SnapshotFailed) =>
               context.log.warn(s"Snapshot failed for ${TypeKey.name} $entityId", f.failure)
-            case (state, f: DeleteSnapshotsFailed) =>
+            case (_, f: DeleteSnapshotsFailed) =>
               context.log.warn(s"Snapshot deletion failed for ${TypeKey.name} $entityId", f.failure)
-            case (state, f: DeleteEventsFailed) =>
+            case (_, f: DeleteEventsFailed) =>
               context.log.warn(s"Events deletion failed for ${TypeKey.name} $entityId", f.failure)
           }
           .withTagger(event => platformTagEvent(entityId, event))
@@ -167,7 +224,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     * @param event - event to hanlde
     * @return new state
     */
-  def handleEvent(state: Option[S], event: E)(implicit context: ActorContext[C]): Option[S] =
+  def handleEvent(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S] =
     event match {
       case _  => state
     }

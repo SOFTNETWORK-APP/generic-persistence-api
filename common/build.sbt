@@ -40,7 +40,7 @@ val scalatest = Seq(
   "org.scalatest" %% "scalatest" % Versions.scalatest  % Test
 )
 
-dependencyOverrides ++= jackson.toSet
+dependencyOverrides ++= jackson
 
 libraryDependencies ++= Seq(
   "commons-codec" % "commons-codec" % "1.10",

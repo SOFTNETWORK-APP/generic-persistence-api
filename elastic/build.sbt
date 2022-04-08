@@ -1,6 +1,6 @@
 import app.softnetwork.sbt.build.Versions
 
-parallelExecution in Test := false
+Test / parallelExecution := false
 
 organization := "app.softnetwork.persistence"
 
@@ -20,7 +20,7 @@ val elastic = Seq(
 )
 
 val httpComponentsExclusions = Seq(
-  ExclusionRule(organization = "org.apache.httpcomponents", name = "httpclient", configurations = Seq("test"))
+  ExclusionRule(organization = "org.apache.httpcomponents", name = "httpclient", artifact = "*", configurations = Vector(ConfigRef("test")), crossVersion = CrossVersion.disabled )
 )
 
 val guavaExclusion =  ExclusionRule(organization = "com.google.guava", name="guava")
@@ -33,4 +33,4 @@ libraryDependencies ++= Seq(
   "org.apache.tika" % "tika-core" % "1.18"
 ) ++ elastic ++ jest
 
-unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"
+Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"

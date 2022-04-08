@@ -1,6 +1,6 @@
 import app.softnetwork.sbt.build.Versions
 
-parallelExecution in Test := false
+Test / parallelExecution := false
 
 organization := "app.softnetwork.persistence"
 
@@ -13,4 +13,4 @@ val akkaHttpSession: Seq[ModuleID] = Seq(
 
 libraryDependencies ++= akkaHttpSession
 
-unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"
+Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"

@@ -14,4 +14,4 @@ libraryDependencies ++= Seq(
   "com.eatthepath" % "pushy" % "0.14.2"
 )
 
-unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"
+Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"

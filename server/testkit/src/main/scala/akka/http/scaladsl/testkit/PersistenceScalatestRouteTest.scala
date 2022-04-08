@@ -1,6 +1,10 @@
 package akka.http.scaladsl.testkit
 
 import akka.actor.ActorSystem
+
+import akka.http.scaladsl.server.directives.RouteDirectives
+import akka.http.scaladsl.server.{ExceptionHandler, Route}
+
 import app.softnetwork.config.Settings
 import app.softnetwork.persistence.query.SchemaProvider
 import app.softnetwork.persistence.scalatest.{InMemoryPersistenceTestKit, PersistenceTestKit}
@@ -25,6 +29,11 @@ trait PersistenceScalatestRouteTest extends PersistenceTestKit
 
   def failTest(msg: String) = throw new TestFailedException(msg, 11)
 
+  def testExceptionHandler: ExceptionHandler = ExceptionHandler(new PartialFunction[Throwable, Route] {
+    override def isDefinedAt(t: Throwable): Boolean = true
+
+    override def apply(t: Throwable): Route = RouteDirectives.failWith(t)
+  })
 }
 
 trait InMemoryPersistenceScalatestRouteTest extends PersistenceScalatestRouteTest with InMemoryPersistenceTestKit {_: Suite =>

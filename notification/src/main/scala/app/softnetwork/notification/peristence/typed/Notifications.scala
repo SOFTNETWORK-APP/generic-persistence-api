@@ -12,7 +12,7 @@ import org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand
 import org.softnetwork.akka.message.scheduler.{RemoveSchedule, AddSchedule}
 import org.softnetwork.akka.model.Schedule
 
-import app.softnetwork.persistence.typed.EntityBehavior
+import app.softnetwork.persistence.typed._
 
 import app.softnetwork.notification.handlers._
 import app.softnetwork.notification.message._
@@ -279,7 +279,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
     * @return new state
     */
   override def handleEvent(state: Option[T], event: NotificationEvent)(
-    implicit context: ActorContext[NotificationCommand]): Option[T] = {
+    implicit context: ActorContext[_]): Option[T] = {
     import context._
     event match {
       case evt: NotificationRecordedEvent[T] =>
