@@ -17,15 +17,14 @@
 package app.softnetwork.persistence.jdbc.query
 
 import java.sql.Statement
-
 import akka.persistence.jdbc.config.SlickConfiguration
 import akka.persistence.jdbc.util.SlickDatabase
 import app.softnetwork.util.ClasspathResources
 import app.softnetwork.persistence.query.SchemaProvider
 import com.typesafe.config.ConfigFactory
-import app.softnetwork.persistence.jdbc.query.JdbcSchema.{Postgres, SchemaType}
+import app.softnetwork.persistence.jdbc.query.JdbcSchema.{H2, Postgres, SchemaType}
 import com.typesafe.scalalogging.StrictLogging
-import slick.jdbc.JdbcBackend.{ Database, Session }
+import slick.jdbc.JdbcBackend.{Database, Session}
 
 
 trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with StrictLogging {
@@ -66,4 +65,8 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
 
 trait PostgresSchemaProvider extends JdbcSchemaProvider {
   override lazy val schemaType: SchemaType = Postgres
+}
+
+trait H2SchemaProvider extends JdbcSchemaProvider {
+  override lazy val schemaType: SchemaType = H2
 }

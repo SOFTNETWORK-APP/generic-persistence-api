@@ -5,7 +5,7 @@ import app.softnetwork.persistence.jdbc.query.PostgresSchemaProvider
 
 trait PostgresTestKit extends PostgresService with PostgresSchemaProvider with JdbcPersistenceTestKit {
 
-  override lazy val slick = s"""
+  override lazy val slick: String = s"""
                       |slick {
                       |  profile = "slick.jdbc.PostgresProfile$$"
                       |  db {

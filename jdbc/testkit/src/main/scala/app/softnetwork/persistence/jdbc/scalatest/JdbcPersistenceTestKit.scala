@@ -2,7 +2,7 @@ package app.softnetwork.persistence.jdbc.scalatest
 
 import app.softnetwork.persistence.jdbc.query.JdbcSchemaProvider
 import app.softnetwork.persistence.scalatest.PersistenceTestKit
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.Suite
 
 /**
@@ -12,11 +12,11 @@ trait JdbcPersistenceTestKit extends PersistenceTestKit {_: Suite with JdbcSchem
 
   def slick: String
 
-  lazy val slickConfig = ConfigFactory.parseString(slick)
+  lazy val slickConfig: Config = ConfigFactory.parseString(slick)
 
-  override lazy val cfg = slickConfig
+  override lazy val cfg: Config = slickConfig
 
-  override lazy val config =
+  override lazy val config: Config =
     akkaConfig
       .withFallback(slickConfig)
       .withFallback(ConfigFactory.load("softnetwork-jdbc-persistence.conf"))

@@ -13,14 +13,14 @@ trait PostgresService extends DockerService {
   import scala.concurrent.duration._
   def container = "postgres:9.6"
   lazy val containerPorts = Seq(5432)
-  val PostgresUser = sys.env.getOrElse("POSTGRES_USER", "admin")
-  val PostgresPassword = sys.env.getOrElse("POSTGRES_PASSWORD", "changeit")
-  lazy val PostgresPort = exposedPorts.toMap.get(5432).get.get
+  val PostgresUser: String = sys.env.getOrElse("POSTGRES_USER", "admin")
+  val PostgresPassword: String = sys.env.getOrElse("POSTGRES_PASSWORD", "changeit")
+  lazy val PostgresPort: Int = exposedPorts.toMap.get(5432).get.get
   import DockerService._
-  lazy val PostgresHost = host()
-  val PostgresDB = sys.env.getOrElse("POSTGRES_DB", PostgresUser)
+  lazy val PostgresHost: String = host()
+  val PostgresDB: String = sys.env.getOrElse("POSTGRES_DB", PostgresUser)
 
-  lazy val postgresContainer = dockerContainer
+  lazy val postgresContainer: DockerContainer = dockerContainer
     .withEnv(s"POSTGRES_USER=$PostgresUser", s"POSTGRES_PASSWORD=$PostgresPassword")
     .withReadyChecker(
       new PostgresReadyChecker(PostgresUser, PostgresPassword, None)
@@ -29,7 +29,7 @@ trait PostgresService extends DockerService {
 
   import app.softnetwork.persistence._
 
-  override val name = generateUUID()
+  override val name: String = generateUUID()
 
   override def _container(): DockerContainer = postgresContainer
 
