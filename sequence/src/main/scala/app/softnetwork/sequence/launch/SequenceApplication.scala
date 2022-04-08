@@ -1,8 +1,9 @@
 package app.softnetwork.sequence.launch
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.persistence.jdbc.launch.PostgresGuardian
 import app.softnetwork.api.server.launch.Application
+import app.softnetwork.persistence.launch.PersistenceGuardian
+import app.softnetwork.persistence.query.SchemaProvider
 import app.softnetwork.persistence.typed._
 import app.softnetwork.scheduler.handlers.SchedulerDao
 import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
@@ -14,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * Created by smanciot on 07/04/2022.
   */
-object SequenceApplication extends Application with SequenceRoutes with PostgresGuardian with StrictLogging {
+trait SequenceApplication extends Application with SequenceRoutes with PersistenceGuardian with StrictLogging {_: SchemaProvider =>
 
   override def behaviors: ActorSystem[_] =>  Seq[EntityBehavior[_, _, _, _]] = _ => Seq(Sequence, SchedulerBehavior)
 

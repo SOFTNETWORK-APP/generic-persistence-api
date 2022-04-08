@@ -31,7 +31,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.1.6.0-rc5"
+ThisBuild / version := "0.1.6.0-rc6"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -200,13 +200,26 @@ lazy val sequence = project.in(file("sequence"))
     scheduler % "compile->compile;test->test;it->it"
   )
   .dependsOn(
-    jdbc % "compile->compile;test->test;it->it"
-  )
-  .dependsOn(
     server % "compile->compile;test->test;it->it"
   )
   .dependsOn(
-    jdbcTestkit % "test->test;it->it"
+    serverTestkit % "test->test;it->it"
+  )
+
+lazy val auth = project.in(file("auth"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    scheduler % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    notification % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    session % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
   )
   .dependsOn(
     serverTestkit % "test->test;it->it"
@@ -230,7 +243,8 @@ lazy val root = project.in(file("."))
     elastic,
     server,
     serverTestkit,
-    sequence
+    sequence,
+    auth
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)

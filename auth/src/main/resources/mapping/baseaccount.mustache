@@ -1,0 +1,66 @@
+{
+  "{{type}}": {
+    "properties": {
+      "uuid": {
+        "type": "keyword",
+        "index": true
+      },
+      "createdDate": {
+        "type": "date"
+      },
+      "lastUpdated": {
+        "type": "date"
+      },
+      "principal": {
+        "type": "nested",
+        "include_in_parent": true,
+        "properties": {
+          "type": {
+            "type": "keyword",
+            "index": true
+          },
+          "value": {
+            "type": "keyword",
+            "index": true
+          }
+        }
+      },
+      "credentials": {
+        "type": "keyword",
+        "index": true
+      },
+      "lastLogin": {
+        "type": "date"
+      },
+      "nbLoginFailures": {
+        "type": "integer"
+      },
+      "verificationToken": {
+        "type": "nested",
+        "include_in_parent": true,
+        "properties": {
+          "token": {
+            "type": "keyword",
+            "index": true
+          },
+          "expirationDate": {
+            "type": "long"
+          }
+        }
+      },
+      "verificationCode": {
+        "type": "nested",
+        "include_in_parent": true,
+        "properties": {
+          "code": {
+            "type": "keyword",
+            "index": true
+          },
+          "expirationDate": {
+            "type": "long"
+          }
+        }
+      }
+    }
+  }
+}
