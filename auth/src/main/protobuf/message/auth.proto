@@ -3,7 +3,7 @@ syntax = "proto2";
 import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
 import "model/notificationType.proto";
-import "model/security.proto";
+import "model/auth.proto";
 
 package app.softnetwork.persistence.auth.message;
 

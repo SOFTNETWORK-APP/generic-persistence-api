@@ -14,7 +14,7 @@ import app.softnetwork.persistence.auth.model._
   */
 package object serialization {
 
-  val securityFormats =
+  val authFormats =
     notificationFormats ++
       Seq(
         GeneratedEnumSerializer(AccountStatus.enumCompanion),

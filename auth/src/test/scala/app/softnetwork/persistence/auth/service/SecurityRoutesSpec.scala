@@ -35,7 +35,7 @@ import app.softnetwork.api.server.config.Settings._
 class SecurityRoutesSpec extends SecurityRoutes with AnyWordSpecLike with InMemoryPersistenceScalatestRouteTest
   with Json4sSupport {
 
-  override implicit def formats = securityFormats
+  override implicit def formats = authFormats
 
   override def apiRoutes(system: ActorSystem[_]) = MockBasicAccountService(system).route
 

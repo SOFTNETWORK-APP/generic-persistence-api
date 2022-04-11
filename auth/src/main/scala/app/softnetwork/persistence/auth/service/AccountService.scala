@@ -36,7 +36,7 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
 
   import app.softnetwork.persistence._
 
-  implicit def formats: Formats = securityFormats
+  implicit def formats: Formats = authFormats
 
   implicit def serialization: Serialization.type = jackson.Serialization
 
