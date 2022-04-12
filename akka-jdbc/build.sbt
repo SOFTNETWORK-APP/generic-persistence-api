@@ -16,5 +16,5 @@ val akkaPersistenceJdbc = Seq(
 libraryDependencies ++= akkaPersistenceJdbc
 
 excludeDependencies ++= Seq(
-  ExclusionRule(organization = "com.github.dnvriend")
+  ExclusionRule(organization = "com.github.dnvriend", name="akka-persistence-jdbc")
 ) 

@@ -16,6 +16,7 @@ val akka = Seq(
 )
 
 val akkaPersistence: Seq[ModuleID] = Seq(
+  "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.15.2" excludeAll ExclusionRule(organization = "com.typesafe.akka"),
   "com.typesafe.akka" %% "akka-persistence-typed" % Versions.akka,
   "com.typesafe.akka" %% "akka-persistence-query" % Versions.akka,
   "com.typesafe.akka" %% "akka-serialization-jackson" % Versions.akka
