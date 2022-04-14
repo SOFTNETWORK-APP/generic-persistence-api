@@ -15,7 +15,7 @@ trait H2TestKit extends TestSuite with H2SchemaProvider with JdbcPersistenceTest
 
   override lazy val slick: String = s"""
                       |slick {
-                      |  profile = "slick.jdbc.PostgresProfile$$"
+                      |  profile = "slick.jdbc.H2Profile$$"
                       |  db {
                       |    url = "jdbc:h2:mem:$H2Database;DATABASE_TO_UPPER=false;"
                       |    user = "$H2User"
