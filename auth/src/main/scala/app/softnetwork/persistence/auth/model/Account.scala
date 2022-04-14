@@ -40,6 +40,8 @@ trait Account extends Principals with AccountDecorator with Timestamped {
 
   def isSeller: Boolean = profiles.values.exists(_.`type` == ProfileType.SELLER)
 
+  def isVendor: Boolean = profiles.values.exists(_.`type` == ProfileType.VENDOR)
+
   def newProfile(name: String): Profile
 }
 

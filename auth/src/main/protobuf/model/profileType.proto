@@ -14,4 +14,5 @@ enum ProfileType {
     ADMINISTRATOR = 1;
     CUSTOMER = 2;
     SELLER = 3;
+    VENDOR = 4;
 }
