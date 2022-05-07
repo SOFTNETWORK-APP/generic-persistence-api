@@ -9,17 +9,17 @@ import java.util.regex.Pattern
   */
 object Base64Tools {
 
-  val DATA_ENCODED = Pattern.compile("data:(.*);base64,(.*)")
+  val DATA_ENCODED: Pattern = Pattern.compile("data:(.*);base64,(.*)")
 
   def encodeBase64(bytes: Array[Byte], mimeType: Option[String] = None): String = {
     val encoded = Base64.encodeBase64String(bytes)
     mimeType match {
-      case Some(s) => s"data:$mimeType;base64,$encoded"
+      case Some(_) => s"data:$mimeType;base64,$encoded"
       case _ => encoded
     }
   }
 
-  def decodeBase64(encoded: String) = {
+  def decodeBase64(encoded: String): Array[Byte] = {
     val matcher = DATA_ENCODED.matcher(encoded)
     var base64 = false
     val ret =

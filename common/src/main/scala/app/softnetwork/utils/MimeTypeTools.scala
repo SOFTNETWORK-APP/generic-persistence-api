@@ -2,7 +2,7 @@ package app.softnetwork.utils
 
 import org.apache.tika.Tika
 
-import java.io.File
+import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
 import scala.util.{Failure, Success, Try}
 
@@ -13,19 +13,19 @@ object MimeTypeTools {
 
   val FORMAT: Pattern = Pattern.compile("(.*)\\/(.*)")
 
-  def detectMimeType(file: File): Option[String] = {
-    if (Option(file).isDefined && file.exists()) {
-      Try(new Tika().detect(file)) match {
+  def detectMimeType(path: Path): Option[String] = {
+    if (Files.exists(path)) {
+      Try(new Tika().detect(path)) match {
         case Success(s) => Some(s)
-        case Failure(f) => None
+        case Failure(_) => None
       }
     } else {
       None
     }
   }
 
-  def toFormat(file: File): Option[String] = {
-    toFormat(detectMimeType(file))
+  def toFormat(path: Path): Option[String] = {
+    toFormat(detectMimeType(path))
   }
 
   def toFormat(mimeType: Option[String]): Option[String] = {

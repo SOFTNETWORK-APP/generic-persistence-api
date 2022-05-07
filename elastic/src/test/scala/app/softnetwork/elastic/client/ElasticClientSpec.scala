@@ -1,9 +1,8 @@
 package app.softnetwork.elastic.client
 
-import java.io.{ByteArrayInputStream, FileOutputStream, File}
+import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
 import java.util.{Date, UUID}
-
 import akka.actor.ActorSystem
 import app.softnetwork.elastic.client.jest.JestProvider
 import app.softnetwork.elastic.sql.SQLQuery
@@ -14,33 +13,32 @@ import io.searchbox.indices.CreateIndex
 import io.searchbox.indices.aliases.AliasExists
 import io.searchbox.indices.mapping.PutMapping
 import io.searchbox.indices.settings.GetSettings
-
 import org.scalatest.flatspec.AnyFlatSpecLike
 import org.scalatest.matchers.should.Matchers
-
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.model.Timestamped
 import app.softnetwork.serialization._
 import app.softnetwork.elastic.model.Sample
 import app.softnetwork.elastic.scalatest.ElasticDockerTestKit
-import app.softnetwork.utils._
+import org.json4s.Formats
 
-import scala.concurrent.Await
+import java.nio.file.{Files, Paths}
+import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration.Duration
-import scala.util.{Success, Failure}
+import scala.util.{Failure, Success}
 
 /**
   * Created by smanciot on 28/06/2018.
   */
 class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with Matchers {
 
-  implicit val system = ActorSystem(generateUUID())
+  implicit val system: ActorSystem = ActorSystem(generateUUID())
 
-  implicit val executionContext = system.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val formats = commonFormats
+  implicit val formats: Formats = commonFormats
 
-  lazy val esCredentials = ElasticCredentials(elasticURL, "", "")
+  lazy val esCredentials: ElasticCredentials = ElasticCredentials(elasticURL, "", "")
 
   lazy val pClient = new PersonProvider(esCredentials)
   lazy val sClient = new SampleProvider(esCredentials)
@@ -115,8 +113,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   )
 
   "Bulk index valid json without id key and suffix key" should "work" in {
-    implicit val bulkOptions = BulkOptions("person1", "person", 2)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person1", "person", 2)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices = pClient.bulk[String](persons.iterator, identity, None, None, None)
 
     indices should contain only "person1"
@@ -146,8 +144,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     ).build()
     pClient.jestClient.execute(childMapping)
 
-    implicit val bulkOptions = BulkOptions("person2", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person2", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices = pClient.bulk[String](persons.iterator, identity, Some("uuid"), None, None)
     refresh(indices)
 
@@ -184,8 +182,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Bulk index valid json with an id key and a suffix key" should "work" in {
-    implicit val bulkOptions = BulkOptions("person", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices = pClient.bulk[String](persons.iterator, identity, Some("uuid"), Some("birthDate"), None, None)
     refresh(indices)
 
@@ -210,8 +208,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Bulk index invalid json with an id key and a suffix key" should "work" in {
-    implicit val bulkOptions = BulkOptions("person_error", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person_error", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     intercept[JsonParseException] {
       val invalidJson = persons :+ "fail"
       pClient.bulk[String](invalidJson.iterator, identity, None, None, None)
@@ -219,8 +217,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Bulk upsert valid json with an id key but no suffix key" should "work" in {
-    implicit val bulkOptions = BulkOptions("person4", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person4", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices =
       pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
@@ -244,8 +242,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Bulk upsert valid json with an id key and a suffix key" should "work" in {
-    implicit val bulkOptions = BulkOptions("person5", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person5", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices = pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), Some("birthDate"), None, Some(true))
     refresh(indices)
 
@@ -270,8 +268,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Count" should "work" in {
-    implicit val bulkOptions = BulkOptions("person6", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person6", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices =
       pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
@@ -291,8 +289,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Search" should "work" in {
-    implicit val bulkOptions = BulkOptions("person7", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person7", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices =
       pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
@@ -314,8 +312,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Get all" should "work" in {
-    implicit val bulkOptions = BulkOptions("person8", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person8", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices =
       pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
@@ -333,8 +331,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Get" should "work" in {
-    implicit val bulkOptions = BulkOptions("person9", "person", 1000)
-    implicit val jclient = pClient.jestClient
+    implicit val bulkOptions: BulkOptions = BulkOptions("person9", "person", 1000)
+    implicit val jclient: JestClient = pClient.jestClient
     val indices =
       pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
@@ -353,7 +351,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Index" should "work" in {
-    implicit val jclient = sClient.jestClient
+    implicit val jclient: JestClient = sClient.jestClient
     val uuid = UUID.randomUUID().toString
     val sample = Sample(uuid)
     val result = sClient.index(sample)
@@ -365,7 +363,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Update" should "work" in {
-    implicit val jclient = sClient.jestClient
+    implicit val jclient: JestClient = sClient.jestClient
     val uuid = UUID.randomUUID().toString
     val sample = Sample(uuid)
     val result = sClient.update(sample)
@@ -377,7 +375,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Delete" should "work" in {
-    implicit val jclient = sClient.jestClient
+    implicit val jclient: JestClient = sClient.jestClient
     val uuid = UUID.randomUUID().toString
     val sample = Sample(uuid)
     val result = sClient.index(sample)
@@ -391,7 +389,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   }
 
   "Index binary data" should "work" in {
-    implicit val jclient = bClient.jestClient
+    implicit val jclient: JestClient = bClient.jestClient
     bClient.createIndex("binaries") shouldBe true
     val mapping =
       """{
@@ -419,20 +417,20 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
       """.stripMargin
     bClient.setMapping("binaries", "test", mapping) shouldBe true
     for(uuid <- Seq("png", "jpg", "pdf")){
-      val file = new File(Thread.currentThread().getContextClassLoader.getResource(s"avatar.$uuid").getPath)
+      val path = Paths.get(Thread.currentThread().getContextClassLoader.getResource(s"avatar.$uuid").getPath)
       import app.softnetwork.utils.ImageTools._
       import app.softnetwork.utils.HashTools._
       import app.softnetwork.utils.Base64Tools._
-      val encoded = encodeImageBase64(file).getOrElse("")
+      val encoded = encodeImageBase64(path).getOrElse("")
       val binary = Binary(uuid, content=encoded, md5 = hashStream(new ByteArrayInputStream(decodeBase64(encoded))).getOrElse(""))
       bClient.index(binary) shouldBe true
       bClient.get[Binary](uuid) match {
         case Some(result) =>
           val decoded = decodeBase64(result.content)
-          val out = new File("/tmp", file.getName)
-          val fis = new FileOutputStream(out)
-          fis.write(decoded)
-          fis.close()
+          val out = Paths.get(s"/tmp${path.getFileName}")
+          val fos = Files.newOutputStream(out)
+          fos.write(decoded)
+          fos.close()
           hashFile(out).getOrElse("") shouldBe binary.md5
         case _            => fail("no result found for \""+uuid+"\"")
       }
@@ -443,7 +441,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 case class Person(uuid: String, name: String, birthDate: String, var createdDate: Date = now(), var lastUpdated: Date = now())
 extends Timestamped
 
-case class Binary(uuid: String, var createdDate: Date = now(), var lastUpdated: Date = now(), val content: String, val md5: String)
+case class Binary(uuid: String, var createdDate: Date = now(), var lastUpdated: Date = now(), content: String, md5: String)
   extends Timestamped
 
 class PersonProvider(ec: ElasticCredentials) extends JestProvider[Person] with ManifestWrapper[Person]{
