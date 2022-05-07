@@ -1,9 +1,9 @@
-package app.softnetwork.elastic.utils
-
-import java.io._
-import java.security.{MessageDigest, DigestInputStream}
+package app.softnetwork.utils
 
 import org.apache.commons.codec.binary.Base64
+
+import java.io._
+import java.security.{DigestInputStream, MessageDigest}
 
 /**
   * Created by smanciot on 06/07/2018.
@@ -41,7 +41,7 @@ object HashTools {
   def hashStream(stream: InputStream, algorithm: AlgorithmType.Value = AlgorithmType.MD5): Option[String] = {
     val digest = MessageDigest.getInstance(algorithm.toString)
     try {
-      val dis    = new DigestInputStream(stream, digest)
+      val dis = new DigestInputStream(stream, digest)
       val buffer = new Array[Byte](BufferSize)
       while (dis.read(buffer) >= 0) {}
       dis.close()

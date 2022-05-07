@@ -1,8 +1,8 @@
-package app.softnetwork.elastic.utils
-
-import java.util.regex.Pattern
+package app.softnetwork.utils
 
 import org.apache.commons.codec.binary.Base64
+
+import java.util.regex.Pattern
 
 /**
   * Created by smanciot on 06/07/2018.
@@ -15,7 +15,7 @@ object Base64Tools {
     val encoded = Base64.encodeBase64String(bytes)
     mimeType match {
       case Some(s) => s"data:$mimeType;base64,$encoded"
-      case _       => encoded
+      case _ => encoded
     }
   }
 
@@ -27,13 +27,13 @@ object Base64Tools {
         base64 = true
         matcher.group(2)
       }
-      else{
+      else {
         encoded
       }
-    if(base64 || Base64.isBase64(ret)){
+    if (base64 || Base64.isBase64(ret)) {
       Base64.decodeBase64(ret)
     }
-    else{
+    else {
       ret.getBytes("UTF-8")
     }
   }

@@ -1,10 +1,9 @@
-package app.softnetwork.elastic.utils
-
-import java.io.File
-import java.util.regex.Pattern
+package app.softnetwork.utils
 
 import org.apache.tika.Tika
 
+import java.io.File
+import java.util.regex.Pattern
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -12,7 +11,7 @@ import scala.util.{Failure, Success, Try}
   */
 object MimeTypeTools {
 
-  val FORMAT = Pattern.compile("(.*)\\/(.*)")
+  val FORMAT: Pattern = Pattern.compile("(.*)\\/(.*)")
 
   def detectMimeType(file: File): Option[String] = {
     if (Option(file).isDefined && file.exists()) {

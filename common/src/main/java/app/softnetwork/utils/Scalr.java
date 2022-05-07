@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package app.softnetwork.elastic.utils;
+package app.softnetwork.utils;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -21,7 +21,6 @@ import java.awt.color.ColorSpace;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.*;
-import java.io.File;
 
 /**
  * Class used to implement performant, high-quality and intelligent image

@@ -23,7 +23,7 @@ import app.softnetwork.persistence.model.Timestamped
 import app.softnetwork.serialization._
 import app.softnetwork.elastic.model.Sample
 import app.softnetwork.elastic.scalatest.ElasticDockerTestKit
-import app.softnetwork.elastic.utils._
+import app.softnetwork.utils._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -420,9 +420,9 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     bClient.setMapping("binaries", "test", mapping) shouldBe true
     for(uuid <- Seq("png", "jpg", "pdf")){
       val file = new File(Thread.currentThread().getContextClassLoader.getResource(s"avatar.$uuid").getPath)
-      import ImageTools._
-      import HashTools._
-      import Base64Tools._
+      import app.softnetwork.utils.ImageTools._
+      import app.softnetwork.utils.HashTools._
+      import app.softnetwork.utils.Base64Tools._
       val encoded = encodeImageBase64(file).getOrElse("")
       val binary = Binary(uuid, content=encoded, md5 = hashStream(new ByteArrayInputStream(decodeBase64(encoded))).getOrElse(""))
       bClient.index(binary) shouldBe true

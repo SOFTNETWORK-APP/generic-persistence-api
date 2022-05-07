@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package app.softnetwork.util
+package app.softnetwork.utils
 
 import com.typesafe.scalalogging.StrictLogging
 

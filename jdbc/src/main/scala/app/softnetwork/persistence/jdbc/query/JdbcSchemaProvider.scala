@@ -19,7 +19,7 @@ package app.softnetwork.persistence.jdbc.query
 import java.sql.Statement
 import akka.persistence.jdbc.config.SlickConfiguration
 import akka.persistence.jdbc.util.SlickDatabase
-import app.softnetwork.util.ClasspathResources
+import app.softnetwork.utils.ClasspathResources
 import app.softnetwork.persistence.query.SchemaProvider
 import com.typesafe.config.ConfigFactory
 import app.softnetwork.persistence.jdbc.query.JdbcSchema.{H2, Postgres, SchemaType}

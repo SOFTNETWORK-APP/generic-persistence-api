@@ -29,8 +29,6 @@ val jest = Seq(
   "io.searchbox" % "jest" % Versions.jest
 ).map(_.excludeAll(httpComponentsExclusions ++ Seq(guavaExclusion): _*))
 
-libraryDependencies ++= Seq(
-  "org.apache.tika" % "tika-core" % "1.18"
-) ++ elastic ++ jest
+libraryDependencies ++= elastic ++ jest
 
 Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"

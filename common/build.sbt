@@ -43,6 +43,7 @@ val scalatest = Seq(
 dependencyOverrides ++= jackson
 
 libraryDependencies ++= Seq(
+  "org.apache.tika" % "tika-core" % "1.18",
   "commons-codec" % "commons-codec" % "1.10",
   "org.apache.commons" % "commons-text" % "1.4" excludeAll ExclusionRule(organization = "org.apache.commons", name = "commons-lang3")
 ) ++ configDependencies ++ json4s ++ logging ++ scalatest
