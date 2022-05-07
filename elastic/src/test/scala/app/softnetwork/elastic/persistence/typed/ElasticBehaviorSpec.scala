@@ -4,12 +4,9 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.elastic.persistence.query.ElasticProvider
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
 import app.softnetwork.persistence.typed.EntityBehavior
-
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence.message.CommandWrapper
-
 import app.softnetwork.elastic.client.MockElasticClientApi
-
 import app.softnetwork.elastic.message._
 import app.softnetwork.elastic.model.Sample
 
@@ -73,6 +70,6 @@ object SampleBehavior extends ElasticBehavior[Sample] with MockElasticClientApi 
 
   override val persistenceId = "Sample"
 
-  override protected val manifestWrapper = ManifestW()
+  override protected val manifestWrapper: SampleBehavior.ManifestW = ManifestW()
 
 }

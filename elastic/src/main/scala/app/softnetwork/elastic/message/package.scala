@@ -55,7 +55,7 @@ package object message {
 
   sealed trait ElasticCrudCommand[T <: Timestamped] extends ElasticCommand {
     val document: T
-    override val id = document.uuid
+    override val id: String = document.uuid
   }
 
   @SerialVersionUID(0L)

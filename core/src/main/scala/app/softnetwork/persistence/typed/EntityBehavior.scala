@@ -74,6 +74,15 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     }
   }
 
+  type BE = E with BroadcastEvent
+
+  /**
+    *
+    * @param event - the source event to broadcast
+    * @return the list of events to broadcast which must include at least the source event
+    */
+  def broadcastEvent(event: BE): List[E] = List(event)
+
   /**
     *
     * Set event tags, which will be used in persistence query
@@ -235,4 +244,35 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
     * @param context - actor context
     */
   def postRecoveryCompleted(state: Option[S])(implicit context: ActorContext[C]): Unit  = {}
+}
+
+trait TimeStampedBehavior[C  <: Command, S  <: Timestamped, E  <: Event, R  <: CommandResult]
+  extends EntityBehavior[C, S, E, R] with ManifestWrapper[S] {
+
+  override def persistenceId: String = manifestWrapper.wrapped.runtimeClass.getSimpleName
+
+  /**
+    *
+    * @param state - current state
+    * @param event - event to hanlde
+    * @return new state
+    */
+  override def handleEvent(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S] = {
+    import context._
+    event match {
+      case evt: Created[S] =>
+        import evt._
+        Some(document)
+
+      case evt: Updated[S] =>
+        import evt._
+        Some(document)
+
+      case _: Deleted => emptyState
+
+      case _ =>
+        log.warn(s"event $event not handled by $persistenceId")
+        super.handleEvent(state, event)
+    }
+  }
 }

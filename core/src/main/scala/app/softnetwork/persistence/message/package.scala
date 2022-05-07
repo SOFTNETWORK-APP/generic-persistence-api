@@ -37,9 +37,9 @@ package object message {
     * CommandWrapper companion object
     */
   object CommandWrapper {
-    def apply[C <: Command, R <: CommandResult](aCommand: C, aReplyTo: ActorRef[R]) = new CommandWrapper[C, R] {
-      override val command = aCommand
-      override val replyTo = aReplyTo
+    def apply[C <: Command, R <: CommandResult](aCommand: C, aReplyTo: ActorRef[R]): C = new CommandWrapper[C, R] {
+      override val command: C = aCommand
+      override val replyTo: ActorRef[R] = aReplyTo
     }.asInstanceOf[C]
   }
 
@@ -61,6 +61,10 @@ package object message {
 
   /** Event objects **/
   trait Event
+
+  trait BroadcastEvent extends Event {
+    def externalUuid: String
+  }
 
   /** Crud events **/
   trait CrudEvent extends Event
@@ -86,7 +90,7 @@ package object message {
   trait UpsertedDecorator { _: Upserted =>
     import app.softnetwork.serialization._
     implicit def formats: Formats = commonFormats
-    implicit def excludedFields = defaultExcludedFields:+ "data"
+    implicit def excludedFields: List[String] = defaultExcludedFields :+ "data"
     def asMap: Map[String, Any] = caseClass2Map(this)
     override final lazy val data: String = asMap // implicit conversion Map[String, Any] => String
   }
