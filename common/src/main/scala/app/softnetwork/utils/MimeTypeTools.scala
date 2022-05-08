@@ -13,6 +13,13 @@ object MimeTypeTools {
 
   val FORMAT: Pattern = Pattern.compile("(.*)\\/(.*)")
 
+  def detectMimeType(bytes: Array[Byte]): Option[String] = {
+    Try(new Tika().detect(bytes)) match {
+      case Success(s) => Some(s)
+      case Failure(_) => None
+    }
+  }
+
   def detectMimeType(path: Path): Option[String] = {
     if (Files.exists(path)) {
       Try(new Tika().detect(path)) match {
