@@ -225,6 +225,28 @@ lazy val auth = project.in(file("auth"))
     serverTestkit % "test->test;it->it"
   )
 
+lazy val resource = project.in(file("resource"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
+  .enablePlugins(BuildInfoPlugin)
+  .dependsOn(
+    session % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "test->test;it->it"
+  )
+
+lazy val payment = project.in(file("payment"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
+  .enablePlugins(BuildInfoPlugin)
+  .dependsOn(
+    auth % "compile->compile;test->test;it->it"
+  )
+
 lazy val root = project.in(file("."))
   .aggregate(
     common,
@@ -244,7 +266,9 @@ lazy val root = project.in(file("."))
     server,
     serverTestkit,
     sequence,
-    auth
+    auth,
+    resource,
+    payment
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)

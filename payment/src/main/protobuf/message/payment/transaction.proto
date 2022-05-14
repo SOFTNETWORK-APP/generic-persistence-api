@@ -1,0 +1,24 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+import "model/payment/transaction.proto";
+
+package app.softnetwork.payment.message.TransactionEvents;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.serialization._"
+    import: "app.softnetwork.payment.model._"
+    import: "app.softnetwork.payment.serialization._"
+    preamble: "sealed trait TransactionEvent extends Event"
+};
+
+message TransactionCreatedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "Updated[Transaction]";
+    option (scalapb.message).extends = "TransactionEvent";
+    required app.softnetwork.payment.model.Transaction document = 1;
+}

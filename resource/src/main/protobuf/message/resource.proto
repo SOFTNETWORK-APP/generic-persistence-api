@@ -1,0 +1,41 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+import "model/resource.proto";
+
+package app.softnetwork.resource.message.ResourceEvents;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.serialization._"
+    import: "app.softnetwork.resource.message._"
+    import: "ResourceMessages._"
+    import: "app.softnetwork.resource.model._"
+    preamble: "sealed trait ResourceEvent extends CrudEvent"
+};
+
+message ResourceCreatedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "Created[Resource]";
+    option (scalapb.message).extends = "ResourceEvent";
+    required app.softnetwork.resource.model.Resource document = 1;
+}
+
+message ResourceUpdatedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "Updated[Resource]";
+    option (scalapb.message).extends = "ResourceEvent";
+    required app.softnetwork.resource.model.Resource document = 1;
+}
+
+message ResourceDeletedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "Deleted";
+    option (scalapb.message).extends = "ResourceEvent";
+    required string uuid = 1;
+}
+
+

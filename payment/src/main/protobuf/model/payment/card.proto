@@ -1,0 +1,25 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+
+package app.softnetwork.payment.model;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.serialization._"
+    import: "app.softnetwork.payment.model._"
+    import: "app.softnetwork.payment.serialization._"
+};
+
+message Card {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "CardDecorator";
+    required string cardId = 1;
+    required string alias = 2;
+    required string expirationDate = 3;
+    required bool active = 4 [default = true];
+    extensions 100 to max;
+}
