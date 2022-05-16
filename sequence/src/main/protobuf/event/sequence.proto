@@ -9,7 +9,7 @@ option (scalapb.options) = {
     flat_package: true
     import: "app.softnetwork.persistence.message._"
     import: "app.softnetwork.sequence.message._"
-    preamble: "sealed trait SequenceEvent extends Event"
+    preamble: "trait SequenceEvent extends Event"
 };
 
 // Events

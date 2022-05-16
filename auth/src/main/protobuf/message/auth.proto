@@ -18,8 +18,8 @@ option (scalapb.options) = {
     import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "Protobuf._"
     preamble: "trait AccountEvent extends Event"
-    preamble: "sealed trait InternalAccountEvent extends AccountEvent {def uuid: String}"
-    preamble: "sealed trait DeviceEvent extends AccountEvent"
+    preamble: "trait InternalAccountEvent extends AccountEvent {def uuid: String}"
+    preamble: "trait DeviceEvent extends AccountEvent"
     preamble: "trait AccountCreatedEvent[T <: Account] extends Created[T] with AccountEvent"
     preamble: "trait ProfileUpdatedEvent[T <: Profile] extends AccountEvent {def uuid: String; def profile: T; def loginUpdated: Option[Boolean]; def lastUpdated: Option[java.util.Date]}"
 };
