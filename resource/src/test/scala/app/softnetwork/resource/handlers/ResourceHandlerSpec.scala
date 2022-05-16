@@ -10,7 +10,7 @@ import app.softnetwork.resource.ResourceTestKit
 import app.softnetwork.resource.config.Settings.ImageSizes
 import app.softnetwork.resource.message.ResourceEvents._
 import app.softnetwork.resource.persistence.query.LocalFileSystemResourceProvider
-import app.softnetwork.resource.spi.SizeOption
+import app.softnetwork.resource.spi.{LocalFileSystemProvider, SizeOption}
 
 import java.nio.file.{Files, Paths}
 import scala.concurrent.Future
@@ -18,7 +18,7 @@ import scala.concurrent.Future
 /**
   * Created by smanciot on 27/04/2020.
   */
-class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemResourceProvider with AnyWordSpecLike with ResourceTestKit {
+class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider with AnyWordSpecLike with ResourceTestKit {
 
   var _bytes: Array[Byte] = _
 

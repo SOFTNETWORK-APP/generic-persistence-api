@@ -34,7 +34,7 @@ object Versions {
 
   val log4s = "1.8.2"
 
-  val chill = "0.9.5"
+  val chill = "0.10.0"
 
   val elasticSearch = "6.7.2"
 

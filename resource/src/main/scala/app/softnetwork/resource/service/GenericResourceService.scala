@@ -41,11 +41,17 @@ trait GenericResourceService extends SessionService
 
   val route: Route = {
     pathPrefix(Settings.ResourcePath){
-      resources
+      images ~ resource()
     }
   }
 
-  lazy val resources: Route = {
+  lazy val images : Route = {
+    pathPrefix("images"){
+      resource("picture")
+    }
+  }
+
+  def resource(fieldName: String = "file"): Route = {
     path(Segments(2)) { segments =>
       get {
         getResource(segments.head, Seq(ImageSizes.get(segments(1).toLowerCase).map(SizeOption)).flatten)
@@ -62,7 +68,7 @@ trait GenericResourceService extends SessionService
               post{
                 extractRequestContext { ctx =>
                   implicit val materializer: Materializer = ctx.materializer
-                  fileUpload("picture") {
+                  fileUpload(fieldName) {
                     case (_, byteSource) => completeResource(byteSource, s"${session.id}#$uuid")
                     case _ => complete(HttpResponse(StatusCodes.BadRequest))
                   }
@@ -71,7 +77,7 @@ trait GenericResourceService extends SessionService
                 put {
                   extractRequestContext { ctx =>
                     implicit val materializer: Materializer = ctx.materializer
-                    fileUpload("picture") {
+                    fileUpload(fieldName) {
                       case (_, byteSource) => completeResource(byteSource, s"${session.id}#$uuid", update = true)
                       case _ => complete(HttpResponse(StatusCodes.BadRequest))
                     }
