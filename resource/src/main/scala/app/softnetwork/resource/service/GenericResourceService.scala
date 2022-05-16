@@ -9,14 +9,13 @@ import akka.util.ByteString
 import app.softnetwork.api.server._
 import app.softnetwork.resource.config.Settings
 import Settings._
-import app.softnetwork.resource.handlers.ResourceHandler
+import app.softnetwork.resource.handlers.{GenericResourceHandler, ResourceHandler}
 import app.softnetwork.resource.message.ResourceMessages._
 import com.softwaremill.session.CsrfDirectives._
 import com.softwaremill.session.CsrfOptions._
 import org.softnetwork.session.model.Session
 import app.softnetwork.persistence.service.Service
-import app.softnetwork.resource.persistence.query.LocalFileSystemResourceProvider
-import app.softnetwork.resource.spi.{ResourceOption, ResourceProvider, SizeOption}
+import app.softnetwork.resource.spi._
 import app.softnetwork.serialization.commonFormats
 import app.softnetwork.session.service.SessionService
 import com.typesafe.scalalogging.StrictLogging
@@ -27,12 +26,12 @@ import org.json4s.jackson.Serialization
 /**
   * Created by smanciot on 13/05/2020.
   */
-trait ResourceService extends SessionService
+trait GenericResourceService extends SessionService
   with Directives
   with DefaultComplete
   with Json4sSupport
   with StrictLogging
-  with Service[ResourceCommand, ResourceResult] with ResourceHandler {_: ResourceProvider =>
+  with Service[ResourceCommand, ResourceResult] {_: GenericResourceHandler with ResourceProvider =>
 
   implicit def serialization: Serialization.type = jackson.Serialization
 
@@ -91,7 +90,7 @@ trait ResourceService extends SessionService
       }
   }
 
-  def getResource(uuid: String, options: Seq[ResourceOption]): Route = {
+  protected def getResource(uuid: String, options: Seq[ResourceOption]): Route = {
     loadResource(uuid, None, options:_*) match {
       case Some(path) => getFromFile(path.toFile)
       case _ =>
@@ -106,7 +105,7 @@ trait ResourceService extends SessionService
     }
   }
 
-  def completeResource(byteSource: Source[ByteString, Any], uuid: String, update: Boolean = false)(implicit materializer: Materializer): Route = {
+  protected def completeResource(byteSource: Source[ByteString, Any], uuid: String, update: Boolean = false)(implicit materializer: Materializer): Route = {
     val future = byteSource.map { s => s.toArray}.runFold(Array[Byte]()){(acc,bytes) => acc ++ bytes}
     onSuccess(future){bytes =>
       logger.info(s"Resource $uuid uploaded successfully")
@@ -133,9 +132,15 @@ trait ResourceService extends SessionService
 
 }
 
+trait LocalFileSystemGenericResourceService extends GenericResourceService with LocalFileSystemProvider{
+  _: GenericResourceHandler =>
+}
+
+trait LocalFileSystemResourceService extends LocalFileSystemGenericResourceService with ResourceHandler
+
 object LocalFileSystemResourceService {
-  def apply(aSystem: ActorSystem[_]): ResourceService =
-    new ResourceService with LocalFileSystemResourceProvider {
+  def apply(aSystem: ActorSystem[_]): LocalFileSystemResourceService =
+    new LocalFileSystemResourceService {
       override implicit def system: ActorSystem[_] = aSystem
     }
 }

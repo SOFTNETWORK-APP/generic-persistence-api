@@ -1,13 +1,10 @@
 package app.softnetwork.resource.persistence.query
 
 import app.softnetwork.persistence.query.ExternalPersistenceProvider
-import app.softnetwork.persistence.{ManifestWrapper, environment}
-import app.softnetwork.resource.config.Settings.{ImageSizes, ResourceDirectory}
+import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.resource.model.Resource
-import app.softnetwork.resource.spi.{ResourceOption, ResourceProvider, SizeOption}
-import app.softnetwork.utils.ImageTools.ImageSize
-import app.softnetwork.utils.{Base64Tools, HashTools, ImageTools, MimeTypeTools}
-import com.typesafe.scalalogging.StrictLogging
+import app.softnetwork.resource.spi.LocalFileSystemProvider
+import app.softnetwork.utils.{Base64Tools, HashTools, MimeTypeTools}
 import org.json4s.Formats
 
 import java.io.ByteArrayInputStream
@@ -17,9 +14,9 @@ import java.util.Date
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-protected[resource] trait LocalFileSystemResourceProvider extends ResourceProvider with ExternalPersistenceProvider[Resource] with ManifestWrapper[Resource] with StrictLogging {
-
-  lazy val rootDir = s"$ResourceDirectory/$environment"
+protected[resource] trait LocalFileSystemResourceProvider extends LocalFileSystemProvider
+  with ExternalPersistenceProvider[Resource]
+  with ManifestWrapper[Resource] {
 
   override protected val manifestWrapper: ManifestW = ManifestW()
 
@@ -56,25 +53,7 @@ protected[resource] trait LocalFileSystemResourceProvider extends ResourceProvid
     * @return whether the operation is successful or not
     */
   override def upsertDocument(uuid: String, data: String): Boolean = {
-    Try {
-      val root = Paths.get(rootDir)
-      if (!Files.exists(root)) {
-        Files.createDirectories(root)
-      }
-      val decoded = Base64Tools.decodeBase64(data)
-      val path = Paths.get(rootDir, uuid)
-      val fos = Files.newOutputStream(path)
-      fos.write(decoded)
-      fos.close()
-      if (ImageTools.isAnImage(path)) {
-        ImageTools.generateImages(path, replace = true, ImageSizes.values.toSeq)
-      }
-    } match {
-      case Success(_) => true
-      case Failure(f) =>
-        logger.error(f.getMessage, f)
-        false
-    }
+    upsertResource(uuid, data)
   }
 
   /**
@@ -138,55 +117,6 @@ protected[resource] trait LocalFileSystemResourceProvider extends ResourceProvid
       case Failure(f) =>
         logger.error(f.getMessage, f)
         None
-    }
-  }
-
-  /**
-    *
-    * @param uuid    - the resource uuid
-    * @param content - the optional base64 encoded resource content
-    * @param option  - the list of resource options
-    * @return the optional path associated with this resource
-    */
-  override def loadResource(uuid: String, content: Option[String], option: ResourceOption*): Option[Path] = {
-    val path = Paths.get(rootDir, uuid)
-    if (Files.exists(path)) {
-      if(ImageTools.isAnImage(path)){
-        val size: Option[ResourceOption] = option.find {
-          case _: SizeOption => true
-          case _ => false
-        }
-        size match {
-          case Some(s) =>
-            val imageSize: ImageSize = s.asInstanceOf[SizeOption].size
-            import imageSize._
-            val format = MimeTypeTools.toFormat(path).getOrElse("jpeg")
-            val out = Paths.get(s"${path.toAbsolutePath}.${width}x$height.$format")
-            if (Files.exists(out)) {
-              Some(out)
-            }
-            else {
-              Some(
-                ImageTools.getImage(
-                  path,
-                  Option(imageSize),
-                  replace = false
-                )
-              )
-            }
-          case _ => Some(path)
-        }
-      }
-      else{
-        Some(path)
-      }
-    }
-    else {
-      content match {
-        case Some(data) if upsertDocument(uuid, data) =>
-          loadResource(uuid, None, option:_*)
-        case _ => None
-      }
     }
   }
 

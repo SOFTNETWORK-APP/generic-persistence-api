@@ -16,4 +16,7 @@ trait ResourceTypeKey extends CommandTypeKey[ResourceCommand]{
   override def TypeKey(implicit tTag: ClassTag[ResourceCommand]): EntityTypeKey[ResourceCommand] = ResourceBehavior.TypeKey
 }
 
-trait ResourceHandler extends EntityPattern[ResourceCommand, ResourceResult] with ResourceTypeKey
+trait ResourceHandler extends GenericResourceHandler with ResourceTypeKey
+
+trait GenericResourceHandler extends EntityPattern[ResourceCommand, ResourceResult] {_: CommandTypeKey[ResourceCommand] =>
+}
