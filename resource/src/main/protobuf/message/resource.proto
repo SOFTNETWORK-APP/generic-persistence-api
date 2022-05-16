@@ -11,10 +11,8 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.message._"
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.serialization._"
-    import: "app.softnetwork.resource.message._"
-    import: "ResourceMessages._"
     import: "app.softnetwork.resource.model._"
-    preamble: "sealed trait ResourceEvent extends CrudEvent"
+    preamble: "trait ResourceEvent extends CrudEvent"
 };
 
 message ResourceCreatedEvent {
