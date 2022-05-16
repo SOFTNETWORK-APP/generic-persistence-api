@@ -18,7 +18,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.payment.model._"
     import: "app.softnetwork.payment.persistence.typed._"
     import: "app.softnetwork.payment.serialization._"
-    preamble: "sealed trait PaymentEvent extends Event"
+    preamble: "trait PaymentEvent extends Event"
     preamble: "trait DebitedAccountEvent extends PaymentEvent with BroadcastEvent {def debitedAccount: String; val externalUuid: String = debitedAccount;}"
     preamble: "trait CreditedAccountEvent extends PaymentEvent with BroadcastEvent {def creditedAccount: String; val externalUuid: String = creditedAccount;}"
 };
