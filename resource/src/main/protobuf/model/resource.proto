@@ -24,7 +24,7 @@ option (scalapb.options) = {
 message Resource {
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "ResourceDecorator";
-    option (scalapb.message).extends = "Timestamped";
+    option (scalapb.message).extends = "GenericResource";
     required string uuid = 1;
     required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
     required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];

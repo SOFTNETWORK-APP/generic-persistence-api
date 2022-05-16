@@ -1,6 +1,6 @@
 package app.softnetwork.resource.message
 
-import app.softnetwork.resource.model.Resource
+import app.softnetwork.resource.model.{GenericResource, Resource}
 import app.softnetwork.persistence.message._
 
 /**
@@ -23,7 +23,7 @@ object ResourceMessages {
 
   case object ResourceUpdated extends ResourceResult
 
-  case class ResourceLoaded(resource: Resource) extends ResourceResult
+  case class ResourceLoaded(resource: GenericResource) extends ResourceResult
 
   case object ResourceDeleted extends ResourceResult
 
