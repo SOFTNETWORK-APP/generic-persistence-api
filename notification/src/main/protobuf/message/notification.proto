@@ -19,6 +19,7 @@ option (scalapb.options) = {
     preamble: "sealed trait NotificationRecordedEvent[T<:Notification] extends NotificationEvent{def notification: T; val uuid = notification.uuid}"
     preamble: "sealed trait NotificationToSchedulerEvent extends SchedulerEventWithCommand with NotificationEvent with Entity {val uuid = ALL_KEY}"
     preamble: "trait NotificationEventWithCommand extends NotificationEvent {def command: NotificationCommand}"
+    preserve_unknown_fields: false
 };
 
 message MailRecordedEvent{

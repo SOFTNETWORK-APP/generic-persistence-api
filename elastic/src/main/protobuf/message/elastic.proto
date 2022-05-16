@@ -12,6 +12,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.elastic.message._"
     preamble: "trait ElasticEvent extends ElasticResult with Event"
+    preserve_unknown_fields: false
 };
 
 // At least all events should be serialized using ProtoBuf

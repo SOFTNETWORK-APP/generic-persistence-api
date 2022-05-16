@@ -9,6 +9,7 @@ option (scalapb.options) = {
     flat_package: true
     import: "app.softnetwork.persistence.message._"
     import: "app.softnetwork.persistence.model._"
+    preserve_unknown_fields: false
 };
 
 // State

@@ -10,6 +10,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.serialization._"
     import: "app.softnetwork.session.model._"
+    preserve_unknown_fields: false
 };
 
 message Session {

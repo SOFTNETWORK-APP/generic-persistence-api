@@ -16,6 +16,7 @@ option (scalapb.options) = {
     preamble: "sealed trait SchedulerEvent extends Event"
     preamble: "trait SchedulerEventWrapper[E <: SchedulerEvent] extends SchedulerEvent {def event: E}"
     preamble: "trait SchedulerEventWithCommand extends SchedulerEvent {def command: SchedulerCommand}"
+    preserve_unknown_fields: false
 };
 
 // Events

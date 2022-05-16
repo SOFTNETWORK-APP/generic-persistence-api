@@ -14,6 +14,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.payment.model._"
     import: "app.softnetwork.payment.serialization._"
     preamble: "trait TransactionEvent extends Event"
+    preserve_unknown_fields: false
 };
 
 message TransactionCreatedEvent {

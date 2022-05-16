@@ -15,13 +15,13 @@ option (scalapb.options) = {
     import: "app.softnetwork.serialization._"
     import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "app.softnetwork.notification.model._"
+    preserve_unknown_fields: false
 };
 
 message From {
     option (scalapb.message).extends = "ProtobufDomainObject";
     required string value = 1;
     optional string alias = 2;
-    extensions 100 to max;
 }
 
 enum NotificationStatus {
@@ -46,14 +46,12 @@ message NotificationAck {
     optional string uuid = 1;
     repeated NotificationStatusResult results = 2;
     required google.protobuf.Timestamp date = 3 [(scalapb.field).type = "java.util.Date"];
-    extensions 100 to max;
 }
 
 message BasicDevice{
     option (scalapb.message).extends = "ProtobufDomainObject";
     required string regId = 1;
     required Platform platform = 2;
-    extensions 100 to max;
 }
 
 message Attachment{
@@ -61,7 +59,6 @@ message Attachment{
     required string name = 1;
     required string path = 2;
     optional string description = 3;
-    extensions 100 to max;
 }
 
 enum MailType{
@@ -93,7 +90,6 @@ message Mail{
     repeated NotificationStatusResult results = 18;
     required NotificationType type = 19 [default = MAIL_TYPE];
     repeated Attachment attachments = 20;
-    extensions 100 to max;
 }
 
 message SMS{
@@ -113,7 +109,6 @@ message SMS{
     required NotificationStatus status = 17 [default = Pending];
     repeated NotificationStatusResult results = 18;
     required NotificationType type = 19 [default = SMS_TYPE];
-    extensions 100 to max;
 }
 
 message Push{
@@ -137,5 +132,4 @@ message Push{
     required string id = 21 [default = ""];
     required int32 badge = 22 [default = 0];
     optional string sound = 23;
-    extensions 100 to max;
 }

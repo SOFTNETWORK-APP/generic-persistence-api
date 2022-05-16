@@ -21,6 +21,7 @@ option (scalapb.options) = {
     preamble: "trait PaymentEvent extends Event"
     preamble: "trait DebitedAccountEvent extends PaymentEvent with BroadcastEvent {def debitedAccount: String; val externalUuid: String = debitedAccount;}"
     preamble: "trait CreditedAccountEvent extends PaymentEvent with BroadcastEvent {def creditedAccount: String; val externalUuid: String = creditedAccount;}"
+    preserve_unknown_fields: false
 };
 
 message PaymentEvents {

@@ -10,6 +10,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.message._"
     import: "app.softnetwork.sequence.message._"
     preamble: "trait SequenceEvent extends Event"
+    preserve_unknown_fields: false
 };
 
 // Events

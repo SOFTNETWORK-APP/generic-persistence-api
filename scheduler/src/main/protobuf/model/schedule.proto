@@ -13,6 +13,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.serialization._"
     import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "app.softnetwork.scheduler.model._"
+    preserve_unknown_fields: false
 };
 
 // Schedule

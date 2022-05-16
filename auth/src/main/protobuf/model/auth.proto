@@ -19,6 +19,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.auth.serialization._"
     import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "Protobuf._"
+    preserve_unknown_fields: false
 };
 
 message Principal {
