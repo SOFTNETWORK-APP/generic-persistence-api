@@ -9,6 +9,6 @@ import java.net.URLEncoder
   */
 object ResourceTools {
 
-  def resourceUri(uuid: String) = s"$BaseUrl/$ResourcePath/${URLEncoder.encode(uuid, "UTF-8")}"
+  def resourceUri(uuid: String*) = s"$BaseUrl/$ResourcePath/${URLEncoder.encode(uuid.mkString("#"), "UTF-8")}"
 
 }

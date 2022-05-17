@@ -91,4 +91,28 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     }
   }
 
+  /**
+    * Deletes the underlying document referenced by its uuid to the external system
+    *
+    * @param uuid - the uuid of the resource to delete
+    * @return whether the operation is successful or not
+    */
+  override def deleteResource(uuid: String): Boolean = {
+    Try {
+      val root = Paths.get(rootDir)
+      import java.util.stream.Collectors
+      import scala.collection.JavaConverters._
+      val listFiles: List[Path] =
+        Files.list(root).filter(Files.isRegularFile(_)).filter { file =>
+          file.getFileName.toString.startsWith(uuid)
+        }.collect(Collectors.toList[Path]()).asScala.toList
+      listFiles.foreach(path => Files.delete(path))
+    } match {
+      case Success(_) => true
+      case Failure(f) =>
+        logger.error(f.getMessage, f)
+        false
+    }
+  }
+
 }

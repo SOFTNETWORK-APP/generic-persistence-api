@@ -7,10 +7,10 @@ import app.softnetwork.resource.message.ResourceMessages._
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.utils.HashTools
 import app.softnetwork.resource.ResourceTestKit
-import app.softnetwork.resource.config.Settings.ImageSizes
+import app.softnetwork.resource.config.Settings.{BaseUrl, ImageSizes, ResourcePath}
 import app.softnetwork.resource.message.ResourceEvents._
-import app.softnetwork.resource.persistence.query.LocalFileSystemResourceProvider
 import app.softnetwork.resource.spi.{LocalFileSystemProvider, SizeOption}
+import app.softnetwork.resource.utils.ResourceTools
 
 import java.nio.file.{Files, Paths}
 import scala.concurrent.Future
@@ -44,7 +44,7 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("create") await {
         case ResourceCreated =>
           probe.expectMessageType[ResourceCreatedEvent]
-          assert(Files.exists(Paths.get((s"$rootDir/create"))))
+          assert(Files.exists(Paths.get(s"$rootDir/create")))
         case _ => fail()
       }
     }
@@ -55,7 +55,7 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("update", update = true) await {
         case ResourceUpdated =>
           probe.expectMessageType[ResourceUpdatedEvent]
-          assert(Files.exists(Paths.get((s"$rootDir/update"))))
+          assert(Files.exists(Paths.get(s"$rootDir/update")))
         case _ => fail()
       }
     }
@@ -66,14 +66,14 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("load") await {
         case ResourceCreated =>
           probe.expectMessageType[ResourceCreatedEvent]
-          assert(Files.exists(Paths.get((s"$rootDir/load"))))
+          assert(Files.exists(Paths.get(s"$rootDir/load")))
           ? ("load", LoadResource("load")) await {
             case r: ResourceLoaded =>
               r.resource.md5 shouldBe _md5
               for(size <- ImageSizes.values){
                 loadResource("load", None, Seq(SizeOption(size)): _*) match {
                   case Some(_) =>
-                  case _ => false
+                  case _ => fail()
                 }
               }
             case other => fail(other)
@@ -88,11 +88,11 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("delete") await {
         case ResourceCreated =>
           probe.expectMessageType[ResourceCreatedEvent]
-          assert(Files.exists(Paths.get((s"$rootDir/delete"))))
+          assert(Files.exists(Paths.get(s"$rootDir/delete")))
           ? ("delete", DeleteResource("delete")) await {
             case ResourceDeleted =>
               probe.expectMessageType[ResourceDeletedEvent]
-              assert(!Files.exists(Paths.get((s"$rootDir/delete"))))
+              assert(!Files.exists(Paths.get(s"$rootDir/delete")))
             case _ => fail()
           }
         case _ => fail()
@@ -101,6 +101,11 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
 
   }
 
+  "Resource tools" must {
+    "compute resource uri" in {
+      assert(ResourceTools.resourceUri("first", "second") == s"$BaseUrl/$ResourcePath/first%23second")
+    }
+  }
   private[this] def createOrUpdateResource(entityId: String, update: Boolean = false): Future[ResourceResult] = {
     ? (entityId,
       if(update){

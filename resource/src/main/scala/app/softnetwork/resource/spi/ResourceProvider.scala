@@ -24,6 +24,13 @@ protected[resource] trait ResourceProvider {
     */
   def loadResource(uuid: String, content: Option[String], option: ResourceOption*): Option[Path]
 
+  /**
+    * Deletes the underlying resource referenced by its uuid to the resource provider
+    *
+    * @param uuid - the uuid of the resource to delete
+    * @return whether the operation is successful or not
+    */
+  def deleteResource(uuid: String): Boolean
 }
 
 protected[resource] trait ResourceOption
