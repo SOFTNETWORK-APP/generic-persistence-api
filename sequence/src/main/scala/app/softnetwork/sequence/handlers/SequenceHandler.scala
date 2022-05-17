@@ -23,11 +23,7 @@ trait GenericSequenceHandler extends EntityPattern[SequenceCommand, SequenceResu
   override val nbTries = 5
 }
 
-trait SequenceHandler extends GenericSequenceHandler with SequenceTypeKey
-
-object SequenceHandler extends SequenceHandler
-
-trait SequenceDao{_: GenericSequenceHandler =>
+trait GenericSequenceDao{_: GenericSequenceHandler =>
 
   private var sequences: Map[String, Int] = Map.empty
 
@@ -77,4 +73,10 @@ trait SequenceDao{_: GenericSequenceHandler =>
 
 }
 
-object SequenceDao extends SequenceDao with SequenceHandler
+trait SequenceHandler extends GenericSequenceHandler with SequenceTypeKey
+
+object SequenceHandler extends SequenceHandler
+
+trait SequenceDao extends GenericSequenceDao with SequenceHandler
+
+object SequenceDao extends SequenceDao
