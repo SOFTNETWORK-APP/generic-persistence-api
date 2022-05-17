@@ -445,15 +445,11 @@ trait MangoPayProvider extends PaymentProvider {
     Try(MangoPay().getCardApi.get(cardId)) match {
       case Success(card) =>
         Some(
-          Card(
-            cardId,
-            /*"",
-            "",
-            "",*/
-            card.getAlias,
-            card.getExpirationDate,
-            card.isActive
-          )
+          Card.defaultInstance
+            .withId(cardId)
+            .withAlias(card.getAlias)
+            .withExpirationDate(card.getExpirationDate)
+            .withActive(card.isActive)
         )
       case Failure(f)    =>
         mlog.error(f.getMessage, f)

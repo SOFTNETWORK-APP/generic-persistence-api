@@ -74,7 +74,7 @@ trait SessionRefreshTokenDao extends RefreshTokenDao[Session] with SessionRefres
 object SessionRefreshTokenDao {
   def apply(asystem: ActorSystem[_]): SessionRefreshTokenDao = {
     new SessionRefreshTokenDao(){
-      override implicit val system = asystem
+      override implicit val system: ActorSystem[_] = asystem
     }
   }
 }

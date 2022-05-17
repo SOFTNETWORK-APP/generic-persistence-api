@@ -15,4 +15,10 @@ trait CardDecorator{_: Card =>
         false
     }
   }
+
+  lazy val owner: CardOwner =
+    CardOwner.defaultInstance
+      .withFirstName(firstName)
+      .withLastName(lastName)
+      .withBirthday(birthday)
 }

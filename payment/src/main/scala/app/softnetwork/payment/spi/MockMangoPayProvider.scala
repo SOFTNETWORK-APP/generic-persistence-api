@@ -332,17 +332,11 @@ trait MockMangoPayProvider extends MangoPayProvider {
     CardRegistrations.values.find(_.getCardId == cardId) match {
       case Some(_) =>
         Some(
-          Card(
-            cardId,
-            /*"",
-            "",
-            "",*/
-            "##################",
-            {
-              new SimpleDateFormat("MMyy").format(now())
-            },
-            true
-          )
+          Card.defaultInstance
+            .withId(cardId)
+            .withAlias("##################")
+            .withExpirationDate(new SimpleDateFormat("MMyy").format(now()))
+            .withActive(true)
         )
       case _ => None
     }

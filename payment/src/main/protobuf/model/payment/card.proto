@@ -18,9 +18,19 @@ option (scalapb.options) = {
 message Card {
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "CardDecorator";
-    required string cardId = 1;
-    required string alias = 2;
-    required string expirationDate = 3;
-    required bool active = 4 [default = true];
+    required string id = 1;
+    required string firstName = 2;
+    required string lastName = 3;
+    required string birthday = 4;
+    required string alias = 5;
+    required string expirationDate = 6;
+    required bool active = 7 [default = true];
     extensions 100 to max;
+}
+
+message CardOwner {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    required string firstName = 2;
+    required string lastName = 3;
+    required string birthday = 4;
 }

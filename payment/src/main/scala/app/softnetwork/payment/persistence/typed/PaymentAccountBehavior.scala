@@ -164,7 +164,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case Some(registration) =>
                     import registration._
                     createCard(registrationId, Some(registrationData))
-                  case _ => paymentAccount.card.filter(_.active).filterNot(_.expired).map(_.cardId)
+                  case _ => paymentAccount.card.filter(_.active).filterNot(_.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
                     preAuthorizeCard(
@@ -268,7 +268,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case Some(registration) =>
                     import registration._
                     createCard(registrationId, Some(registrationData))
-                  case _ => paymentAccount.card.filter(_.active).filterNot(_.expired).map(_.cardId)
+                  case _ => paymentAccount.card.filter(_.active).filterNot(_.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
                     // load credited payment account
@@ -1319,12 +1319,17 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 case Some(cardId) =>
                   loadCard(cardId) match {
                     case Some(card) =>
-                      updatedPaymentAccount = updatedPaymentAccount.withCard(card)
+                      val updatedCard = updatedPaymentAccount.maybeUser match {
+                        case Some(user) =>
+                          card.withFirstName(user.firstName).withLastName(user.lastName).withBirthday(user.birthday)
+                        case _ => card
+                      }
+                      updatedPaymentAccount = updatedPaymentAccount.withCard(updatedCard)
                       broadcastEvent(
                         CardRegisteredEvent.defaultInstance
                           .withOrderUuid(orderUuid)
                           .withExternalUuid(paymentAccount.externalUuid)
-                          .withCard(card)
+                          .withCard(updatedCard)
                           .withLastUpdated(lastUpdated)
                       )
                     case _ => List.empty
@@ -1397,12 +1402,17 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 case Some(cardId) =>
                   loadCard(cardId) match {
                     case Some(card) =>
-                      updatedPaymentAccount = updatedPaymentAccount.withCard(card)
+                      val updatedCard = updatedPaymentAccount.maybeUser match {
+                        case Some(user) =>
+                          card.withFirstName(user.firstName).withLastName(user.lastName).withBirthday(user.birthday)
+                        case _ => card
+                      }
+                      updatedPaymentAccount = updatedPaymentAccount.withCard(updatedCard)
                       broadcastEvent(
                         CardRegisteredEvent.defaultInstance
                           .withOrderUuid(orderUuid)
                           .withExternalUuid(paymentAccount.externalUuid)
-                          .withCard(card)
+                          .withCard(updatedCard)
                           .withLastUpdated(lastUpdated)
                       )
                     case _ => List.empty
