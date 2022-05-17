@@ -11,4 +11,6 @@ object ResourceTools {
 
   def resourceUri(uuid: String*) = s"$BaseUrl/$ResourcePath/${URLEncoder.encode(uuid.mkString("#"), "UTF-8")}"
 
+  def imageUri(uuid: String*) = s"$BaseUrl/$ResourcePath/images/${URLEncoder.encode(uuid.mkString("#"), "UTF-8")}"
+
 }

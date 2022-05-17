@@ -15,7 +15,7 @@ option (scalapb.options) = {
 // State
 message SequenceState {
     option (scalapb.message).extends = "ProtobufStateObject";
-    option (scalapb.message).extends = "SequenceStateDecorator";
+    option (scalapb.message).extends = "GenericSequence";
     string name = 1;
     int32 value = 2;
 }
