@@ -19,13 +19,15 @@ trait SequenceTypeKey extends CommandTypeKey[SequenceCommand]{
   override def TypeKey(implicit tTag: ClassTag[SequenceCommand]): EntityTypeKey[SequenceCommand] = Sequence.TypeKey
 }
 
-trait SequenceHandler extends EntityPattern[SequenceCommand, SequenceResult] with SequenceTypeKey{
+trait GenericSequenceHandler extends EntityPattern[SequenceCommand, SequenceResult] with CommandTypeKey[SequenceCommand]{
   override val nbTries = 5
 }
 
+trait SequenceHandler extends GenericSequenceHandler with SequenceTypeKey
+
 object SequenceHandler extends SequenceHandler
 
-trait SequenceDao{_: SequenceHandler =>
+trait SequenceDao{_: GenericSequenceHandler =>
 
   private var sequences: Map[String, Int] = Map.empty
 

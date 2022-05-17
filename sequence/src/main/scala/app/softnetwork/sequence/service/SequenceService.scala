@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import app.softnetwork.api.server.DefaultComplete
 import app.softnetwork.persistence.service.Service
-import app.softnetwork.sequence.handlers.SequenceHandler
+import app.softnetwork.sequence.handlers.{GenericSequenceHandler, SequenceHandler}
 import app.softnetwork.sequence.message._
 import app.softnetwork.serialization._
 import org.json4s.Formats
@@ -14,10 +14,8 @@ import org.json4s.Formats
 /**
   * Created by smanciot on 15/05/2020.
   */
-trait SequenceService extends Service[SequenceCommand, SequenceResult]
-  with SequenceHandler
-  with Directives
-  with DefaultComplete {
+trait GenericSequenceService extends Service[SequenceCommand, SequenceResult] with Directives with DefaultComplete {
+  _: GenericSequenceHandler =>
 
   implicit def formats: Formats = commonFormats
 
@@ -85,6 +83,8 @@ trait SequenceService extends Service[SequenceCommand, SequenceResult]
   }
 
 }
+
+trait SequenceService extends GenericSequenceService with SequenceHandler
 
 object SequenceService{
   def apply(asystem: ActorSystem[_]): SequenceService = {
