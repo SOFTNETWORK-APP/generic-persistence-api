@@ -24,7 +24,7 @@ message Card {
     required string birthday = 4;
     required string alias = 5;
     required string expirationDate = 6;
-    required bool active = 7 [default = true];
+    optional bool active = 7;
     extensions 100 to max;
 }
 

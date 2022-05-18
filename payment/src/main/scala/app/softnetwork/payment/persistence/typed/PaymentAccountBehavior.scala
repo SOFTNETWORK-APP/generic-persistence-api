@@ -164,7 +164,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case Some(registration) =>
                     import registration._
                     createCard(registrationId, Some(registrationData))
-                  case _ => paymentAccount.card.filter(_.active).filterNot(_.expired).map(_.id)
+                  case _ => paymentAccount.card.filter(_.active.getOrElse(true)).filterNot(_.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
                     preAuthorizeCard(
@@ -268,7 +268,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case Some(registration) =>
                     import registration._
                     createCard(registrationId, Some(registrationData))
-                  case _ => paymentAccount.card.filter(_.active).filterNot(_.expired).map(_.id)
+                  case _ => paymentAccount.card.filter(_.active.getOrElse(true)).filterNot(_.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
                     // load credited payment account
