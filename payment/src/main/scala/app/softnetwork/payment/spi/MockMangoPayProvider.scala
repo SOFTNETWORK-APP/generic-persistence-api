@@ -168,7 +168,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         PayOuts = PayOuts.updated(payOut.getId, payOut)
         Some(
           Transaction().copy(
-            transactionId = payOut.getId,
+            id = payOut.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PAYOUT,
@@ -261,7 +261,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
 
         Some(
           Transaction().copy(
-            transactionId = refund.getId,
+            id = refund.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REFUND,
             `type` = Transaction.TransactionType.PAYIN,
@@ -305,7 +305,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         Transfers = Transfers.updated(transfer.getId, transfer)
         Some(
           Transaction().copy(
-            transactionId = transfer.getId,
+            id = transfer.getId,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PAYOUT,
             status = transfer.getStatus,
@@ -392,7 +392,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
           }
         Some(
           Transaction().copy(
-            transactionId = transactionId,
+            id = transactionId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = `type`,
@@ -547,7 +547,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
 
         Some(
           Transaction().copy(
-            transactionId = cardPreAuthorization.getId,
+            id = cardPreAuthorization.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PRE_AUTHORIZATION,
@@ -577,7 +577,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
       case Some(result) =>
         Some(
           Transaction().copy(
-            transactionId = result.getId,
+            id = result.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PRE_AUTHORIZATION,
@@ -630,7 +630,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         PayIns = PayIns.updated(payIn.getId, payIn)
         Some(
           Transaction().copy(
-            transactionId = payIn.getId,
+            id = payIn.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PAYIN,
@@ -708,7 +708,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
 
         Some(
           Transaction().copy(
-            transactionId = payIn.getId,
+            id = payIn.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PAYIN,
@@ -894,7 +894,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         ClientFees += feesAmount.toDouble / 100
         Some(
           Transaction().copy(
-            transactionId = payIn.getId,
+            id = payIn.getId,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.DIRECT_DEBIT,
             status = payIn.getStatus,
@@ -925,7 +925,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
       case Some(payIn) =>
         Some(
           Transaction().copy(
-            transactionId = payIn.getId,
+            id = payIn.getId,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PAYIN,
             status = payIn.getStatus,

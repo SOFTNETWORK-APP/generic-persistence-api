@@ -510,7 +510,7 @@ trait MangoPayProvider extends PaymentProvider {
             mlog.info("preAuthorizeCard -> " + asJson(result))
             Some(
               Transaction().copy(
-                transactionId = result.getId,
+                id = result.getId,
                 orderUuid = orderUuid,
                 nature = Transaction.TransactionNature.REGULAR,
                 `type` = Transaction.TransactionType.PRE_AUTHORIZATION,
@@ -543,7 +543,7 @@ trait MangoPayProvider extends PaymentProvider {
                           Some(
                             Transaction().copy(
                               uuid = r.getId,
-                              transactionId = r.getId,
+                              id = r.getId,
                               orderUuid = orderUuid,
                               nature = Transaction.TransactionNature.REGULAR,
                               `type` = Transaction.TransactionType.PRE_AUTHORIZATION,
@@ -580,7 +580,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Success(result) =>
         Some(
           Transaction().copy(
-            transactionId = result.getId,
+            id = result.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PRE_AUTHORIZATION,
@@ -643,7 +643,7 @@ trait MangoPayProvider extends PaymentProvider {
           case Success(result) =>
             Some(
               Transaction().copy(
-                transactionId = result.getId,
+                id = result.getId,
                 orderUuid = orderUuid,
                 nature = Transaction.TransactionNature.REGULAR,
                 `type` = Transaction.TransactionType.PAYIN,
@@ -674,7 +674,7 @@ trait MangoPayProvider extends PaymentProvider {
                           Some(
                             Transaction().copy(
                               uuid = r.getId,
-                              transactionId = r.getId,
+                              id = r.getId,
                               orderUuid = orderUuid,
                               nature = Transaction.TransactionNature.REGULAR,
                               `type` = Transaction.TransactionType.PAYIN,
@@ -784,7 +784,7 @@ trait MangoPayProvider extends PaymentProvider {
           case Success(result) =>
             Some(
               Transaction().copy(
-                transactionId = result.getId,
+                id = result.getId,
                 orderUuid = orderUuid,
                 nature = Transaction.TransactionNature.REGULAR,
                 `type` = Transaction.TransactionType.PAYIN,
@@ -817,7 +817,7 @@ trait MangoPayProvider extends PaymentProvider {
                 Some(
                   Transaction().copy(
                     uuid = r.getId,
-                    transactionId = r.getId,
+                    id = r.getId,
                     orderUuid = orderUuid,
                     nature = Transaction.TransactionNature.REGULAR,
                     `type` = Transaction.TransactionType.PAYIN,
@@ -883,7 +883,7 @@ trait MangoPayProvider extends PaymentProvider {
           case Success(result) =>
             Some(
               Transaction().copy(
-                transactionId = result.getId,
+                id = result.getId,
                 orderUuid = orderUuid,
                 nature = Transaction.TransactionNature.REFUND,
                 `type` = Transaction.TransactionType.PAYIN,
@@ -910,7 +910,7 @@ trait MangoPayProvider extends PaymentProvider {
               case r: ResponseException =>
                 Some(
                   Transaction().copy(
-                    transactionId = r.getId,
+                    id = r.getId,
                     orderUuid = orderUuid,
                     nature = Transaction.TransactionNature.REFUND,
                     `type` = Transaction.TransactionType.PAYIN,
@@ -957,7 +957,7 @@ trait MangoPayProvider extends PaymentProvider {
           case Success(result) =>
             Some(
               Transaction().copy(
-                transactionId = result.getId,
+                id = result.getId,
                 nature = Transaction.TransactionNature.REGULAR,
                 `type` = Transaction.TransactionType.TRANSFER,
                 status = result.getStatus match {
@@ -983,7 +983,7 @@ trait MangoPayProvider extends PaymentProvider {
               case r: ResponseException =>
                 Some(
                   Transaction().copy(
-                    transactionId = r.getId,
+                    id = r.getId,
                     orderUuid = "",
                     nature = Transaction.TransactionNature.REGULAR,
                     `type` = Transaction.TransactionType.TRANSFER,
@@ -1040,7 +1040,7 @@ trait MangoPayProvider extends PaymentProvider {
           case Success(result) =>
             Some(
               Transaction().copy(
-                transactionId = result.getId,
+                id = result.getId,
                 orderUuid = orderUuid,
                 nature = Transaction.TransactionNature.REGULAR,
                 `type` = Transaction.TransactionType.PAYOUT,
@@ -1066,7 +1066,7 @@ trait MangoPayProvider extends PaymentProvider {
               case r: ResponseException =>
                 Some(
                   Transaction().copy(
-                    transactionId = r.getId,
+                    id = r.getId,
                     orderUuid = orderUuid,
                     nature = Transaction.TransactionNature.REGULAR,
                     `type` = Transaction.TransactionType.PAYOUT,
@@ -1131,7 +1131,7 @@ trait MangoPayProvider extends PaymentProvider {
           }
         Some(
           Transaction().copy(
-            transactionId = result.getId,
+            id = result.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = `type`,
@@ -1164,7 +1164,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Success(result) =>
         Some(
           Transaction().copy(
-            transactionId = result.getId,
+            id = result.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REFUND,
             `type` = Transaction.TransactionType.PAYIN,
@@ -1196,7 +1196,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Success(result) =>
         Some(
           Transaction().copy(
-            transactionId = result.getId,
+            id = result.getId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.PAYOUT,
@@ -1225,7 +1225,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Success(result) =>
         Some(
           Transaction().copy(
-            transactionId = result.getId,
+            id = result.getId,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = Transaction.TransactionType.TRANSFER,
             status = result.getStatus,
@@ -1509,7 +1509,7 @@ trait MangoPayProvider extends PaymentProvider {
           case Success(result) =>
             Some(
               Transaction().copy(
-                transactionId = result.getId,
+                id = result.getId,
                 nature = Transaction.TransactionNature.REGULAR,
                 `type` = Transaction.TransactionType.DIRECT_DEBIT,
                 status = result.getStatus match {
@@ -1565,7 +1565,7 @@ trait MangoPayProvider extends PaymentProvider {
         case Some(result) =>
           Some(
             Transaction().copy(
-              transactionId = result.getId,
+              id = result.getId,
               nature = Transaction.TransactionNature.REGULAR,
               `type` = Transaction.TransactionType.PAYIN,
               status = result.getStatus match {

@@ -225,7 +225,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            paymentAccount.transactions.find(_.transactionId == preAuthorizationId) match {
+            paymentAccount.transactions.find(_.id == preAuthorizationId) match {
               case None => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
               case Some(transaction) if Seq(
                 Transaction.TransactionStatus.TRANSACTION_CREATED,
@@ -323,7 +323,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            (paymentAccount.transactions.find(_.transactionId == transactionId) match {
+            (paymentAccount.transactions.find(_.id == transactionId) match {
               case None =>
                 loadPayIn(orderUuid, transactionId)
               case some => some
@@ -339,7 +339,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            (paymentAccount.transactions.find(_.transactionId == payInTransactionId) match {
+            (paymentAccount.transactions.find(_.id == payInTransactionId) match {
               case None => loadPayIn(orderUuid, payInTransactionId)
               case some => some
             }) match {
@@ -365,10 +365,10 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   ) match {
                     case None => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
                     case Some(transaction) =>
-                      keyValueDao.addKeyValue(transaction.transactionId, entityId)
+                      keyValueDao.addKeyValue(transaction.id, entityId)
                       val lastUpdated = now()
                       val updatedPaymentAccount = paymentAccount.withTransactions(
-                        paymentAccount.transactions.filterNot(_.transactionId == transaction.transactionId)
+                        paymentAccount.transactions.filterNot(_.id == transaction.id)
                           :+ transaction
                       )
                       val upsertedEvent =
@@ -377,11 +377,11 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                           .withLastUpdated(lastUpdated)
                       transaction.status match {
                         case Transaction.TransactionStatus.TRANSACTION_FAILED_FOR_TECHNICAL_REASON =>
-                          log.error("Order-{} could not be refunded: {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+                          log.error("Order-{} could not be refunded: {} -> {}", orderUuid, transaction.id, asJson(transaction))
                           Effect.persist(upsertedEvent).thenRun(_ => RefundFailed(transaction.resultMessage) ~> replyTo)
                         case _ =>
                           if (transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
-                            log.info("Order-{} refunded: {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+                            log.info("Order-{} refunded: {} -> {}", orderUuid, transaction.id, asJson(transaction))
                             Effect.persist(
                               broadcastEvent(
                                 RefundedEvent.defaultInstance
@@ -390,15 +390,15 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                   .withDebitedAccount(paymentAccount.externalUuid)
                                   .withDebitedAmount(transaction.amount)
                                   .withRefundedAmount(refundAmount)
-                                  .withRefundTransactionId(transaction.transactionId)
+                                  .withRefundTransactionId(transaction.id)
                                   .withPayInTransactionId(payInTransactionId)
                                   .withReasonMessage(reasonMessage)
                                   .withInitializedByClient(initializedByClient)
                               ) :+ upsertedEvent
-                            ).thenRun(_ => Refunded(transaction.transactionId) ~> replyTo)
+                            ).thenRun(_ => Refunded(transaction.id) ~> replyTo)
                           }
                           else{
-                            log.info("Order-{} could not be refunded: {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+                            log.info("Order-{} could not be refunded: {} -> {}", orderUuid, transaction.id, asJson(transaction))
                             Effect.persist(upsertedEvent)
                               .thenRun(_ => RefundFailed(transaction.resultMessage) ~> replyTo)
                           }
@@ -436,14 +436,14 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                           )
                         ) match {
                           case Some(transaction) =>
-                            keyValueDao.addKeyValue(transaction.transactionId, entityId)
+                            keyValueDao.addKeyValue(transaction.id, entityId)
                             val lastUpdated = now()
                             val updatedPaymentAccount = paymentAccount.withTransactions(
-                              paymentAccount.transactions.filterNot(_.transactionId == transaction.transactionId)
+                              paymentAccount.transactions.filterNot(_.id == transaction.id)
                                 :+ transaction
                             )
                             if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
-                              log.info("Order-{} paid out : {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+                              log.info("Order-{} paid out : {} -> {}", orderUuid, transaction.id, asJson(transaction))
                               Effect.persist(
                                 broadcastEvent(
                                   PaidOutEvent.defaultInstance
@@ -452,15 +452,15 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                     .withCreditedAccount(creditedAccount)
                                     .withCreditedAmount(creditedAmount)
                                     .withFeesAmount(feesAmount)
-                                    .withTransactionId(transaction.transactionId)
+                                    .withTransactionId(transaction.id)
                                 ) :+
                                   PaymentAccountUpsertedEvent.defaultInstance
                                     .withDocument(updatedPaymentAccount)
                                     .withLastUpdated(lastUpdated)
-                              ).thenRun(_ => PaidOut(transaction.transactionId) ~> replyTo)
+                              ).thenRun(_ => PaidOut(transaction.id) ~> replyTo)
                             }
                             else{
-                              log.error("Order-{} could not be paid out : {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+                              log.error("Order-{} could not be paid out : {} -> {}", orderUuid, transaction.id, asJson(transaction))
                               Effect.persist(
                                 PaymentAccountUpsertedEvent.defaultInstance
                                   .withDocument(updatedPaymentAccount)
@@ -521,7 +521,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case Some(transaction) =>
                 val lastUpdated = now()
                 val updatedPaymentAccount = paymentAccount.withTransactions(
-                  paymentAccount.transactions.filterNot(_.transactionId == transaction.transactionId)
+                  paymentAccount.transactions.filterNot(_.id == transaction.id)
                     :+ transaction
                 )
                 if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated){
@@ -546,14 +546,14 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                         .withDebitedAccount(debitedAccount)
                         .withLastUpdated(lastUpdated)
                         .withCreditedAccount(creditedAccount)
-                        .withTransactionId(transaction.transactionId)
+                        .withTransactionId(transaction.id)
                         .copy(payOutTransactionId = payOutTransactionId)
                     ) :+
                       PaymentAccountUpsertedEvent.defaultInstance
                         .withDocument(updatedPaymentAccount)
                         .withLastUpdated(lastUpdated)
                   ).thenRun(_ => {
-                    Transfered(transaction.transactionId, payOutTransactionId)
+                    Transfered(transaction.id, payOutTransactionId)
                   } ~> replyTo)
                 }
                 else{
@@ -578,7 +578,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            paymentAccount.transactions.find(_.transactionId == transactionId) match {
+            paymentAccount.transactions.find(_.id == transactionId) match {
               case Some(transaction) => Effect.none.thenRun(_ => TransactionLoaded(transaction) ~> replyTo)
               case _ => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
             }
@@ -1299,12 +1299,12 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                 transaction: Transaction
                                )(implicit system: ActorSystem[_], log: Logger
   ): Effect[PaymentEvent, Option[PaymentAccount]] = {
-    keyValueDao.addKeyValue(transaction.transactionId, entityId) // add transaction id as a key for this payment account
+    keyValueDao.addKeyValue(transaction.id, entityId) // add transaction id as a key for this payment account
     val lastUpdated = now()
     var updatedPaymentAccount =
       paymentAccount.withTransactions(
         paymentAccount.transactions
-          .filterNot(_.transactionId == transaction.transactionId) :+ transaction
+          .filterNot(_.id == transaction.id) :+ transaction
       )
     transaction.status match {
       case Transaction.TransactionStatus.TRANSACTION_CREATED if transaction.redirectUrl.isDefined => // 3ds
@@ -1319,7 +1319,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         )
       case _ =>
         if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
-          log.debug("Order-{} paid in: {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+          log.debug("Order-{} paid in: {} -> {}", orderUuid, transaction.id, asJson(transaction))
           val registerCardEvents: List[PaymentEvent] =
             if(registerCard){
               transaction.cardId match {
@@ -1352,7 +1352,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               broadcastEvent(
                 PaidInEvent.defaultInstance
                   .withOrderUuid(orderUuid)
-                  .withTransactionId(transaction.transactionId)
+                  .withTransactionId(transaction.id)
                   .withDebitedAccount(paymentAccount.externalUuid)
                   .withDebitedAmount(transaction.amount)
                   .withLastUpdated(lastUpdated)
@@ -1360,10 +1360,10 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               PaymentAccountUpsertedEvent.defaultInstance
                 .withDocument(updatedPaymentAccount)
                 .withLastUpdated(lastUpdated)
-          ).thenRun(_ => PaidIn(transaction.transactionId) ~> replyTo)
+          ).thenRun(_ => PaidIn(transaction.id) ~> replyTo)
         }
         else {
-          log.error("Order-{} could not be paid in: {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+          log.error("Order-{} could not be paid in: {} -> {}", orderUuid, transaction.id, asJson(transaction))
           Effect.persist(
             PaymentAccountUpsertedEvent.defaultInstance
               .withDocument(updatedPaymentAccount)
@@ -1382,12 +1382,12 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                                registerCard: Boolean,
                                                transaction: Transaction)(
                                                 implicit system: ActorSystem[_], log: Logger): Effect[PaymentEvent, Option[PaymentAccount]] = {
-    keyValueDao.addKeyValue(transaction.transactionId, entityId) // add transaction id as a key for this payment account
+    keyValueDao.addKeyValue(transaction.id, entityId) // add transaction id as a key for this payment account
     val lastUpdated = now()
     var updatedPaymentAccount =
       paymentAccount.withTransactions(
         paymentAccount.transactions
-          .filterNot(_.transactionId == transaction.transactionId) :+ transaction
+          .filterNot(_.id == transaction.id) :+ transaction
       )
     transaction.status match {
       case Transaction.TransactionStatus.TRANSACTION_CREATED if transaction.redirectUrl.isDefined => // 3ds
@@ -1402,7 +1402,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         )
       case _ =>
         if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
-          log.debug("Order-{} pre authorized: {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+          log.debug("Order-{} pre authorized: {} -> {}", orderUuid, transaction.id, asJson(transaction))
           val registerCardEvents: List[PaymentEvent] =
             if(registerCard){
               transaction.cardId match {
@@ -1435,7 +1435,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               broadcastEvent(
                 CardPreAuthorizedEvent.defaultInstance
                   .withOrderUuid(orderUuid)
-                  .withTransactionId(transaction.transactionId)
+                  .withTransactionId(transaction.id)
                   .withDebitedAccount(paymentAccount.externalUuid)
                   .withDebitedAmount(transaction.amount)
                   .withLastUpdated(lastUpdated)
@@ -1443,10 +1443,10 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               PaymentAccountUpsertedEvent.defaultInstance
                 .withDocument(updatedPaymentAccount)
                 .withLastUpdated(lastUpdated)
-          ).thenRun(_ => CardPreAuthorized(transaction.transactionId) ~> replyTo)
+          ).thenRun(_ => CardPreAuthorized(transaction.id) ~> replyTo)
         }
         else {
-          log.error("Order-{} could not be pre authorized: {} -> {}", orderUuid, transaction.transactionId, asJson(transaction))
+          log.error("Order-{} could not be pre authorized: {} -> {}", orderUuid, transaction.id, asJson(transaction))
           Effect.persist(
             PaymentAccountUpsertedEvent.defaultInstance
               .withDocument(updatedPaymentAccount)

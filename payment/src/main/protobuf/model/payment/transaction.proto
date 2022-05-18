@@ -53,7 +53,7 @@ message Transaction {
 //    required string uuid = 1;
     required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
     required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
-    required string transactionId = 4;
+    required string id = 4;
     required string orderUuid = 5;
     required TransactionNature nature = 6;
     required TransactionType type = 7;

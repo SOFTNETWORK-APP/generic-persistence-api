@@ -125,7 +125,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
           ? (LoadPaymentAccount(customerUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
-              assert(paymentAccount.transactions.exists(t => t.transactionId == transactionId))
+              assert(paymentAccount.transactions.exists(t => t.id == transactionId))
               assert(paymentAccount.card.map(_.firstName).getOrElse("") == firstName)
               assert(paymentAccount.card.map(_.lastName).getOrElse("") == lastName)
               assert(paymentAccount.card.map(_.birthday).getOrElse("") == birthday)
