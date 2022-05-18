@@ -1,8 +1,8 @@
 package app.softnetwork.payment.model
 
 import app.softnetwork.security._
+import app.softnetwork.validation.RegexValidator
 import org.apache.commons.validator.routines.IBANValidator
-import app.softnetwork.persistence.auth.model.RegexValidator
 
 import scala.util.matching.Regex
 

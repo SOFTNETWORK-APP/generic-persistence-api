@@ -31,7 +31,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.1.6.21"
+ThisBuild / version := "0.1.6.22"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -244,7 +244,19 @@ lazy val payment = project.in(file("payment"))
   .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
   .enablePlugins(BuildInfoPlugin)
   .dependsOn(
-    auth % "compile->compile;test->test;it->it"
+    scheduler % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    notification % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    session % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "test->test;it->it"
   )
 
 lazy val root = project.in(file("."))

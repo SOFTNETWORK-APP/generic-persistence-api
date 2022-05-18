@@ -2,12 +2,12 @@ package app.softnetwork.payment.handlers
 
 import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
+import app.softnetwork.kv.handlers.KeyValueDao
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model._
 import app.softnetwork.persistence._
 import app.softnetwork.payment.persistence.typed.{MockPaymentAccountBehavior, PaymentAccountBehavior}
-import app.softnetwork.persistence.auth.handlers.AccountKeyDao
 import app.softnetwork.persistence.typed.CommandTypeKey
 
 import scala.concurrent.{ExecutionContextExecutor, Future, Promise}
@@ -29,12 +29,12 @@ trait MockPaymentTypeKey extends CommandTypeKey[PaymentCommand]{
 }
 
 trait PaymentHandler extends EntityPattern[PaymentCommand, PaymentResult] with PaymentTypeKey{
-  lazy val accountKeyDao: AccountKeyDao = AccountKeyDao
+  lazy val keyValueDao: KeyValueDao = KeyValueDao
 
   protected override def lookup[T](key: T)(implicit system: ActorSystem[_]): Future[Option[Recipient]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
     val promise = Promise[Option[Recipient]]
-    accountKeyDao.lookupAccount(key) onComplete {
+    keyValueDao.lookupKeyValue(key) onComplete {
       case Success(value) =>
         value match {
           case None => promise.success(Some(generateUUID(Some(key))))

@@ -2,7 +2,6 @@ package app.softnetwork.payment
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.payment.persistence.typed.{MockPaymentAccountBehavior, MockTransactionBehavior}
-import app.softnetwork.persistence.auth.persistence.typed.AccountKeyBehavior
 import app.softnetwork.persistence.query.EventProcessorStream
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
 import app.softnetwork.persistence.typed.{EntityBehavior, Singleton}
@@ -17,7 +16,6 @@ trait PaymentTestKit extends InMemoryPersistenceTestKit {_: Suite =>
     *
     */
   override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => Seq(
-    AccountKeyBehavior,
     MockPaymentAccountBehavior,
     MockTransactionBehavior
   )

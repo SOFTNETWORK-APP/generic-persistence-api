@@ -3,18 +3,20 @@ package app.softnetwork.payment.persistence.typed
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
+import app.softnetwork.kv.handlers.KeyValueDao
+import app.softnetwork.kv.persistence.typed.KeyValueBehavior
 import app.softnetwork.payment.handlers.{MockPaymentDao, PaymentDao}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model.LegalUser.LegalUserType
 import app.softnetwork.payment.model._
 import app.softnetwork.payment.spi._
-import app.softnetwork.persistence.auth.handlers.AccountKeyDao
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed._
 import app.softnetwork.serialization.asJson
 import org.slf4j.Logger
 
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
 /**
@@ -25,9 +27,14 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
 
   override protected val manifestWrapper: ManifestW = ManifestW()
 
-  lazy val accountKeyDao: AccountKeyDao = AccountKeyDao
+  lazy val keyValueDao: KeyValueDao = KeyValueDao
 
   lazy val paymentDao: PaymentDao = PaymentDao
+
+  override def init(system: ActorSystem[_])(implicit c: ClassTag[PaymentCommand]): Unit = {
+    KeyValueBehavior.init(system)
+    super.init(system)
+  }
 
   /**
     *
@@ -69,7 +76,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case some => some
             }) match {
               case Some(userId) =>
-                accountKeyDao.addAccountKey(userId, entityId)
+                keyValueDao.addKeyValue(userId, entityId)
                 (paymentAccount.walletId match {
                   case None =>
                     registerWallet = true
@@ -77,7 +84,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case some => some
                 }) match {
                   case Some(walletId) =>
-                    accountKeyDao.addAccountKey(walletId, entityId)
+                    keyValueDao.addKeyValue(walletId, entityId)
                     val createOrUpdatePaymentAccount =
                       PaymentAccountUpsertedEvent.defaultInstance
                         .withDocument(
@@ -90,7 +97,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                         .withLastUpdated(lastUpdated)
                     preRegisterCard(Some(userId), user.externalUuid) match {
                       case Some(cardPreRegistration) =>
-                        accountKeyDao.addAccountKey(cardPreRegistration.registrationId, entityId)
+                        keyValueDao.addKeyValue(cardPreRegistration.registrationId, entityId)
                         val walletEvents: List[PaymentEvent] =
                           if (registerWallet) {
                             broadcastEvent(
@@ -358,7 +365,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   ) match {
                     case None => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
                     case Some(transaction) =>
-                      accountKeyDao.addAccountKey(transaction.transactionId, entityId)
+                      keyValueDao.addKeyValue(transaction.transactionId, entityId)
                       val lastUpdated = now()
                       val updatedPaymentAccount = paymentAccount.withTransactions(
                         paymentAccount.transactions.filterNot(_.transactionId == transaction.transactionId)
@@ -429,7 +436,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                           )
                         ) match {
                           case Some(transaction) =>
-                            accountKeyDao.addAccountKey(transaction.transactionId, entityId)
+                            keyValueDao.addKeyValue(transaction.transactionId, entityId)
                             val lastUpdated = now()
                             val updatedPaymentAccount = paymentAccount.withTransactions(
                               paymentAccount.transactions.filterNot(_.transactionId == transaction.transactionId)
@@ -680,7 +687,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                     case some => some
                   }) match {
                     case Some(userId) =>
-                      accountKeyDao.addAccountKey(userId, entityId)
+                      keyValueDao.addKeyValue(userId, entityId)
                       updatedPaymentAccount = updatedPaymentAccount.resetUserId(Some(userId))
                       (paymentAccount.walletId match {
                         case None =>
@@ -690,7 +697,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                         case some => some
                       }) match {
                         case Some(walletId) =>
-                          accountKeyDao.addAccountKey(walletId, entityId)
+                          keyValueDao.addKeyValue(walletId, entityId)
                           updatedPaymentAccount = updatedPaymentAccount.resetWalletId(Some(walletId))
                           (paymentAccount.bankAccount.flatMap(_.bankAccountId) match {
                             case None =>
@@ -700,7 +707,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                             case some => some
                           }) match {
                             case Some(bankAccountId) =>
-                              accountKeyDao.addAccountKey(bankAccountId, entityId)
+                              keyValueDao.addKeyValue(bankAccountId, entityId)
                               updatedPaymentAccount = updatedPaymentAccount.resetBankAccountId(Some(bankAccountId))
 
                               var events: List[PaymentEvent] = List.empty
@@ -736,7 +743,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                               if(shouldCreateUboDeclaration){
                                 createDeclaration(userId) match {
                                   case Some(uboDeclaration) =>
-                                    accountKeyDao.addAccountKey(uboDeclaration.uboDeclarationId, entityId)
+                                    keyValueDao.addKeyValue(uboDeclaration.uboDeclarationId, entityId)
                                     updatedPaymentAccount = updatedPaymentAccount.withLegalUser(
                                       updatedPaymentAccount.getLegalUser.withUboDeclaration(uboDeclaration)
                                     )
@@ -819,10 +826,10 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case Some(documentId) =>
                     paymentAccount.documents.find(_.documentType == kycDocumentType).flatMap(_.documentId) match {
                       case Some(previous) if previous != documentId =>
-                        accountKeyDao.removeAccountKey(previous)
+                        keyValueDao.removeKeyValue(previous)
                       case _ =>
                     }
-                    accountKeyDao.addAccountKey(documentId, entityId)
+                    keyValueDao.addKeyValue(documentId, entityId)
 
                     val lastUpdated = now()
 
@@ -931,7 +938,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 createDeclaration(paymentAccount.userId.getOrElse("")) match {
                   case Some(declaration) =>
                     declarationCreated = true
-                    accountKeyDao.addAccountKey(declaration.uboDeclarationId, entityId)
+                    keyValueDao.addKeyValue(declaration.uboDeclarationId, entityId)
                     Some(declaration)
                   case _ => None
                 }
@@ -1086,7 +1093,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
           case Some(paymentAccount) =>
             paymentAccount.getLegalUser.uboDeclaration match {
               case Some(uboDeclaration) =>
-                accountKeyDao.removeAccountKey(uboDeclaration.uboDeclarationId)
+                keyValueDao.removeKeyValue(uboDeclaration.uboDeclarationId)
                 val lastUpdated = now()
                 Effect.persist(
                     broadcastEvent(
@@ -1181,7 +1188,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case Some(bankAccount) =>
                 bankAccount.bankAccountId match {
                   case Some(bankAccountId) =>
-                    accountKeyDao.removeAccountKey(bankAccountId)
+                    keyValueDao.removeKeyValue(bankAccountId)
                   case _ =>
                 }
                 val lastUpdated = now()
@@ -1195,7 +1202,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 }
                 updatedPaymentAccount.getLegalUser.uboDeclaration match {
                   case Some(declaration) =>
-                    accountKeyDao.removeAccountKey(declaration.uboDeclarationId)
+                    keyValueDao.removeKeyValue(declaration.uboDeclarationId)
                     updatedPaymentAccount = updatedPaymentAccount
                       .withLegalUser(updatedPaymentAccount.getLegalUser.copy(uboDeclaration = None))
                     events = events ++
@@ -1258,14 +1265,14 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
   private[this] def loadPaymentAccount(entityId: String, uuid: String, state: Option[PaymentAccount], user: PaymentAccount.User)(implicit system: ActorSystem[_], log: Logger): Option[PaymentAccount] = {
     state match {
       case None =>
-        accountKeyDao.lookupAccount(uuid) complete() match {
+        keyValueDao.lookupKeyValue(uuid) complete() match {
           case Success(s) =>
             s match {
               case Some(t) if t != entityId =>
                 log.warn(s"another payment account entity $t has already been associated with this uuid $uuid")
                 None
               case _ =>
-                accountKeyDao.addAccountKey(uuid, entityId)
+                keyValueDao.addKeyValue(uuid, entityId)
                 Some(PaymentAccount.defaultInstance.withUuid(entityId).withUser(user))
             }
           case Failure(f) =>
@@ -1278,7 +1285,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
           None
         }
         else{
-          accountKeyDao.addAccountKey(uuid, entityId)
+          keyValueDao.addKeyValue(uuid, entityId)
           Some(paymentAccount)
         }
     }
@@ -1292,7 +1299,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                 transaction: Transaction
                                )(implicit system: ActorSystem[_], log: Logger
   ): Effect[PaymentEvent, Option[PaymentAccount]] = {
-    accountKeyDao.addAccountKey(transaction.transactionId, entityId) // add transaction id as a key for this payment account
+    keyValueDao.addKeyValue(transaction.transactionId, entityId) // add transaction id as a key for this payment account
     val lastUpdated = now()
     var updatedPaymentAccount =
       paymentAccount.withTransactions(
@@ -1375,7 +1382,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                                registerCard: Boolean,
                                                transaction: Transaction)(
                                                 implicit system: ActorSystem[_], log: Logger): Effect[PaymentEvent, Option[PaymentAccount]] = {
-    accountKeyDao.addAccountKey(transaction.transactionId, entityId) // add transaction id as a key for this payment account
+    keyValueDao.addKeyValue(transaction.transactionId, entityId) // add transaction id as a key for this payment account
     val lastUpdated = now()
     var updatedPaymentAccount =
       paymentAccount.withTransactions(

@@ -1,43 +1,30 @@
 package app.softnetwork.persistence.auth.persistence.typed
 
 import java.util.Date
-
 import _root_.akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
-
 import akka.actor.typed.{ActorRef, ActorSystem}
-
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.concurrent.Completion
 import app.softnetwork.security.Sha512Encryption
-
 import mustache.Mustache
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.Logger
-
 import app.softnetwork.persistence.model.State
-
 import app.softnetwork.persistence.typed._
 import app.softnetwork.notification.handlers.{MockNotificationDao, NotificationDao}
-
 import org.softnetwork.notification.model._
 import org.softnetwork.notification.model.NotificationType
-
 import app.softnetwork.notification.peristence.typed._
-
 import app.softnetwork.notification.serialization._
-
 import app.softnetwork.persistence.auth.config.Settings._
-
 import app.softnetwork.persistence.auth.handlers._
-
 import app.softnetwork.persistence.auth.message._
 import Sha512Encryption._
-
 import app.softnetwork.persistence.auth.model._
-
 import app.softnetwork.persistence._
+import app.softnetwork.validation.{EmailValidator, GsmValidator}
 
-import scala.language.{postfixOps, implicitConversions}
+import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 
 /**

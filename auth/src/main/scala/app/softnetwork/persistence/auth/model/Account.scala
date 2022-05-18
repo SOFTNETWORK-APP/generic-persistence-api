@@ -1,12 +1,10 @@
 package app.softnetwork.persistence.auth.model
 
 import java.util.Date
-
 import app.softnetwork.persistence.model.Timestamped
-
 import app.softnetwork.serialization._
-
 import app.softnetwork.persistence._
+import app.softnetwork.validation.{EmailValidator, GsmValidator}
 
 
 trait Account extends Principals with AccountDecorator with Timestamped {

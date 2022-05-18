@@ -1,6 +1,6 @@
 package app.softnetwork.payment.model
 
-import app.softnetwork.persistence.auth.model.RegexValidator
+import app.softnetwork.validation.RegexValidator
 
 import scala.util.matching.Regex
 
