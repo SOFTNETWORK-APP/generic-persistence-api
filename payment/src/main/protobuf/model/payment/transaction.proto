@@ -171,9 +171,9 @@ message PayInWithCardPreAuthorizedTransaction {
 
 message CardPreRegistration{
     option (scalapb.message).extends = "ProtobufDomainObject";
-    required string registrationId = 1;
+    required string id = 1;
     required string accessKey = 2;
-    required string registrationData = 3;
+    required string preregistrationData = 3;
     required string registrationURL = 4;
     required bool registerCard = 5;
 }

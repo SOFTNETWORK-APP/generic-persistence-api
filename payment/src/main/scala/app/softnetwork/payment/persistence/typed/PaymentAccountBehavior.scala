@@ -97,7 +97,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                         .withLastUpdated(lastUpdated)
                     preRegisterCard(Some(userId), user.externalUuid) match {
                       case Some(cardPreRegistration) =>
-                        keyValueDao.addKeyValue(cardPreRegistration.registrationId, entityId)
+                        keyValueDao.addKeyValue(cardPreRegistration.id, entityId)
                         val walletEvents: List[PaymentEvent] =
                           if (registerWallet) {
                             broadcastEvent(
@@ -119,7 +119,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                               .withExternalUuid(user.externalUuid)
                               .withUserId(userId)
                               .withWalletId(walletId)
-                              .withCardPreRegistrationId(cardPreRegistration.registrationId)
+                              .withCardPreRegistrationId(cardPreRegistration.id)
                           ) ++ walletEvents :+ createOrUpdatePaymentAccount
                         ).thenRun(_ => CardPreRegistered(cardPreRegistration) ~> replyTo)
                       case _ =>
@@ -170,7 +170,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 (cardPreRegistration match {
                   case Some(registration) =>
                     import registration._
-                    createCard(registrationId, Some(registrationData))
+                    createCard(id, Some(preregistrationData))
                   case _ => paymentAccount.card.filter(_.active.getOrElse(true)).filterNot(_.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
@@ -274,7 +274,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 (cardPreRegistration match {
                   case Some(registration) =>
                     import registration._
-                    createCard(registrationId, Some(registrationData))
+                    createCard(id, Some(preregistrationData))
                   case _ => paymentAccount.card.filter(_.active.getOrElse(true)).filterNot(_.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
