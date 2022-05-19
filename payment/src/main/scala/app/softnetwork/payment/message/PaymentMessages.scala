@@ -5,9 +5,9 @@ import app.softnetwork.persistence._
 import app.softnetwork.persistence.message._
 
 object PaymentMessages {
-  sealed trait PaymentCommand extends Command
+  trait PaymentCommand extends Command
 
-  sealed trait PaymentCommandWithKey extends PaymentCommand{
+  trait PaymentCommandWithKey extends PaymentCommand{
     def key: String
   }
 
@@ -22,15 +22,14 @@ object PaymentMessages {
     val key: String = user.userId.getOrElse(generateUUID())
   }
 
-  protected[payment] case class CardPreAuthorization(orderUuid: String,
+  case class CardPreAuthorization(orderUuid: String,
                                   debitedAccount: String,
                                   debitedAmount: Int = 100,
                                   cardPreRegistration: Option[CardPreRegistration] = None,                                  javaEnabled: Boolean = false,
                                   javascriptEnabled: Boolean = true,
                                   colorDepth: Option[Int] = None,
                                   screenWidth: Option[Int] = None,
-                                  screenHeight: Option[Int] = None
-                                      )
+                                  screenHeight: Option[Int] = None)
 
   /**
     * Flow [PreRegisterCard -> ] PreAuthorizeCard
@@ -52,7 +51,14 @@ object PaymentMessages {
     val key: String = debitedAccount
   }
 
-  protected[payment] case class PreAuthorizeCardFor3DS(orderUuid: String,
+  /**
+    * hook command
+    *
+    * @param orderUuid - order unique id
+    * @param preAuthorizationId - pre authorization transaction id
+    * @param registerCard - whether the card should be registered or not
+    */
+  private[payment] case class PreAuthorizeCardFor3DS(orderUuid: String,
                                                        preAuthorizationId: String,
                                                        registerCard: Boolean = true)
     extends PaymentCommandWithKey {
@@ -90,8 +96,14 @@ object PaymentMessages {
     val key: String = debitedAccount
   }
 
-
-  protected[payment] case class PayInFor3DS(orderUuid: String, transactionId: String, registerCard: Boolean)
+  /**
+    * hook command
+    *
+    * @param orderUuid - order unique id
+    * @param transactionId - payin transaction id
+    * @param registerCard -  the card should be registered or not
+    */
+  private[payment] case class PayInFor3DS(orderUuid: String, transactionId: String, registerCard: Boolean)
     extends PaymentCommandWithKey {
     lazy val key: String = transactionId
   }
@@ -103,7 +115,6 @@ object PaymentMessages {
                    ) extends PaymentCommandWithKey {
     val key: String = creditedAccount
   }
-
 
   case class Refund(orderUuid: String, payInTransactionId: String, refundAmount: Int, reasonMessage: String, initializedByClient: Boolean)
     extends PaymentCommandWithKey {
@@ -119,10 +130,13 @@ object PaymentMessages {
     val key: String = debitedAccount
   }
 
-
   /** Commands related to the payment account */
 
-  protected[payment] case class LoadPaymentAccount(account: String)
+  /**
+    * private api command
+    * @param account - payment account reference
+    */
+  private[payment] case class LoadPaymentAccount(account: String)
     extends PaymentCommandWithKey {
     lazy val key: String = account
   }
@@ -134,7 +148,7 @@ object PaymentMessages {
 
   /** Commands related to the bank account */
 
-  protected[payment] case class BankAccountCommand(bankAccount: BankAccount,
+  case class BankAccountCommand(bankAccount: BankAccount,
                                                    naturalUser: Option[PaymentUser]= None,
                                                    legalUser: Option[LegalUser] = None,
                                                    acceptedTermsOfPSP: Option[Boolean] = None)
@@ -146,16 +160,21 @@ object PaymentMessages {
     val key: String = creditedAccount
   }
 
-
   case class LoadBankAccount(creditedAccount: String) extends PaymentCommandWithKey {
     val key: String = creditedAccount
   }
-
 
   case class DeleteBankAccount(creditedAccount: String) extends PaymentCommandWithKey {
     val key: String = creditedAccount
   }
 
+  case class LoadCards(debitedAccount: String) extends PaymentCommandWithKey {
+    val key: String = debitedAccount
+  }
+
+  case class DisableCard(debitedAccount: String, cardId: String) extends PaymentCommandWithKey {
+    val key: String = debitedAccount
+  }
 
   /** Commands related to the kyc documents */
 
@@ -165,8 +184,13 @@ object PaymentMessages {
     val key: String = creditedAccount
   }
 
-
-  protected[payment] case class UpdateKycDocumentStatus(kycDocumentId: String,
+  /**
+    * hook command
+    *
+    * @param kycDocumentId - kyc document id
+    * @param status - kyc document status
+    */
+  private[payment] case class UpdateKycDocumentStatus(kycDocumentId: String,
                                                         status: Option[KycDocument.KycDocumentStatus] = None)
     extends PaymentCommandWithKey{
     lazy val key: String = kycDocumentId
@@ -177,7 +201,6 @@ object PaymentMessages {
     val key: String = creditedAccount
   }
 
-
   /** Commands related to the ubo declaration */
 
   case class CreateOrUpdateUbo(creditedAccount: String, ubo: UboDeclaration.UltimateBeneficialOwner)
@@ -185,33 +208,40 @@ object PaymentMessages {
     val key: String = creditedAccount
   }
 
-
   case class ValidateUboDeclaration(creditedAccount: String) extends PaymentCommandWithKey {
     val key: String = creditedAccount
   }
-
 
   case class GetUboDeclaration(creditedAccount: String) extends PaymentCommandWithKey {
     val key: String = creditedAccount
   }
 
-
   case class DeleteUboDeclaration(creditedAccount: String) extends PaymentCommandWithKey {
     val key: String = creditedAccount
   }
 
-
-  protected[payment] case class UpdateUboDeclarationStatus(uboDeclarationId: String,
+  /**
+    * hook command
+    *
+    * @param uboDeclarationId - ubo declaration id
+    * @param status - ubo declaration status
+    */
+  private[payment] case class UpdateUboDeclarationStatus(uboDeclarationId: String,
                                         status: Option[UboDeclaration.UboDeclarationStatus] = None)
     extends PaymentCommandWithKey{
     lazy val key: String = uboDeclarationId
   }
 
-  protected[payment] case class ValidateRegularUser(userId: String) extends PaymentCommandWithKey {
+  /**
+    * hook command
+    *
+    * @param userId - user id
+    */
+  private[payment] case class ValidateRegularUser(userId: String) extends PaymentCommandWithKey {
     lazy val key: String = userId
   }
 
-  sealed trait PaymentResult extends CommandResult
+  trait PaymentResult extends CommandResult
 
   case class CardPreRegistered(cardPreRegistration: CardPreRegistration) extends PaymentResult
 
@@ -254,6 +284,10 @@ object PaymentMessages {
   case object BankAccountDeleted extends PaymentResult
 
   case class TransactionLoaded(transaction: Transaction) extends PaymentResult
+
+  case class CardsLoaded(cards: Seq[Card]) extends PaymentResult
+
+  case object CardDisabled extends PaymentResult
 
   class PaymentError(override val message: String) extends ErrorMessage(message) with PaymentResult
 
@@ -321,4 +355,7 @@ object PaymentMessages {
 
   case object IllegalTransactionAmount extends PaymentError("IllegalTransactionAmount")
 
+  case object CardsNotLoaded extends PaymentError("CardsNotLoaded")
+
+  case object CardNotDisabled extends PaymentError("CardNotDisabled")
 }

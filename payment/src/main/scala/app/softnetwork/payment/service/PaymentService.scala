@@ -3,7 +3,7 @@ package app.softnetwork.payment.service
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import app.softnetwork.api.server.DefaultComplete
-import app.softnetwork.payment.handlers.PaymentHandler
+import app.softnetwork.payment.handlers.GenericPaymentHandler
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.serialization._
 import app.softnetwork.payment.config.Settings
@@ -40,8 +40,7 @@ trait PaymentService extends SessionService
   with DefaultComplete
   with Json4sSupport
   with StrictLogging
-  with Service[PaymentCommand, PaymentResult]
-  with PaymentHandler {
+  with Service[PaymentCommand, PaymentResult] {_: GenericPaymentHandler =>
 
   implicit def serialization: Serialization.type = jackson.Serialization
 
@@ -73,6 +72,23 @@ trait PaymentService extends SessionService
       // check if a session exists
       _requiredSession(ec) { _ =>
         pathEnd {
+          get {
+            entity(as[LoadCards]) {cmd =>
+              run(cmd) completeWith {
+                case r: CardsLoaded =>
+                  complete(
+                    HttpResponse(
+                      StatusCodes.OK,
+                      entity = r.cards
+                    )
+                  )
+                case r: CardsNotLoaded.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+                case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                case _ => complete(HttpResponse(StatusCodes.BadRequest))
+              }
+            }
+          } ~
           post {
             entity(as[PreRegisterCard]){ cmd =>
               run(cmd) completeWith {
@@ -89,7 +105,18 @@ trait PaymentService extends SessionService
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
             }
-          }
+          } ~
+            delete {
+              entity(as[DisableCard]) { cmd =>
+                run(cmd) completeWith {
+                  case r: CardDisabled.type => complete(HttpResponse(StatusCodes.OK))
+                  case r: CardNotDisabled.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+                  case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                  case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                  case _ => complete(HttpResponse(StatusCodes.BadRequest))
+                }
+              }
+            }
         }
       }
     }

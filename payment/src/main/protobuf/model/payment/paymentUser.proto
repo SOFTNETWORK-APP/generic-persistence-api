@@ -113,7 +113,7 @@ message PaymentAccount {
         PaymentUser naturalUser = 4;
         LegalUser legalUser = 5;
     }
-    optional Card card = 6;
+    repeated Card cards = 6;
     optional BankAccount bankAccount = 7;
     repeated KycDocument documents = 8;
     required PaymentAccountStatus paymentAccountStatus = 9 [default = DOCUMENTS_KO];

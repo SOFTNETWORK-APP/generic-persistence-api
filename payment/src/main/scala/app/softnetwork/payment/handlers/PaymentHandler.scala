@@ -28,7 +28,7 @@ trait MockPaymentTypeKey extends CommandTypeKey[PaymentCommand]{
     MockPaymentAccountBehavior.TypeKey
 }
 
-trait PaymentHandler extends EntityPattern[PaymentCommand, PaymentResult] with PaymentTypeKey{
+trait GenericPaymentHandler extends EntityPattern[PaymentCommand, PaymentResult] {_:  CommandTypeKey[PaymentCommand] =>
   lazy val keyValueDao: KeyValueDao = KeyValueDao
 
   protected override def lookup[T](key: T)(implicit system: ActorSystem[_]): Future[Option[Recipient]] = {
@@ -53,11 +53,15 @@ trait PaymentHandler extends EntityPattern[PaymentCommand, PaymentResult] with P
 
 }
 
-trait MockPaymentHandler extends PaymentHandler with MockPaymentTypeKey
+trait PaymentHandler extends GenericPaymentHandler with PaymentTypeKey
+
+object PaymentHandler extends PaymentHandler
+
+trait MockPaymentHandler extends GenericPaymentHandler with MockPaymentTypeKey
 
 object MockPaymentHandler extends MockPaymentHandler
 
-trait PaymentDao{ _: PaymentHandler =>
+trait GenericPaymentDao{ _: GenericPaymentHandler =>
 
   protected[payment] def loadPaymentAccount(key: String)(implicit system: ActorSystem[_]
   ): Future[Option[PaymentAccount]] = {
@@ -82,6 +86,6 @@ trait PaymentDao{ _: PaymentHandler =>
 
 }
 
-object PaymentDao extends PaymentDao with PaymentHandler
+object PaymentDao extends GenericPaymentDao with PaymentHandler
 
-object MockPaymentDao extends PaymentDao with MockPaymentHandler
+object MockPaymentDao extends GenericPaymentDao with MockPaymentHandler

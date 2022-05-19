@@ -73,6 +73,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
 
   var uboDeclarationId: String = _
 
+  var cardId: String = _
+
   "Payment handler" must {
     "pre register card" in {
       ? (PreRegisterCard(
@@ -126,14 +128,28 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.transactions.exists(t => t.id == transactionId))
-              assert(paymentAccount.card.map(_.firstName).getOrElse("") == firstName)
-              assert(paymentAccount.card.map(_.lastName).getOrElse("") == lastName)
-              assert(paymentAccount.card.map(_.birthday).getOrElse("") == birthday)
+              assert(paymentAccount.cards.size == 1)
+              cardId = paymentAccount.cards.head.id
+              assert(paymentAccount.cards.map(_.firstName).head == firstName)
+              assert(paymentAccount.cards.map(_.lastName).head == lastName)
+              assert(paymentAccount.cards.map(_.birthday).head == birthday)
             case other => fail(other.toString)
           }
         case other => fail(other.toString)
       }
+    }
 
+    "load cards" in {
+      ?(LoadCards(customerUuid)) await {
+        case result: CardsLoaded =>
+          val card = result.cards.find(_.id == cardId)
+          assert(card.isDefined)
+          assert(card.map(_.firstName).getOrElse("") == firstName)
+          assert(card.map(_.lastName).getOrElse("") == lastName)
+          assert(card.map(_.birthday).getOrElse("") == birthday)
+          assert(card.exists(_.getActive))
+        case other => fail(other.toString)
+      }
     }
 
     "not create bank account with wrong iban" in {
@@ -513,5 +529,18 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
       }
     }
 
+    "disable card" in {
+      ?(DisableCard(customerUuid, cardId)) await {
+        case CardDisabled =>
+          ?(LoadCards(customerUuid)) await {
+            case result: CardsLoaded =>
+              val card = result.cards.find(_.id == cardId)
+              assert(card.isDefined)
+              assert(!card.exists(_.getActive))
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
   }
 }

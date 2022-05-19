@@ -105,6 +105,13 @@ trait PaymentProvider {
 
   /**
     *
+    * @param cardId - the id of the card to disable
+    * @return the card disabled or none
+    */
+  def disableCard(cardId: String): Option[Card]
+
+  /**
+    *
     * @param maybePreAuthorizationTransaction - pre authorization transaction
     * @param idempotency                      - whether to use an idempotency key for this request or not
     * @return pre authorization transaction result

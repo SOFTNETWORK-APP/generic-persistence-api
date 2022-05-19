@@ -329,17 +329,35 @@ trait MockMangoPayProvider extends MangoPayProvider {
     * @return card
     */
   override def loadCard(cardId: String): Option[Card] =
-    CardRegistrations.values.find(_.getCardId == cardId) match {
-      case Some(_) =>
-        Some(
-          Card.defaultInstance
-            .withId(cardId)
-            .withAlias("##################")
-            .withExpirationDate(new SimpleDateFormat("MMyy").format(now()))
-            .withActive(true)
-        )
+    Cards.get(cardId) match {
+      case None =>
+        CardRegistrations.values.find(_.getCardId == cardId) match {
+          case Some(_) =>
+            Cards = Cards.updated(cardId, Card.defaultInstance
+              .withId(cardId)
+              .withAlias("##################")
+              .withExpirationDate(new SimpleDateFormat("MMyy").format(now()))
+              .withActive(true)
+            )
+            Cards.get(cardId)
+          case _ => None
+        }
+      case some => some
+    }
+
+  /**
+    *
+    * @param cardId - the id of the card to disable
+    * @return the card disabled or none
+    */
+  override def disableCard(cardId: String): Option[Card] = {
+    Cards.get(cardId) match {
+      case Some(card) =>
+        Cards = Cards.updated(card.id, card.withActive(false))
+        Cards.get(card.id)
       case _ => None
     }
+  }
 
   /**
     *

@@ -5,7 +5,7 @@ import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.kv.handlers.KeyValueDao
 import app.softnetwork.kv.persistence.typed.KeyValueBehavior
-import app.softnetwork.payment.handlers.{MockPaymentDao, PaymentDao}
+import app.softnetwork.payment.handlers.{GenericPaymentDao, MockPaymentDao, PaymentDao}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model.LegalUser.LegalUserType
@@ -29,7 +29,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
 
   lazy val keyValueDao: KeyValueDao = KeyValueDao
 
-  lazy val paymentDao: PaymentDao = PaymentDao
+  lazy val paymentDao: GenericPaymentDao = PaymentDao
 
   override def init(system: ActorSystem[_])(implicit c: ClassTag[PaymentCommand]): Unit = {
     KeyValueBehavior.init(system)
@@ -171,7 +171,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case Some(registration) =>
                     import registration._
                     createCard(id, Some(preregistrationData))
-                  case _ => paymentAccount.card.filter(_.active.getOrElse(true)).filterNot(_.expired).map(_.id)
+                  case _ => paymentAccount.cards.find(card => card.active.getOrElse(true) && !card.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
                     preAuthorizeCard(
@@ -275,7 +275,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   case Some(registration) =>
                     import registration._
                     createCard(id, Some(preregistrationData))
-                  case _ => paymentAccount.card.filter(_.active.getOrElse(true)).filterNot(_.expired).map(_.id)
+                  case _ => paymentAccount.cards.find(card => card.active.getOrElse(true) && !card.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
                     // load credited payment account
@@ -1246,6 +1246,34 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
           case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
         }
 
+      case _: LoadCards =>
+        state match {
+          case Some(paymentAccount) => Effect.none.thenRun(_ => CardsLoaded(paymentAccount.cards) ~> replyTo)
+          case _ => Effect.none.thenRun(_ => CardsNotLoaded ~> replyTo)
+        }
+
+      case cmd: DisableCard =>
+        state match {
+          case Some(paymentAccount) =>
+            paymentAccount.cards.find(_.id == cmd.cardId) match {
+              case Some(card) if card.getActive =>
+                disableCard(cmd.cardId) match {
+                  case Some(disabledCard) =>
+                    val lastUpdated = now()
+                    Effect.persist(
+                      PaymentAccountUpsertedEvent.defaultInstance.withDocument(
+                        paymentAccount
+                          .withCards(paymentAccount.cards.filterNot(_.id == cmd.cardId) :+ disabledCard)
+                          .withLastUpdated(lastUpdated)
+                      ).withLastUpdated(lastUpdated)
+                    ).thenRun(_ => CardDisabled ~> replyTo)
+                  case _ => Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
+                }
+              case _ => Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
+            }
+          case _ => Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
+        }
+
       case _ => super.handleCommand(entityId, state, command, replyTo, timers)
     }
   }
@@ -1331,7 +1359,9 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                           card.withFirstName(user.firstName).withLastName(user.lastName).withBirthday(user.birthday)
                         case _ => card
                       }
-                      updatedPaymentAccount = updatedPaymentAccount.withCard(updatedCard)
+                      updatedPaymentAccount = updatedPaymentAccount.withCards(
+                        updatedPaymentAccount.cards.filterNot(_.id == updatedCard.id) :+ updatedCard
+                      )
                       broadcastEvent(
                         CardRegisteredEvent.defaultInstance
                           .withOrderUuid(orderUuid)
@@ -1414,7 +1444,9 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                           card.withFirstName(user.firstName).withLastName(user.lastName).withBirthday(user.birthday)
                         case _ => card
                       }
-                      updatedPaymentAccount = updatedPaymentAccount.withCard(updatedCard)
+                      updatedPaymentAccount = updatedPaymentAccount.withCards(
+                        updatedPaymentAccount.cards.filterNot(_.id == updatedCard.id) :+ updatedCard
+                      )
                       broadcastEvent(
                         CardRegisteredEvent.defaultInstance
                           .withOrderUuid(orderUuid)
@@ -1623,5 +1655,5 @@ case object PaymentAccountBehavior extends PaymentAccountBehavior with MangoPayP
 
 case object MockPaymentAccountBehavior extends PaymentAccountBehavior with MockMangoPayProvider{
   override def persistenceId = s"Mock${super.persistenceId}"
-  override lazy val paymentDao: PaymentDao = MockPaymentDao
+  override lazy val paymentDao: GenericPaymentDao = MockPaymentDao
 }

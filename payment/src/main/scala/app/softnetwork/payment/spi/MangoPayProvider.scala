@@ -459,6 +459,32 @@ trait MangoPayProvider extends PaymentProvider {
 
   /**
     *
+    * @param cardId - the id of the card to disable
+    * @return the card disabled or none
+    */
+  override def disableCard(cardId: String): Option[Card] = {
+    Try(MangoPay().getCardApi.get(cardId)) match {
+      case Success(card) =>
+        Try(MangoPay().getCardApi.disable(card)) match {
+          case Success(disabledCard) => Some(
+            Card.defaultInstance
+              .withId(cardId)
+              .withAlias(card.getAlias)
+              .withExpirationDate(card.getExpirationDate)
+              .withActive(disabledCard.isActive)
+          )
+          case Failure(f)    =>
+            mlog.error(f.getMessage, f)
+            None
+        }
+      case Failure(f)    =>
+        mlog.error(f.getMessage, f)
+        None
+    }
+  }
+
+  /**
+    *
     * @param maybePreAuthorizationTransaction - pre authorization transaction
     * @param idempotency                      - whether to use an idempotency key for this request or not
     * @return re authorization transaction result
