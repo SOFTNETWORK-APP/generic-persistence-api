@@ -23,14 +23,17 @@ object MangoPay extends StrictLogging{
                      debug: Boolean,
                      technicalErrors: Set[String],
                      secureModeReturnRoute: String,
+                     secureModePrefix: String = "3ds",
                      hooksReturnRoute: String,
-                     directDebitReturnRoute: String){
+                     hooksPrefix: String = "hooks",
+                     directDebitReturnRoute: String,
+                     directDebitPrefix: String = "directDebit"){
 
-    lazy val secureModeReturnUrl = s"""${Settings.BaseUrl}/$secureModeReturnRoute"""
+    lazy val secureModeReturnUrl = s"""${Settings.BaseUrl}/$secureModeReturnRoute/$secureModePrefix"""
 
-    lazy val hooksBaseUrl = s"""${Settings.BaseUrl}/$hooksReturnRoute"""
+    lazy val hooksBaseUrl = s"""${Settings.BaseUrl}/$hooksReturnRoute/$hooksPrefix"""
 
-    lazy val directDebitReturnUrl = s"""${Settings.BaseUrl}/$directDebitReturnRoute"""
+    lazy val directDebitReturnUrl = s"""${Settings.BaseUrl}/$directDebitReturnRoute/$directDebitPrefix"""
   }
 
   def apply(): MangoPayApi = {

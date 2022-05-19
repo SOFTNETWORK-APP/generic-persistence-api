@@ -184,7 +184,7 @@ trait PaymentService extends SessionService
     }
   }
 
-  lazy val `3ds`: Route = pathPrefix(secureModeReturnRoute){
+  lazy val `3ds`: Route = pathPrefix(secureModePrefix){
     pathPrefix(Segment) {orderUuid =>
       parameters("preAuthorizationId", "registerCard".as[Boolean]) {(preAuthorizationId, registerCard) =>
         run(PreAuthorizeCardFor3DS(orderUuid, preAuthorizationId, registerCard)) completeWith {
@@ -211,7 +211,7 @@ trait PaymentService extends SessionService
     }
   }
 
-  lazy val hooks: Route = pathPrefix(hooksReturnRoute){
+  lazy val hooks: Route = pathPrefix(hooksPrefix){
     pathEnd{
       parameters("EventType", "RessourceId") {(eventType, ressourceId) =>
         Option(EventType.valueOf(eventType)) match {
