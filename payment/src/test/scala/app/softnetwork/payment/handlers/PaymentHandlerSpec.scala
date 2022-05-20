@@ -507,17 +507,6 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
       }
     }
 
-    "delete declaration" in {
-      ?(DeleteUboDeclaration(sellerUuid)) await {
-        case UboDeclarationDeleted =>
-          ? (GetUboDeclaration(sellerUuid)) await {
-            case UboDeclarationNotLoaded =>
-            case other => fail(other.toString)
-          }
-        case other => fail(other.toString)
-      }
-    }
-
     "delete bank account" in {
       ?(DeleteBankAccount(sellerUuid)) await {
         case BankAccountDeleted =>

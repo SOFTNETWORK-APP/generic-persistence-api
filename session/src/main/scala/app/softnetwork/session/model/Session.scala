@@ -23,13 +23,13 @@ trait SessionDecorator {_: Session =>
 
   private var dirty: Boolean = false
 
-  def clear() = {
+  def clear(): Session = {
     val theId = id
     data.clear()
     this += CookieName -> theId
   }
 
-  def isDirty = dirty
+  def isDirty: Boolean = dirty
 
   def get(key: String): Option[String] = data.get(key)
 
@@ -51,7 +51,7 @@ trait SessionDecorator {_: Session =>
 
   def apply(key: String): Any = data(key)
 
-  lazy val id = data(CookieName)
+  lazy val id: String = data(CookieName)
 
   lazy val admin: Boolean = get(adminKey).exists(_.toBoolean)
 }
@@ -59,11 +59,11 @@ trait SessionDecorator {_: Session =>
 trait SessionCompanion {
   val adminKey = "admin"
 
-  val sessionConfig = {
+  val sessionConfig: SessionConfig = {
     SessionConfig.default(CookieSecret)
   }
 
-  implicit val sessionManager = new SessionManager[Session](sessionConfig)
+  implicit val sessionManager: SessionManager[Session] = new SessionManager[Session](sessionConfig)
 
   def apply(): Session =
     Session.defaultInstance

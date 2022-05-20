@@ -23,7 +23,6 @@ object PaymentMessages {
   }
 
   case class CardPreAuthorization(orderUuid: String,
-                                  debitedAccount: String,
                                   debitedAmount: Int = 100,
                                   cardPreRegistration: Option[CardPreRegistration] = None,                                  javaEnabled: Boolean = false,
                                   javascriptEnabled: Boolean = true,
@@ -41,7 +40,7 @@ object PaymentMessages {
     * @param ipAddress - ip address
     * @param browserInfo - browser info
     */
-  case class PreAuthorizeCard(orderUuid: String,
+  private[payment] case class PreAuthorizeCard(orderUuid: String,
                               debitedAccount: String,
                               debitedAmount: Int = 100,
                               cardPreRegistration: Option[CardPreRegistration] = None,                                  javaEnabled: Boolean = false,
@@ -216,10 +215,6 @@ object PaymentMessages {
     val key: String = creditedAccount
   }
 
-  case class DeleteUboDeclaration(creditedAccount: String) extends PaymentCommandWithKey {
-    val key: String = creditedAccount
-  }
-
   /**
     * hook command
     *
@@ -274,8 +269,6 @@ object PaymentMessages {
   case class UboDeclarationLoaded(declaration: UboDeclaration) extends PaymentResult
 
   case object UboDeclarationStatusUpdated extends PaymentResult
-
-  case object UboDeclarationDeleted extends PaymentResult
 
   case object RegularUserValidated extends PaymentResult
 
@@ -339,11 +332,9 @@ object PaymentMessages {
 
   case object UboDeclarationNotAskedForValidation extends PaymentError("UboDeclarationNotAskedForValidation")
 
-  case object UboDeclarationNotLoaded extends PaymentError("UboDeclarationNotLoaded")
+  case object UboDeclarationNotFound extends PaymentError("UboDeclarationNotFound")
 
   case object UboDeclarationStatusNotUpdated extends PaymentError("UboDeclarationStatusNotUpdated")
-
-  case object UboDeclarationNotDeleted extends PaymentError("UboDeclarationNotDeleted")
 
   case object BankAccountNotFound extends PaymentError("BankAccountNotFound")
 

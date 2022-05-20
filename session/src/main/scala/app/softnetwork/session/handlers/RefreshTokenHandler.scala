@@ -49,7 +49,7 @@ trait RefreshTokenDao[T] extends RefreshTokenStorage[T]{_: RefreshTokenHandler[T
       s"now: ${System.currentTimeMillis()}"
     )
     this !? StoreRefreshToken(data) map {
-      case r: RefreshTokenStored[_] => ()
+      case _: RefreshTokenStored[_] => ()
       case other => throw new Throwable(other.toString)
     }
   }
@@ -57,7 +57,7 @@ trait RefreshTokenDao[T] extends RefreshTokenStorage[T]{_: RefreshTokenHandler[T
   override def remove(selector: String): Future[Unit] = {
     logger.info(s"Removing token for selector: $selector")
     this !? RemoveRefreshToken(selector) map {
-      case r: RefreshTokenRemoved => ()
+      case _: RefreshTokenRemoved => ()
       case other => throw new Throwable(other.toString)
     }
   }

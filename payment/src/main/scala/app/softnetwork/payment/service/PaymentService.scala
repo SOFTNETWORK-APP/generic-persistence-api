@@ -70,28 +70,26 @@ trait PaymentService extends SessionService
     // check anti CSRF token
     randomTokenCsrfProtection(checkHeader) {
       // check if a session exists
-      _requiredSession(ec) { _ =>
+      _requiredSession(ec) { session =>
         pathEnd {
           get {
-            entity(as[LoadCards]) {cmd =>
-              run(cmd) completeWith {
-                case r: CardsLoaded =>
-                  complete(
-                    HttpResponse(
-                      StatusCodes.OK,
-                      entity = r.cards
-                    )
+            run(LoadCards(session.id)) completeWith {
+              case r: CardsLoaded =>
+                complete(
+                  HttpResponse(
+                    StatusCodes.OK,
+                    entity = r.cards
                   )
-                case r: CardsNotLoaded.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
-                case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
-                case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
-                case _ => complete(HttpResponse(StatusCodes.BadRequest))
-              }
+                )
+              case r: CardsNotLoaded.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+              case _ => complete(HttpResponse(StatusCodes.BadRequest))
             }
           } ~
           post {
             entity(as[PreRegisterCard]){ cmd =>
-              run(cmd) completeWith {
+              run(cmd.copy(user = cmd.user.withUserId(session.id))) completeWith {
                 case r: CardPreRegistered         =>
                   complete(
                     HttpResponse(
@@ -108,7 +106,7 @@ trait PaymentService extends SessionService
           } ~
             delete {
               entity(as[DisableCard]) { cmd =>
-                run(cmd) completeWith {
+                run(cmd.copy(debitedAccount = session.id)) completeWith {
                   case r: CardDisabled.type => complete(HttpResponse(StatusCodes.OK))
                   case r: CardNotDisabled.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
                   case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
@@ -179,7 +177,7 @@ trait PaymentService extends SessionService
                       run(
                         PreAuthorizeCard(
                           orderUuid,
-                          debitedAccount,
+                          session.id,
                           debitedAmount,
                           cardPreRegistration,
                           javaEnabled,
@@ -391,23 +389,21 @@ trait PaymentService extends SessionService
           get {
             run(GetUboDeclaration(session.id)) completeWith {
               case r: UboDeclarationLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.declaration.view))
+              case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
               case _ => complete(HttpResponse(StatusCodes.BadRequest))
             }
           } ~ post {
             entity(as[UboDeclaration.UltimateBeneficialOwner]) { ubo =>
               run(CreateOrUpdateUbo(session.id, ubo)) completeWith {
                 case r: UboCreatedOrUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.ubo))
+                case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
             }
           } ~ put {
             run(ValidateUboDeclaration(session.id)) completeWith {
               case _: UboDeclarationAskedForValidation.type => complete(HttpResponse(StatusCodes.OK))
-              case _ => complete(HttpResponse(StatusCodes.BadRequest))
-            }
-          } ~ delete {
-            run(DeleteUboDeclaration(session.id)) completeWith {
-              case _: UboDeclarationDeleted.type => complete(HttpResponse(StatusCodes.OK))
+              case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
               case _ => complete(HttpResponse(StatusCodes.BadRequest))
             }
           }

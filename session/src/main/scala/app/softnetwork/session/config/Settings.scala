@@ -13,9 +13,9 @@ object Settings {
     new IllegalStateException(err.entries.map(_.messageWithPath).mkString(","))
 
   object Session {
-    val CookieName = config getString "akka.http.session.cookie.name"
+    val CookieName: String = config getString "akka.http.session.cookie.name"
 
-    val CookieSecret = config getString "akka.http.session.server-secret"
+    val CookieSecret: String = config getString "akka.http.session.server-secret"
 
     require(CookieName.nonEmpty, "akka.http.session.cookie.name must be non-empty")
     require(CookieSecret.nonEmpty, "akka.http.session.server-secret must be non-empty")

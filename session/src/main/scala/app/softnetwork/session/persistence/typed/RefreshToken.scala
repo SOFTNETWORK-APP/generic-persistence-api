@@ -25,7 +25,7 @@ import scala.language.postfixOps
 object RefreshToken {
   @SerialVersionUID(0L)
   case class RefreshTokenState[T <: SessionData](data: RefreshTokenData[T]) extends State {
-    val uuid = data.selector
+    val uuid: String = data.selector
   }
 }
 
@@ -58,10 +58,10 @@ trait RefreshTokenBehavior[T <: SessionData]
         Effect.persist[RefreshTokenEvent, Option[RefreshTokenState[T]]](RefreshTokenRemoved(cmd.selector))
           .thenRun(_ => RefreshTokenRemoved(cmd.selector) ~> replyTo).thenStop()
 
-      case cmd: LookupRefreshToken   =>
+      case _: LookupRefreshToken   =>
         Effect.none.thenRun(_ =>           
           LookupRefreshTokenResult(
-            state.map((s) => RefreshTokenLookupResult(
+            state.map(s => RefreshTokenLookupResult(
               s.data.tokenHash,
               s.data.expires,
               () => s.data.forSession

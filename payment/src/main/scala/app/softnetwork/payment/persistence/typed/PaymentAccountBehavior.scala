@@ -979,7 +979,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                     Effect.persist(events).thenRun(_ => UboNotCreatedOrUpdated ~> replyTo)
                 }
 
-              case _ => Effect.none.thenRun(_ => UboNotCreatedOrUpdated ~> replyTo)
+              case _ => Effect.none.thenRun(_ => UboDeclarationNotFound ~> replyTo)
             }
 
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
@@ -989,6 +989,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         state match {
           case Some(paymentAccount) =>
             paymentAccount.getLegalUser.uboDeclaration match {
+              case None => Effect.none.thenRun(_ => UboDeclarationNotFound ~> replyTo)
               case Some(uboDeclaration) if uboDeclaration.status.isUboDeclarationCreated ||
                 uboDeclaration.status.isUboDeclarationIncomplete =>
                 validateDeclaration(paymentAccount.userId.getOrElse(""), uboDeclaration.uboDeclarationId) match {
@@ -1020,7 +1021,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
           case Some(paymentAccount) =>
             paymentAccount.getLegalUser.uboDeclaration match {
               case Some(uboDeclaration) => Effect.none.thenRun(_ => UboDeclarationLoaded(uboDeclaration) ~> replyTo)
-              case _ => Effect.none.thenRun(_ => UboDeclarationNotLoaded ~> replyTo)
+              case _ => Effect.none.thenRun(_ => UboDeclarationNotFound ~> replyTo)
             }
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
@@ -1084,31 +1085,6 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 }
               case _ =>
                 Effect.none.thenRun(_ => UboDeclarationStatusNotUpdated ~> replyTo)
-            }
-          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
-        }
-
-      case _: DeleteUboDeclaration =>
-        state match {
-          case Some(paymentAccount) =>
-            paymentAccount.getLegalUser.uboDeclaration match {
-              case Some(uboDeclaration) =>
-                keyValueDao.removeKeyValue(uboDeclaration.uboDeclarationId)
-                val lastUpdated = now()
-                Effect.persist(
-                    broadcastEvent(
-                      UboDeclarationUpdatedEvent.defaultInstance
-                        .withExternalUuid(paymentAccount.externalUuid)
-                        .withLastUpdated(lastUpdated)
-                        .clearUboDeclaration
-                    ) :+ PaymentAccountUpsertedEvent.defaultInstance
-                      .withDocument(
-                        paymentAccount.withLegalUser(paymentAccount.getLegalUser.copy(uboDeclaration = None))
-                      )
-                      .withLastUpdated(lastUpdated)
-                ).thenRun(_ => UboDeclarationDeleted ~> replyTo)
-
-              case _ => Effect.none.thenRun(_ => UboDeclarationNotDeleted ~> replyTo)
             }
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }

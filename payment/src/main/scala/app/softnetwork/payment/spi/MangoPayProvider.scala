@@ -1640,15 +1640,15 @@ trait MangoPayProvider extends PaymentProvider {
     */
   override def createDeclaration(userId: String): Option[UboDeclaration] = {
     Try(MangoPay().getUboDeclarationApi.create(userId)) match {
-      case Success(s) =>
+      case Success(declaration) =>
         Some(
           UboDeclaration.defaultInstance
-            .withUboDeclarationId(s.getId)
-            .withStatus(s.getStatus)
-            .withCreatedDate(s.getCreationDate)
+            .withUboDeclarationId(declaration.getId)
+            .withStatus(declaration.getStatus)
+            .withCreatedDate(declaration.getCreationDate)
             .copy(
-              reason = Option(s.getReason),
-              message = Option(s.getMessage)
+              reason = Option(declaration.getReason),
+              message = Option(declaration.getMessage)
             )
         )
       case Failure(f) =>
@@ -1738,23 +1738,28 @@ trait MangoPayProvider extends PaymentProvider {
             )
             .withUbos(
               s.getUbos.asScala.map(ubo => {
-                UboDeclaration.UltimateBeneficialOwner(
-                  ubo.getId,
-                  ubo.getFirstName,
-                  ubo.getLastName,
-                  computeBirthday(ubo.getBirthday).getOrElse(""),
-                  ubo.getNationality.name(),
-                  ubo.getAddress.getAddressLine1,
-                  ubo.getAddress.getCity,
-                  ubo.getAddress.getPostalCode,
-                  ubo.getAddress.getRegion,
-                  ubo.getAddress.getCountry.name(),
-                  Option(ubo.getBirthplace) match {
-                    case Some(b) => Some(UboDeclaration.UltimateBeneficialOwner.BirthPlace(b.getCity, b.getCountry.name()))
-                    case _ => None
-                  },
-                  ubo.getActive
-                )
+                UboDeclaration.UltimateBeneficialOwner.defaultInstance
+                  .withId(ubo.getId)
+                  .withFirstName(ubo.getFirstName)
+                  .withLastName(ubo.getLastName)
+                  .withBirthday(computeBirthday(ubo.getBirthday).getOrElse(""))
+                  .withNationality(ubo.getNationality.name())
+                  .withAddress(ubo.getAddress.getAddressLine1)
+                  .withCity(ubo.getAddress.getCity)
+                  .withPostalCode(ubo.getAddress.getPostalCode)
+                  .withRegion(ubo.getAddress.getRegion)
+                  .withCountry(ubo.getAddress.getCountry.name())
+                  .withActive(ubo.getActive)
+                  .copy(
+                    birthPlace = Option(ubo.getBirthplace) match {
+                      case Some(b) => Some(
+                        UboDeclaration.UltimateBeneficialOwner.BirthPlace.defaultInstance
+                          .withCity(b.getCity)
+                          .withCountry(b.getCountry.name())
+                      )
+                      case _ => None
+                    }
+                  )
               }
             ))
         )
