@@ -1699,7 +1699,7 @@ trait MangoPayProvider extends PaymentProvider {
         ubo.setActive(active)
 
         {
-          if(id.isEmpty) {
+          if(id.trim.isEmpty) {
             Try(MangoPay().getUboDeclarationApi.createUbo(userId, uboDeclarationId, ubo))
           }
           else{
