@@ -1,6 +1,7 @@
 package app.softnetwork.persistence.scalatest
 
 import akka.actor.testkit.typed.scaladsl.{ActorTestKit, TestProbe}
+import akka.actor.typed.eventstream.EventStream.Subscribe
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.MemberStatus
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, EntityRef, EntityTypeKey}
@@ -18,6 +19,7 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 
 import java.net.InetAddress
 import scala.language.implicitConversions
+import scala.reflect.ClassTag
 
 /**
   * Created by smanciot on 04/01/2020.
@@ -136,6 +138,10 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
   }
 
   def createTestProbe[M](): TestProbe[M] = testKit.createTestProbe()
+
+  protected def subscribeProbe[T](probe: TestProbe[T])(implicit classTag: ClassTag[T]): Unit = {
+    typedSystem().eventStream.tell(Subscribe(probe.ref))
+  }
 
   def spawn[T](behavior: Behavior[T]): ActorRef[T] = testKit.spawn(behavior)
 

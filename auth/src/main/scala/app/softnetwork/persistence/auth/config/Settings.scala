@@ -12,37 +12,37 @@ object Settings extends StrictLogging {
 
   lazy val config: Config = ConfigFactory.load()
 
-  val Path = config.getString("auth.path")
+  val Path: String = config.getString("auth.path")
 
-  val BaseUrl = config.getString("auth.baseUrl")
+  val BaseUrl: String = config.getString("auth.baseUrl")
 
-  val ResetPasswordUrl = config.getString("auth.resetPasswordUrl")
+  val ResetPasswordUrl: String = config.getString("auth.resetPasswordUrl")
 
-  val RegenerationOfThePasswordResetToken = config.getBoolean("auth.regenerationOfThePasswordResetToken")
+  val RegenerationOfThePasswordResetToken: Boolean = config.getBoolean("auth.regenerationOfThePasswordResetToken")
 
-  val MailFrom = config.getString("notification.mail.from")
+  val MailFrom: String = config.getString("notification.mail.from")
 
-  val MailName = config.getString("notification.mail.name")
+  val MailName: String = config.getString("notification.mail.name")
 
-  val ActivationEnabled = config.getBoolean("auth.activation.enabled")
+  val ActivationEnabled: Boolean = config.getBoolean("auth.activation.enabled")
 
-  val ActivationTokenExpirationTime = config.getInt("auth.activation.token.expirationTime")
+  val ActivationTokenExpirationTime: Int = config.getInt("auth.activation.token.expirationTime")
 
-  val VerificationCodeSize = config.getInt("auth.verification.code.size")
+  val VerificationCodeSize: Int = config.getInt("auth.verification.code.size")
 
-  val VerificationCodeExpirationTime = config.getInt("auth.verification.code.expirationTime")
+  val VerificationCodeExpirationTime: Int = config.getInt("auth.verification.code.expirationTime")
 
-  val VerificationTokenExpirationTime = config.getInt("auth.verification.token.expirationTime")
+  val VerificationTokenExpirationTime: Int = config.getInt("auth.verification.token.expirationTime")
 
-  val PushClientId = config.getString("notification.push.clientId")
+  val PushClientId: String = config.getString("notification.push.clientId")
 
-  val SMSClientId = config.getString("notification.sms.clientId")
+  val SMSClientId: String = config.getString("notification.sms.clientId")
 
-  val SMSName = config.getString("notification.sms.name")
+  val SMSName: String = config.getString("notification.sms.name")
 
-  val MaxLoginFailures = config.getInt("auth.maxLoginFailures")
+  val MaxLoginFailures: Int = config.getInt("auth.maxLoginFailures")
 
-  def passwordRules(config: Config = config) = Configs[PasswordRules].get(config, "auth.password").toEither match{
+  def passwordRules(config: Config = config): PasswordRules = Configs[PasswordRules].get(config, "auth.password").toEither match{
     case Left(configError)  =>
       logger.error(s"Something went wrong with the provided arguments $configError")
       PasswordRules()
@@ -65,8 +65,8 @@ object Settings extends StrictLogging {
     case Right(administratorsConfig) => administratorsConfig
   }
 
-  val VerificationGsmEnabled = config.getBoolean("auth.verification.gsm.enabled")
+  val VerificationGsmEnabled: Boolean = config.getBoolean("auth.verification.gsm.enabled")
 
-  val VerificationEmailEnabled = config.getBoolean("auth.verification.email.enabled")
+  val VerificationEmailEnabled: Boolean = config.getBoolean("auth.verification.email.enabled")
 }
 

@@ -2,14 +2,11 @@ package app.softnetwork.persistence.auth.handlers
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
-
 import app.softnetwork.persistence.auth.message._
-
 import app.softnetwork.persistence.auth.persistence.typed.AccountKeyBehavior
-
 import app.softnetwork.persistence._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 /**
   * Created by smanciot on 17/04/2020.
@@ -26,7 +23,7 @@ object AccountKeyHandler extends AccountKeyHandler
 trait AccountKeyDao {_: AccountKeyHandler =>
 
   def lookupAccount(key: String)(implicit system: ActorSystem[_]): Future[Option[String]] = {
-    implicit val ec = system.executionContext
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     this ? (generateUUID(Some(key)), LookupAccountKey) map {
       case r: AccountKeyFound =>
         import r._

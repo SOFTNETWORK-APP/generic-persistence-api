@@ -27,7 +27,7 @@ import app.softnetwork.persistence.auth.handlers.MockGenerator._
 class AccountServiceSpec extends AccountService with MockBasicAccountTypeKey with AnyWordSpecLike
   with InMemoryPersistenceTestKit {
 
-  implicit lazy val system = typedSystem()
+  implicit lazy val system: ActorSystem[_] = typedSystem()
 
   private val username = "test"
 
@@ -59,7 +59,7 @@ class AccountServiceSpec extends AccountService with MockBasicAccountTypeKey wit
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     MockBasicAccountBehavior,
     SchedulerBehavior
   )

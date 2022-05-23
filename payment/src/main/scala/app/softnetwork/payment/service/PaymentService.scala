@@ -3,11 +3,12 @@ package app.softnetwork.payment.service
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import app.softnetwork.api.server.DefaultComplete
-import app.softnetwork.payment.handlers.GenericPaymentHandler
+import app.softnetwork.payment.handlers.{GenericPaymentHandler, MockPaymentHandler}
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.serialization._
 import app.softnetwork.payment.config.Settings
 import Settings.MangoPayConfig._
+import akka.actor.typed.ActorSystem
 import app.softnetwork.config.{Settings => CommonSettings}
 import akka.http.javadsl.model.headers.{AcceptLanguage, UserAgent}
 import akka.http.scaladsl.model.headers.Accept
@@ -17,7 +18,6 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import app.softnetwork.persistence.message.ErrorMessage
 import app.softnetwork.persistence.service.Service
-import app.softnetwork.serialization._
 import app.softnetwork.session.service.SessionService
 import com.softwaremill.session.CsrfDirectives.randomTokenCsrfProtection
 import com.softwaremill.session.CsrfOptions.checkHeader
@@ -44,7 +44,7 @@ trait PaymentService extends SessionService
 
   implicit def serialization: Serialization.type = jackson.Serialization
 
-  implicit def formats: Formats = commonFormats ++ paymentFormats
+  implicit def formats: Formats = paymentFormats
 
   import Session._
 
@@ -58,10 +58,7 @@ trait PaymentService extends SessionService
         `3ds` ~
         bank ~
         declaration ~
-        proofOfIdentity ~
-        proofOfRegistration ~
-        articlesOfAssociation ~
-        shareholderDeclaration ~
+        kyc ~
         payment
     }
   }
@@ -105,9 +102,9 @@ trait PaymentService extends SessionService
             }
           } ~
             delete {
-              entity(as[DisableCard]) { cmd =>
-                run(cmd.copy(debitedAccount = session.id)) completeWith {
-                  case r: CardDisabled.type => complete(HttpResponse(StatusCodes.OK))
+              parameter("cardId") { cardId =>
+                run(DisableCard(session.id, cardId)) completeWith {
+                  case _: CardDisabled.type => complete(HttpResponse(StatusCodes.OK))
                   case r: CardNotDisabled.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
                   case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                   case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
@@ -126,6 +123,14 @@ trait PaymentService extends SessionService
       // check if a session exists
       _requiredSession(ec) { session =>
         pathEnd {
+          get{
+            run(LoadPaymentAccount(session.id)) completeWith {
+              case r: PaymentAccountLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.paymentAccount.view))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+              case _ => complete(HttpResponse(StatusCodes.BadRequest))
+            }
+          } ~
           post {
             optionalHeaderValueByType[AcceptLanguage]((): Unit) { language =>
               optionalHeaderValueByType[Accept]((): Unit) { acceptHeader =>
@@ -222,7 +227,7 @@ trait PaymentService extends SessionService
     pathPrefix(Segment) {orderUuid =>
       parameters("preAuthorizationId", "registerCard".as[Boolean]) {(preAuthorizationId, registerCard) =>
         run(PreAuthorizeCardFor3DS(orderUuid, preAuthorizationId, registerCard)) completeWith {
-          case r: CardPreAuthorized =>
+          case _: CardPreAuthorized =>
             complete(
               HttpResponse(
                 StatusCodes.OK
@@ -351,18 +356,13 @@ trait PaymentService extends SessionService
                 run(CreateOrUpdateBankAccount(
                   session.id,
                   bankAccount,
-                  if(legalUser.isDefined){
-                    Some(PaymentAccount.User.LegalUser(legalUser.get))
-                  }
-                  else if(naturalUser.isDefined){
-                    Some(PaymentAccount.User.NaturalUser(naturalUser.get))
-                  }
-                  else{
-                    None
+                  user match {
+                    case Left(naturalUser) => Some(PaymentAccount.User.NaturalUser(naturalUser))
+                    case Right(legalUser) => Some(PaymentAccount.User.LegalUser(legalUser))
                   },
                   acceptedTermsOfPSP
                 )) completeWith {
-                  case r: BankAccountCreatedOrUpdated.type => complete(HttpResponse(StatusCodes.OK))
+                  case _: BankAccountCreatedOrUpdated.type => complete(HttpResponse(StatusCodes.OK))
                   case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case _ => complete(HttpResponse(StatusCodes.BadRequest))
                 }
@@ -412,46 +412,74 @@ trait PaymentService extends SessionService
     }
   }
 
-  lazy val proofOfIdentity: Route = addDocument("proofOfIdentity", KycDocument.KycDocumentType.KYC_IDENTITY_PROOF)
-
-  lazy val proofOfRegistration: Route = addDocument("proofOfRegistration", KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF)
-
-  lazy val articlesOfAssociation: Route = addDocument("articlesOfAssociation", KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION)
-
-  lazy val shareholderDeclaration: Route = addDocument("shareholderDeclaration", KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION)
-
-  private[this] def addDocument(prefix: String, documentType: KycDocument.KycDocumentType): Route = pathPrefix(prefix){
-    // check anti CSRF token
-    randomTokenCsrfProtection(checkHeader) {
-      // check if a session exists
-      _requiredSession(ec) { session =>
-        pathEnd {
-          extractRequestContext { ctx =>
-            implicit val materializer: Materializer = ctx.materializer
-            fileUploadAll("pages"){
-              case files: Seq[(FileInfo, Source[ByteString, Any])] =>
-                val pages = for(file <- files) yield {
-                  val bos = new ByteArrayOutputStream()
-                  val future = file._2.map { s =>
-                    bos.write(s.toArray)
-                  }.runWith(Sink.ignore)
-                  Await.result(future, CommonSettings.DefaultTimeout) // FIXME
-                  val bytes = bos.toByteArray
-                  bos.close()
-                  bytes
-                }
-                run(AddKycDocument(session.id, pages, documentType)) completeWith {
-                  case r: KycDocumentAdded => complete(HttpResponse(StatusCodes.OK, entity = r))
-                  case r: KycDocumentNotAdded.type  => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
-                  case r: AcceptedTermsOfPSPRequired.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
-                  case _ => complete(HttpResponse(StatusCodes.BadRequest))
-                }
-              case _ => complete(HttpResponse(StatusCodes.BadRequest))
-            }
+  lazy val kyc: Route = {
+    pathPrefix("kyc"){
+      parameter("documentType"){ documentType =>
+        val maybeKycDocumentType: Option[KycDocument.KycDocumentType] =
+          documentType match {
+            case "KYC_IDENTITY_PROOF" => Some(KycDocument.KycDocumentType.KYC_IDENTITY_PROOF)
+            case "KYC_REGISTRATION_PROOF" => Some(KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF)
+            case "KYC_SHAREHOLDER_DECLARATION" => Some(KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION)
+            case "KYC_ARTICLES_OF_ASSOCIATION" => Some(KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION)
+            case _ => None
           }
+        maybeKycDocumentType match {
+          case None =>
+            complete(HttpResponse(StatusCodes.BadRequest))
+          case Some(kycDocumentType) =>
+            // check anti CSRF token
+            randomTokenCsrfProtection(checkHeader) {
+              // check if a session exists
+              _requiredSession(ec) { session =>
+                pathEnd {
+                  get {
+                    run(LoadKycDocumentStatus(session.id, kycDocumentType)) completeWith {
+                      case r: KycDocumentStatusLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.report))
+                      case r: KycDocumentStatusNotLoaded.type  => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                      case _ => complete(HttpResponse(StatusCodes.BadRequest))
+                    }
+                  } ~
+                    post {
+                      extractRequestContext { ctx =>
+                        implicit val materializer: Materializer = ctx.materializer
+                        fileUploadAll("pages"){
+                          case files: Seq[(FileInfo, Source[ByteString, Any])] =>
+                            val pages = for(file <- files) yield {
+                              val bos = new ByteArrayOutputStream()
+                              val future = file._2.map { s =>
+                                bos.write(s.toArray)
+                              }.runWith(Sink.ignore)
+                              Await.result(future, CommonSettings.DefaultTimeout) // FIXME
+                              val bytes = bos.toByteArray
+                              bos.close()
+                              bytes
+                            }
+                            run(AddKycDocument(session.id, pages, kycDocumentType)) completeWith {
+                              case r: KycDocumentAdded => complete(HttpResponse(StatusCodes.OK, entity = r))
+                              case r: KycDocumentNotAdded.type  => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                              case r: AcceptedTermsOfPSPRequired.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                              case _ => complete(HttpResponse(StatusCodes.BadRequest))
+                            }
+                          case _ => complete(HttpResponse(StatusCodes.BadRequest))
+                        }
+                      }
+                    }
+                }
+              }
+            }
         }
       }
     }
   }
 
+}
+
+trait MockPaymentService extends PaymentService with MockPaymentHandler
+
+object MockPaymentService {
+  def apply(_system: ActorSystem[_]): MockPaymentService = {
+    new MockPaymentService {
+      override implicit def system: ActorSystem[_] = _system
+    }
+  }
 }

@@ -611,9 +611,42 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
             case Some(paymentAccount) =>
               import cmd._
 
+              val updatedUser: PaymentAccount.User =
+                user match {
+                  case None => paymentAccount.user
+                  case Some(updatedUser) =>
+                    if(paymentAccount.user.isLegalUser && updatedUser.isLegalUser) {
+                      val previousLegalUser = paymentAccount.getLegalUser
+                      val updatedLegalUser = updatedUser.legalUser.get
+                      PaymentAccount.User.LegalUser(
+                        updatedLegalUser.copy(
+                          legalRepresentative = updatedLegalUser.legalRepresentative.copy(
+                            userId = previousLegalUser.legalRepresentative.userId,
+                            walletId = previousLegalUser.legalRepresentative.walletId
+                          ),
+                          uboDeclaration = previousLegalUser.uboDeclaration,
+                          lastAcceptedTermsOfPSP = previousLegalUser.lastAcceptedTermsOfPSP
+                        )
+                      )
+                    }
+                    else if(paymentAccount.user.isNaturalUser && updatedUser.isNaturalUser){
+                      val previousNaturalUser = paymentAccount.getNaturalUser
+                      val updatedNaturalUser = updatedUser.naturalUser.get
+                      PaymentAccount.User.NaturalUser(
+                        updatedNaturalUser.copy(
+                          userId = previousNaturalUser.userId,
+                          walletId = previousNaturalUser.walletId
+                        )
+                      )
+                    }
+                    else{
+                      updatedUser
+                    }
+                }
+
               var updatedPaymentAccount =
                 paymentAccount
-                  .withUser(user.getOrElse(paymentAccount.user))
+                  .withUser(updatedUser)
                   .withBankAccount(bankAccount)
 
               updatedPaymentAccount.user.legalUser match {
@@ -1234,12 +1267,12 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
             paymentAccount.cards.find(_.id == cmd.cardId) match {
               case Some(card) if card.getActive =>
                 disableCard(cmd.cardId) match {
-                  case Some(disabledCard) =>
+                  case Some(_) =>
                     val lastUpdated = now()
                     Effect.persist(
                       PaymentAccountUpsertedEvent.defaultInstance.withDocument(
                         paymentAccount
-                          .withCards(paymentAccount.cards.filterNot(_.id == cmd.cardId) :+ disabledCard)
+                          .withCards(paymentAccount.cards.filterNot(_.id == cmd.cardId) :+ card.withActive(false))
                           .withLastUpdated(lastUpdated)
                       ).withLastUpdated(lastUpdated)
                     ).thenRun(_ => CardDisabled ~> replyTo)

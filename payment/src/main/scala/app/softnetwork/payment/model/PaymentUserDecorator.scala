@@ -1,8 +1,22 @@
 package app.softnetwork.payment.model
 
-trait PaymentUserDecorator{_: PaymentUser =>
-    lazy val externalUuid: String = customerUuid.getOrElse(vendorUuid.getOrElse(sellerUuid.getOrElse("undefined")))
-    lazy val customerUuid: Option[String] = account.customer
-    lazy val vendorUuid: Option[String] = account.vendor
-    lazy val sellerUuid: Option[String] = account.seller
+trait PaymentUserDecorator{self: PaymentUser =>
+  lazy val view: PaymentUserView = PaymentUserView(self)
+}
+
+case class PaymentUserView(firstName: String,
+                           lastName: String,
+                           email: String,
+                           nationality: String,
+                           birthday: String,
+                           countryOfResidence: String,
+                           userId: Option[String],
+                           walletId: Option[String],
+                           externalUuid: String)
+
+object PaymentUserView{
+  def apply(paymentUser: PaymentUser): PaymentUserView = {
+    import paymentUser._
+    PaymentUserView(firstName, lastName, email, nationality, birthday, countryOfResidence, userId, walletId, externalUuid)
+  }
 }

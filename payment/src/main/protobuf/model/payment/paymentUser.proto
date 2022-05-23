@@ -35,11 +35,7 @@ message BankAccount {
     required string bic = 8;
     required bool encoded = 9 [default = true];
     required bool active = 10 [default = true];
-    oneof account {
-        string customer = 11;
-        string vendor = 12;
-        string seller = 13;
-    }
+    required string externalUuid = 11;
     extensions 100 to max;
 }
 
@@ -54,11 +50,7 @@ message PaymentUser {
     required string countryOfResidence = 6 [default = "FR"];
     optional string userId = 7;
     optional string walletId = 8;
-    oneof account {
-        string customer = 9;
-        string vendor = 10;
-        string seller = 11;
-    }
+    required string externalUuid = 9;
     extensions 100 to max;
 }
 

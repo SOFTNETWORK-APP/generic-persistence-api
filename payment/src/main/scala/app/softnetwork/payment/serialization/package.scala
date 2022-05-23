@@ -16,7 +16,7 @@ import scala.language.implicitConversions
   */
 package object serialization {
 
-  val paymentFormats =
+  val paymentFormats: Formats = commonFormats ++
       Seq(
         GeneratedEnumSerializer(KycDocument.KycDocumentStatus.enumCompanion),
         GeneratedEnumSerializer(KycDocument.KycDocumentType.enumCompanion),

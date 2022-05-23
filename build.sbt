@@ -31,7 +31,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.1.6.28"
+ThisBuild / version := "0.1.6.29"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -225,6 +225,16 @@ lazy val auth = project.in(file("auth"))
     serverTestkit % "test->test;it->it"
   )
 
+lazy val authTestkit = project.in(file("auth/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    auth % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "compile->compile;test->test;it->it"
+  )
+
 lazy val resource = project.in(file("resource"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
@@ -237,6 +247,16 @@ lazy val resource = project.in(file("resource"))
   )
   .dependsOn(
     serverTestkit % "test->test;it->it"
+  )
+
+lazy val sessionTestkit = project.in(file("session/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    session % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "compile->compile;test->test;it->it"
   )
 
 lazy val payment = project.in(file("payment"))
@@ -256,7 +276,17 @@ lazy val payment = project.in(file("payment"))
     server % "compile->compile;test->test;it->it"
   )
   .dependsOn(
-    serverTestkit % "test->test;it->it"
+    sessionTestkit % "test->test;it->it"
+  )
+
+lazy val paymentTestkit = project.in(file("payment/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    payment % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    sessionTestkit % "compile->compile;test->test;it->it"
   )
 
 lazy val root = project.in(file("."))
@@ -277,10 +307,13 @@ lazy val root = project.in(file("."))
     elastic,
     server,
     serverTestkit,
+    sessionTestkit,
     sequence,
     auth,
+    authTestkit,
     resource,
-    payment
+    payment,
+    paymentTestkit
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)

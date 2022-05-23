@@ -1,16 +1,12 @@
 package app.softnetwork.resource
 
-import akka.actor.testkit.typed.scaladsl.TestProbe
 import akka.actor.typed.ActorSystem
-import akka.actor.typed.eventstream.EventStream.Subscribe
 import app.softnetwork.persistence.query.{EventProcessorStream, InMemoryJournalProvider}
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
 import app.softnetwork.persistence.typed.{EntityBehavior, Singleton}
 import app.softnetwork.resource.persistence.query.ResourceToLocalFileSystemProcessorStream
 import app.softnetwork.resource.persistence.typed.ResourceBehavior
 import org.scalatest.Suite
-
-import scala.reflect.ClassTag
 
 trait ResourceTestKit extends InMemoryPersistenceTestKit {_: Suite =>
 
@@ -41,9 +37,5 @@ trait ResourceTestKit extends InMemoryPersistenceTestKit {_: Suite =>
         override implicit def system: ActorSystem[_] = sys
       }
     )
-
-  protected def subscribeProbe[T](probe: TestProbe[T])(implicit classTag: ClassTag[T]): Unit = {
-    typedSystem().eventStream.tell(Subscribe(probe.ref))
-  }
 
 }

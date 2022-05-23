@@ -42,7 +42,7 @@ trait BankAccountDecorator {self: BankAccount =>
     }
   }
 
-  lazy val tag: String = account.vendor.getOrElse(account.seller.getOrElse(account.customer.getOrElse("")))
+  lazy val tag: String = externalUuid
 
   lazy val view: BankAccountView = BankAccountView(self)
 }
@@ -51,12 +51,12 @@ case class BankAccountView(createdDate: java.util.Date,
                            lastUpdated: java.util.Date,
                            bankAccountId: Option[String] = None,
                            ownerName: String,
-                           ownerAddress: Address,
+                           ownerAddress: AddressView,
                            iban: String,
                            bic: String,
                            encoded: Boolean,
                            active: Boolean,
-                           account: BankAccount.Account = BankAccount.Account.Empty)
+                           externalUuid: String)
 
 object BankAccountView {
   def apply(bankAccount: BankAccount): BankAccountView = {
@@ -73,12 +73,12 @@ object BankAccountView {
       lastUpdated,
       bankAccountId,
       ownerName,
-      ownerAddress,
+      ownerAddress.view,
       iban,
       bic,
       encoded,
       active,
-      account
+      externalUuid
     )
   }
 }

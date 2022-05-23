@@ -1,12 +1,12 @@
 package app.softnetwork.payment.handlers
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.payment.PaymentTestKit
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model.PaymentAccount.User
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner.BirthPlace
-import app.softnetwork.payment.model.{Address, BankAccount, CardPreRegistration, KycDocument, LegalUser, PaymentAccount, PaymentUser, UboDeclaration}
+import app.softnetwork.payment.model._
+import app.softnetwork.payment.scalatest.PaymentTestKit
 import org.scalatest.wordspec.AnyWordSpecLike
 
 class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with PaymentTestKit {
@@ -32,7 +32,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
   val email = "demo@softnetwork.fr"
   val naturalUser: PaymentUser =
     PaymentUser.defaultInstance
-      .withCustomer(customerUuid)
+      .withExternalUuid(customerUuid)
       .withFirstName(firstName)
       .withLastName(lastName)
       .withBirthday(birthday)
@@ -57,7 +57,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     .withSiret(siret)
     .withLegalName(ownerName)
     .withLegalUserType(LegalUser.LegalUserType.SOLETRADER)
-    .withLegalRepresentative(naturalUser.withSeller(sellerUuid))
+    .withLegalRepresentative(naturalUser.withExternalUuid(sellerUuid))
     .withLegalRepresentativeAddress(ownerAddress)
     .withHeadQuartersAddress(ownerAddress)
 
@@ -176,7 +176,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
       ? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(None, ownerName, ownerAddress, iban, bic),
-        Some(User.NaturalUser(naturalUser.withSeller(sellerUuid)))
+        Some(User.NaturalUser(naturalUser.withExternalUuid(sellerUuid)))
       )) await {
         case BankAccountCreatedOrUpdated =>
           ? (LoadPaymentAccount(sellerUuid)) await {
@@ -202,7 +202,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
           iban,
           bic
         ),
-        Some(User.NaturalUser(naturalUser.withLastName("anotherLastName").withSeller(sellerUuid)))
+        Some(User.NaturalUser(naturalUser.withLastName("anotherLastName").withExternalUuid(sellerUuid)))
       )) await {
         case BankAccountCreatedOrUpdated =>
           ? (LoadPaymentAccount(sellerUuid)) await {
@@ -449,6 +449,10 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
           preAuthorizationId = transactionId
           ? (PayInWithCardPreAuthorized(preAuthorizationId, sellerUuid)) await {
             case _: PaidIn =>
+              ? (PayOut(orderUuid, sellerUuid, 100)) await {
+                case _: PaidOut =>
+                case other => fail(other.toString)
+              }
             case other => fail(other.toString)
           }
         case other =>  fail(other.toString)
@@ -486,7 +490,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
       ? (CreateOrUpdateBankAccount(
         vendorUuid,
         BankAccount(None, ownerName, ownerAddress, iban, bic),
-        Some(User.NaturalUser(naturalUser.withVendor(vendorUuid)))
+        Some(User.NaturalUser(naturalUser.withExternalUuid(vendorUuid)))
       )) await {
         case BankAccountCreatedOrUpdated =>
           ? (LoadPaymentAccount(vendorUuid)) await {

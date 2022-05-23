@@ -50,6 +50,7 @@ message KycDocument {
         KYC_ADDRESS_PROOF = 4;
     }
     option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "KycDocumentDecorator";
     required KycDocumentType documentType = 1 [default = KYC_IDENTITY_PROOF];
     required KycDocumentStatus documentStatus = 2 [default = KYC_DOCUMENT_NOT_SPECIFIED];
     optional string documentId = 3;
@@ -67,6 +68,7 @@ message UboDeclaration {
             required string country = 2 [default = "FR"];
         }
         option (scalapb.message).extends = "ProtobufDomainObject";
+        option (scalapb.message).extends = "UltimateBeneficialOwnerDecorator";
         optional string id = 1;
         required string firstName = 2;
         required string lastName = 3;

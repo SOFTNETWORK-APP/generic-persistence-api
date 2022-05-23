@@ -85,4 +85,46 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
   }
 
   lazy val hasAcceptedTermsOfPSP: Boolean = !legalUser || getLegalUser.lastAcceptedTermsOfPSP.isDefined
+
+  lazy val view: PaymentAccountView = PaymentAccountView(self)
+}
+
+case class PaymentAccountView(createdDate: java.util.Date,
+                              lastUpdated: java.util.Date,
+                              naturalUser: Option[PaymentUserView] = None,
+                              legalUser: Option[LegalUserView] = None,
+                              cards: Seq[CardView] = Seq.empty,
+                              bankAccount: Option[BankAccountView] = None,
+                              documents: Seq[KycDocumentView] = Seq.empty,
+                              paymentAccountStatus: PaymentAccount.PaymentAccountStatus,
+                              mandateId: Option[String] = None,
+                              mandateStatus: Option[PaymentAccount.MandateStatus] = None,
+                              transactions: Seq[TransactionView] = Seq.empty)
+
+object PaymentAccountView{
+  def apply(paymentAccount: PaymentAccount): PaymentAccountView = {
+    import paymentAccount._
+    PaymentAccountView(createdDate,
+      lastUpdated,
+      if(user.isNaturalUser){
+        Option(getNaturalUser.view)
+      }
+      else{
+        None
+      },
+      if(user.isLegalUser){
+        Option(getLegalUser.view)
+      }
+      else{
+        None
+      },
+      cards.map(_.view),
+      bankAccount.map(_.view),
+      documents.map(_.view),
+      paymentAccountStatus,
+      mandateId,
+      mandateStatus,
+      transactions.map(_.view)
+    )
+  }
 }

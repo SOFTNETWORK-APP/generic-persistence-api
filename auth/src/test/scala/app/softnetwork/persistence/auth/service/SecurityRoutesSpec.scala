@@ -1,43 +1,28 @@
 package app.softnetwork.persistence.auth.service
 
 import akka.actor.typed.ActorSystem
-
-import akka.http.scaladsl.model.headers.{Cookie, RawHeader}
 import akka.http.scaladsl.model.{HttpHeader, StatusCodes}
-
-import akka.http.scaladsl.testkit.{InMemoryPersistenceScalatestRouteTest, PersistenceScalatestRouteTest}
-import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
+import akka.http.scaladsl.testkit.InMemoryPersistenceScalatestRouteTest
 import app.softnetwork.persistence.typed.EntityBehavior
 import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
-
-import de.heikoseeberger.akkahttpjson4s.Json4sSupport
-
 import org.scalatest.wordspec.AnyWordSpecLike
-
 import app.softnetwork.serialization._
-
 import app.softnetwork.persistence.auth.config.Settings
 import app.softnetwork.persistence.auth.handlers.{AccountKeyDao, MockGenerator}
-
 import app.softnetwork.persistence.auth.message._
 import app.softnetwork.persistence.auth.serialization._
-
-import app.softnetwork.persistence.auth.model.{AccountView, AccountStatus}
-
+import app.softnetwork.persistence.auth.model.{AccountStatus, AccountView}
 import app.softnetwork.persistence.auth.persistence.typed.MockBasicAccountBehavior
 import app.softnetwork.session.persistence.typed.SessionRefreshTokenBehavior
-
 import app.softnetwork.api.server.config.Settings._
+import org.json4s.Formats
 
 /**
   * Created by smanciot on 22/03/2018.
   */
-class SecurityRoutesSpec extends SecurityRoutes with AnyWordSpecLike with InMemoryPersistenceScalatestRouteTest
-  with Json4sSupport {
+class SecurityRoutesSpec extends MockSecurityRoutes with AnyWordSpecLike with InMemoryPersistenceScalatestRouteTest {
 
-  override implicit def formats = authFormats
-
-  override def apiRoutes(system: ActorSystem[_]) = MockBasicAccountService(system).route
+  override implicit def formats: Formats = authFormats
 
   private val username = "smanciot"
 
@@ -55,7 +40,7 @@ class SecurityRoutesSpec extends SecurityRoutes with AnyWordSpecLike with InMemo
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     MockBasicAccountBehavior,
     SessionRefreshTokenBehavior,
     SchedulerBehavior
@@ -239,19 +224,4 @@ class SecurityRoutesSpec extends SecurityRoutes with AnyWordSpecLike with InMemo
     }
   }
 
-  def extractCookies(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
-    headers.filter((header) => {
-      val name = header.lowercaseName()
-      log.info(s"$name:${header.value}")
-      name == "set-cookie"
-    }).flatMap((header) => {
-      val cookie = header.value().split("=")
-      val name = cookie.head
-      val value = cookie.tail.mkString("").split(";").head
-      var ret: Seq[HttpHeader] = Seq(Cookie(name, value))
-      if(name == "XSRF-TOKEN")
-        ret = ret ++ Seq(RawHeader("X-XSRF-TOKEN", value))
-      ret
-    })
-  }
 }
