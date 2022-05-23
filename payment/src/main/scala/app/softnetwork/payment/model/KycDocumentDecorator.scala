@@ -17,9 +17,9 @@ object KycDocumentView{
   def apply(kycDocument: KycDocument): KycDocumentView = {
     import kycDocument._
     KycDocumentView(
-      documentType,
-      documentStatus,
-      documentId,
+      `type`,
+      status,
+      id,
       refusedReasonType,
       refusedReasonMessage,
       createdDate,

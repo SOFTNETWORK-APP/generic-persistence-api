@@ -210,7 +210,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         bankAccount.setTag(tag)
         bankAccount.setType(BankAccountType.IBAN)
         bankAccount.setUserId(userId)
-        BankAccounts.values.find(bankAccount => bankAccount.isActive && bankAccount.getId == bankAccountId.getOrElse("")) match {
+        BankAccounts.values.find(bankAccount => bankAccount.isActive && bankAccount.getId == id.getOrElse("")) match {
           case Some(ba) if checkEquality(bankAccount, ba) =>
             bankAccount.setId(ba.getId)
             BankAccounts = BankAccounts.updated(bankAccount.getId, bankAccount)
@@ -785,8 +785,8 @@ trait MockMangoPayProvider extends MangoPayProvider {
     Documents = Documents.updated(
       documentId,
       KycDocumentValidationReport.defaultInstance
-        .withUserId(userId)
-        .withDocumentId(documentId)
+        .withId(documentId)
+        .withType(documentType)
         .withStatus(KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATION_ASKED)
     )
     Some(documentId)
@@ -801,8 +801,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
   override def loadDocumentStatus(userId: String, documentId: String): KycDocumentValidationReport =
     Documents.getOrElse(documentId,
       KycDocumentValidationReport.defaultInstance
-        .withUserId(userId)
-        .withDocumentId(documentId)
+        .withId(documentId)
         .withStatus(KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED)
     )
 
@@ -974,10 +973,10 @@ trait MockMangoPayProvider extends MangoPayProvider {
     */
   override def createDeclaration(userId: String): Option[UboDeclaration] = {
     val uboDeclaration = UboDeclaration.defaultInstance
-      .withUboDeclarationId(generateUUID())
+      .withId(generateUUID())
       .withStatus(UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_CREATED)
       .withCreatedDate(now())
-    UboDeclarations = UboDeclarations.updated(uboDeclaration.uboDeclarationId, uboDeclaration)
+    UboDeclarations = UboDeclarations.updated(uboDeclaration.id, uboDeclaration)
     Some(uboDeclaration)
   }
 

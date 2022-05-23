@@ -19,7 +19,7 @@ object UboDeclarationView {
   def apply(uboDeclaration: UboDeclaration): UboDeclarationView = {
     import uboDeclaration._
     UboDeclarationView(
-      uboDeclarationId,
+      id,
       status,
       reason,
       message,

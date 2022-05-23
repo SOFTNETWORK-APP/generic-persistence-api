@@ -71,7 +71,7 @@ object BankAccountView {
     BankAccountView(
       createdDate,
       lastUpdated,
-      bankAccountId,
+      id,
       ownerName,
       ownerAddress.view,
       iban,

@@ -35,9 +35,9 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
     legalUserType.getOrElse(LegalUser.LegalUserType.Unrecognized(-1)) ==
       newlegalUserType.getOrElse(LegalUser.LegalUserType.Unrecognized(-1))
 
-  lazy val documentsValidated: Boolean = documents.forall(_.documentStatus.isKycDocumentValidated)
+  lazy val documentsValidated: Boolean = documents.forall(_.status.isKycDocumentValidated)
 
-  lazy val documentOutdated: Boolean = documents.exists(_.documentStatus.isKycDocumentOutOfDate)
+  lazy val documentOutdated: Boolean = documents.exists(_.status.isKycDocumentOutOfDate)
 
   lazy val mandateActivated: Boolean = mandateId.isDefined &&
     mandateStatus.exists(s => s.isMandateActive || s.isMandateSubmitted)
@@ -80,8 +80,8 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
     }
   }
 
-  def resetBankAccountId(bankAccountId: Option[String] = None): PaymentAccount = {
-    self.copy(bankAccount = self.bankAccount.map(_.copy(bankAccountId = bankAccountId)))
+  def resetBankAccountId(id: Option[String] = None): PaymentAccount = {
+    self.copy(bankAccount = self.bankAccount.map(_.copy(id = id)))
   }
 
   lazy val hasAcceptedTermsOfPSP: Boolean = !legalUser || getLegalUser.lastAcceptedTermsOfPSP.isDefined

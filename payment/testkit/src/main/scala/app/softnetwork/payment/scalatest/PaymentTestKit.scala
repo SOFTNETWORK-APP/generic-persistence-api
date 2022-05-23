@@ -126,7 +126,7 @@ trait PaymentRouteTestKit extends SessionTestKit with PaymentTestKit { _: Suite 
           status shouldEqual StatusCodes.OK
           val report = responseAs[KycDocumentValidationReport]
           assert(report.status == KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATION_ASKED)
-          Get(s"/$RootPath/$PaymentPath/$hooksRoute?EventType=KYC_SUCCEEDED&RessourceId=${report.documentId}"
+          Get(s"/$RootPath/$PaymentPath/$hooksRoute?EventType=KYC_SUCCEEDED&RessourceId=${report.id}"
           ) ~> routes ~> check {
             status shouldEqual StatusCodes.OK
             assert(loadKycDocumentStatus(documentType).status == KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATED)

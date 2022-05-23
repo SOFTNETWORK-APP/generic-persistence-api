@@ -421,7 +421,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case Some(userId) =>
                 paymentAccount.walletId match {
                   case Some(walletId) =>
-                    paymentAccount.bankAccount.flatMap(_.bankAccountId) match {
+                    paymentAccount.bankAccount.flatMap(_.id) match {
                       case Some(bankAccountId) =>
                         payOut(
                           Some(
@@ -687,7 +687,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   }
 
                   val shouldCreateBankAccount = paymentAccount.bankAccount.isEmpty ||
-                    paymentAccount.bankAccount.flatMap(_.bankAccountId).isEmpty
+                    paymentAccount.bankAccount.flatMap(_.id).isEmpty
 
                   val shouldUpdateBankAccount = !shouldCreateBankAccount && (
                     paymentAccount.bankAccount.map(_.ownerName).getOrElse("") != bankAccount.ownerName || // TODO OwnerAddress
@@ -701,7 +701,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   val documents: List[KycDocument] = initDocuments(updatedPaymentAccount)
 
                   val shouldUpdateDocuments = shouldUpdateUser &&
-                    documents.exists(!_.documentStatus.isKycDocumentNotSpecified)
+                    documents.exists(!_.status.isKycDocumentNotSpecified)
 
                   val shouldCreateUboDeclaration = shouldUpdateUser &&
                     updatedPaymentAccount.getLegalUser.uboDeclarationRequired &&
@@ -732,7 +732,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                         case Some(walletId) =>
                           keyValueDao.addKeyValue(walletId, entityId)
                           updatedPaymentAccount = updatedPaymentAccount.resetWalletId(Some(walletId))
-                          (paymentAccount.bankAccount.flatMap(_.bankAccountId) match {
+                          (paymentAccount.bankAccount.flatMap(_.id) match {
                             case None =>
                               createOrUpdateBankAccount(updatedPaymentAccount.resetBankAccountId().bankAccount)
                             case Some(_) if shouldCreateOrUpdateBankAccount =>
@@ -776,7 +776,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                               if(shouldCreateUboDeclaration){
                                 createDeclaration(userId) match {
                                   case Some(uboDeclaration) =>
-                                    keyValueDao.addKeyValue(uboDeclaration.uboDeclarationId, entityId)
+                                    keyValueDao.addKeyValue(uboDeclaration.id, entityId)
                                     updatedPaymentAccount = updatedPaymentAccount.withLegalUser(
                                       updatedPaymentAccount.getLegalUser.withUboDeclaration(uboDeclaration)
                                     )
@@ -798,7 +798,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                   documents.map(
                                     _.copy(
                                       lastUpdated = Some(lastUpdated),
-                                      documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED,
+                                      status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED,
                                       refusedReasonType = None,
                                       refusedReasonMessage = None
                                     )
@@ -857,7 +857,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case Some(userId) =>
                 addDocument(userId, entityId, pages, kycDocumentType) match {
                   case Some(documentId) =>
-                    paymentAccount.documents.find(_.documentType == kycDocumentType).flatMap(_.documentId) match {
+                    paymentAccount.documents.find(_.`type` == kycDocumentType).flatMap(_.id) match {
                       case Some(previous) if previous != documentId =>
                         keyValueDao.removeKeyValue(previous)
                       case _ =>
@@ -867,20 +867,20 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                     val lastUpdated = now()
 
                     val updatedDocument =
-                      paymentAccount.documents.find(_.documentType == kycDocumentType).getOrElse(
+                      paymentAccount.documents.find(_.`type` == kycDocumentType).getOrElse(
                         KycDocument.defaultInstance
                           .withCreatedDate(lastUpdated)
-                          .withDocumentType(kycDocumentType)
+                          .withType(kycDocumentType)
                       )
                         .withLastUpdated(lastUpdated)
-                        .withDocumentId(documentId)
-                        .withDocumentStatus(KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATION_ASKED)
+                        .withId(documentId)
+                        .withStatus(KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATION_ASKED)
                         .copy(
                           refusedReasonType = None,
                           refusedReasonMessage = None
                         )
 
-                    val newDocuments = paymentAccount.documents.filterNot(_.documentType == kycDocumentType) :+
+                    val newDocuments = paymentAccount.documents.filterNot(_.`type` == kycDocumentType) :+
                       updatedDocument
 
                     Effect.persist(
@@ -910,7 +910,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         import cmd._
         state match {
           case Some(paymentAccount)  =>
-            paymentAccount.documents.find(_.documentId.getOrElse("") == kycDocumentId) match {
+            paymentAccount.documents.find(_.id.getOrElse("") == kycDocumentId) match {
               case Some(document) =>
                 val documentStatusUpdated =
                   updateDocumentStatus(
@@ -931,14 +931,14 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
         state match {
           case Some(paymentAccount) =>
             import cmd._
-            paymentAccount.documents.find(_.documentType == kycDocumentType) match {
+            paymentAccount.documents.find(_.`type` == kycDocumentType) match {
               case Some(document) =>
-                if(document.documentStatus.isKycDocumentValidationAsked) {
+                if(document.status.isKycDocumentValidationAsked) {
                   val documentStatusUpdated =
                     updateDocumentStatus(
                       paymentAccount,
                       document,
-                      document.documentId.getOrElse(""),
+                      document.id.getOrElse(""),
                       None
                     )
                   Effect.persist(
@@ -948,9 +948,8 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 else {
                   Effect.none.thenRun(_ => KycDocumentStatusLoaded(
                     KycDocumentValidationReport.defaultInstance
-                      .withUserId(paymentAccount.userId.getOrElse(""))
-                      .withDocumentId(document.documentId.getOrElse(""))
-                      .withStatus(document.documentStatus)
+                      .withId(document.id.getOrElse(""))
+                      .withStatus(document.status)
                       .copy(
                         refusedReasonType = document.refusedReasonType,
                         refusedReasonMessage = document.refusedReasonMessage
@@ -971,7 +970,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 createDeclaration(paymentAccount.userId.getOrElse("")) match {
                   case Some(declaration) =>
                     declarationCreated = true
-                    keyValueDao.addKeyValue(declaration.uboDeclarationId, entityId)
+                    keyValueDao.addKeyValue(declaration.id, entityId)
                     Some(declaration)
                   case _ => None
                 }
@@ -993,7 +992,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                     )
                 }
 
-                createOrUpdateUBO(paymentAccount.userId.getOrElse(""), declaration.uboDeclarationId, ubo) match {
+                createOrUpdateUBO(paymentAccount.userId.getOrElse(""), declaration.id, ubo) match {
                   case Some(ubo) =>
                     Effect.persist(events :+
                       PaymentAccountUpsertedEvent.defaultInstance
@@ -1025,7 +1024,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case None => Effect.none.thenRun(_ => UboDeclarationNotFound ~> replyTo)
               case Some(uboDeclaration) if uboDeclaration.status.isUboDeclarationCreated ||
                 uboDeclaration.status.isUboDeclarationIncomplete =>
-                validateDeclaration(paymentAccount.userId.getOrElse(""), uboDeclaration.uboDeclarationId) match {
+                validateDeclaration(paymentAccount.userId.getOrElse(""), uboDeclaration.id) match {
                   case Some(declaration) =>
                     val updatedUbo = declaration.withUbos(uboDeclaration.ubos)
                     val lastUpdated = now()
@@ -1066,7 +1065,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case Some(uboDeclaration) if uboDeclaration.status.isUboDeclarationValidationAsked =>
                 import cmd._
                 getDeclaration(paymentAccount.userId.getOrElse(""), uboDeclarationId) match {
-                  case Some(declaration) if declaration.uboDeclarationId == uboDeclarationId =>
+                  case Some(declaration) if declaration.id == uboDeclarationId =>
                     val internalStatus = {
                       if (environment != "prod") {
                         status.getOrElse(declaration.status)
@@ -1158,7 +1157,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               updatedPaymentAccount = updatedPaymentAccount.withDocuments(
                 updatedPaymentAccount.documents.map(_.withLastUpdated(lastUpdated)
                   .copy(
-                    documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATED
+                    status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATED
                   )
                 )
               )
@@ -1195,7 +1194,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
           case Some(paymentAccount) =>
             paymentAccount.bankAccount match {
               case Some(bankAccount) =>
-                bankAccount.bankAccountId match {
+                bankAccount.id match {
                   case Some(bankAccountId) =>
                     keyValueDao.removeKeyValue(bankAccountId)
                   case _ =>
@@ -1211,7 +1210,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                 }
                 updatedPaymentAccount.getLegalUser.uboDeclaration match {
                   case Some(declaration) =>
-                    keyValueDao.removeKeyValue(declaration.uboDeclarationId)
+                    keyValueDao.removeKeyValue(declaration.id)
                     updatedPaymentAccount = updatedPaymentAccount
                       .withLegalUser(updatedPaymentAccount.getLegalUser.copy(uboDeclaration = None))
                     events = events ++
@@ -1226,9 +1225,9 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
 
                 updatedPaymentAccount = updatedPaymentAccount.withDocuments(
                   updatedPaymentAccount.documents.map(_.copy(
-                    documentId = None,
+                    id = None,
                     lastUpdated = Some(lastUpdated),
-                    documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED)
+                    status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED)
                   )
                 ).withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.DOCUMENTS_KO)
                 events = events ++
@@ -1523,7 +1522,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
     val updatedDocument =
       document
         .withLastUpdated(lastUpdated)
-        .withDocumentStatus(internalStatus).copy(
+        .withStatus(internalStatus).copy(
         refusedReasonType = report.refusedReasonType,
         refusedReasonMessage = report.refusedReasonMessage
       )
@@ -1537,7 +1536,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
       )
 
     val newDocuments =
-      paymentAccount.documents.filterNot(_.documentId.getOrElse("") == documentId) :+ updatedDocument
+      paymentAccount.documents.filterNot(_.id.getOrElse("") == documentId) :+ updatedDocument
 
     var updatedPaymentAccount = paymentAccount.withDocuments(newDocuments)
 
@@ -1596,44 +1595,44 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
     var newDocuments: List[KycDocument] = paymentAccount.documents.toList
     newDocuments =
       List(
-        newDocuments.find(_.documentType == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF).getOrElse(
+        newDocuments.find(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF).getOrElse(
           KycDocument.defaultInstance.copy(
-            documentType = KycDocument.KycDocumentType.KYC_IDENTITY_PROOF,
-            documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
+            `type` = KycDocument.KycDocumentType.KYC_IDENTITY_PROOF,
+            status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
           )
         )
-      ) ++ newDocuments.filterNot(_.documentType == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF)
+      ) ++ newDocuments.filterNot(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF)
       paymentAccount.legalUserType match {
         case Some(lpt) => lpt match {
           case LegalUserType.SOLETRADER =>
             newDocuments =
               List(
-                newDocuments.find(_.documentType == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF).getOrElse(
+                newDocuments.find(_.`type` == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF).getOrElse(
                   KycDocument.defaultInstance.copy(
-                    documentType = KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
-                    documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
+                    `type` = KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
+                    status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
                   )
                 )
-              ) ++ newDocuments.filterNot(_.documentType == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF)
+              ) ++ newDocuments.filterNot(_.`type` == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF)
           case LegalUserType.BUSINESS =>
             newDocuments =
               List(
-                newDocuments.find(_.documentType == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF).getOrElse(
+                newDocuments.find(_.`type` == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF).getOrElse(
                   KycDocument.defaultInstance.copy(
-                    documentType = KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
-                    documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
+                    `type` = KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
+                    status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
                   )
                 ),
-                newDocuments.find(_.documentType == KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION).getOrElse(
+                newDocuments.find(_.`type` == KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION).getOrElse(
                   KycDocument.defaultInstance.copy(
-                    documentType = KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
-                    documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
+                    `type` = KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
+                    status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
                   )
                 ),
-                newDocuments.find(_.documentType == KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION).getOrElse(
+                newDocuments.find(_.`type` == KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION).getOrElse(
                   KycDocument.defaultInstance.copy(
-                    documentType = KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION,
-                    documentStatus = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
+                    `type` = KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION,
+                    status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
                   )
                 )
               ) ++ newDocuments.filterNot(
@@ -1641,7 +1640,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
                   KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
                   KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION
-                ).contains(d.documentType)
+                ).contains(d.`type`)
               )
           case _ =>
         }
@@ -1652,7 +1651,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
               KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
               KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION
-            ).contains(d.documentType)
+            ).contains(d.`type`)
           )
       }
 

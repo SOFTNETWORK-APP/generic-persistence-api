@@ -184,8 +184,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 1)
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
-              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.bankAccountId).getOrElse("")
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
+              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
             case other => fail(other.toString)
           }
         case other => fail(other.toString)
@@ -210,9 +210,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 1)
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
               val previousBankAccountId = sellerBankAccountId
-              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.bankAccountId).getOrElse("")
+              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
               assert(sellerBankAccountId != previousBankAccountId)
             case other => fail(other.toString)
           }
@@ -290,10 +290,10 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 2)
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF))
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF))
               val previousBankAccountId = sellerBankAccountId
-              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.bankAccountId).getOrElse("")
+              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
               assert(sellerBankAccountId != previousBankAccountId)
             case other => fail(other.toString)
           }
@@ -320,16 +320,16 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 4)
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF))
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION))
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION))
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF))
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION))
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION))
               assert(paymentAccount.getLegalUser.uboDeclarationRequired)
-              assert(paymentAccount.getLegalUser.uboDeclaration.map(_.uboDeclarationId).isDefined)
+              assert(paymentAccount.getLegalUser.uboDeclaration.map(_.id).isDefined)
               val previousBankAccountId = sellerBankAccountId
-              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.bankAccountId).getOrElse("")
+              sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
               assert(sellerBankAccountId != previousBankAccountId)
-              uboDeclarationId = paymentAccount.getLegalUser.uboDeclaration.map(_.uboDeclarationId).getOrElse("")
+              uboDeclarationId = paymentAccount.getLegalUser.uboDeclaration.map(_.id).getOrElse("")
             case other => fail(other.toString)
           }
         case other => fail(other.toString)
@@ -342,16 +342,16 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
         KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
         KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION
-      ).foreach { documentType =>
-        ? (AddKycDocument(sellerUuid, Seq.empty, documentType)) await {
+      ).foreach { `type` =>
+        ? (AddKycDocument(sellerUuid, Seq.empty, `type`)) await {
           case _: KycDocumentAdded =>
             ? (LoadPaymentAccount(sellerUuid)) await {
               case result: PaymentAccountLoaded =>
                 val paymentAccount = result.paymentAccount
                 assert(
                   paymentAccount.documents
-                    .find(_.documentType == documentType)
-                    .exists(_.documentStatus == KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATION_ASKED)
+                    .find(_.`type` == `type`)
+                    .exists(_.status == KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATION_ASKED)
                 )
               case other => fail(other.toString)
             }
@@ -367,11 +367,11 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF,
         KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
         KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION
-      ).foreach { documentType =>
-        ? (LoadKycDocumentStatus(sellerUuid, documentType)) await {
+      ).foreach { `type` =>
+        ? (LoadKycDocumentStatus(sellerUuid, `type`)) await {
           case result: KycDocumentStatusLoaded =>
             ? (UpdateKycDocumentStatus(
-              result.report.documentId,
+              result.report.id,
               Some(validated)
             )) await {
               case _: KycDocumentStatusUpdated =>
@@ -380,8 +380,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
                     val paymentAccount = result.paymentAccount
                     assert(
                       paymentAccount.documents
-                        .find(_.documentType == documentType)
-                        .exists(_.documentStatus == validated)
+                        .find(_.`type` == `type`)
+                        .exists(_.status == validated)
                     )
                   case other => fail(other.toString)
                 }
@@ -498,8 +498,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 1)
-              assert(paymentAccount.documents.exists(_.documentType == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
-              vendorBankAccountId = paymentAccount.bankAccount.flatMap(_.bankAccountId).getOrElse("")
+              assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
+              vendorBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
               ? (Transfer(orderUuid, sellerUuid, vendorUuid, 50, 10)) await {
                 case result: Transfered =>
                   assert(result.paidOutTransactionId.isDefined)

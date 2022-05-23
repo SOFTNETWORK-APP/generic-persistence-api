@@ -28,7 +28,7 @@ message BankAccount {
     required string userId = 1;
     required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
     required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
-    optional string bankAccountId = 4;
+    optional string id = 4;
     required string ownerName = 5;
     required Address ownerAddress = 6;
     required string iban = 7;

@@ -12,6 +12,6 @@ trait BankAccountCompanion {
         .withIban(iban)
         .withOwnerName(ownerName)
         .withOwnerAddress(ownerAddress)
-        .copy(bankAccountId = bankAccountId)
+        .copy(id = bankAccountId)
   }
 }

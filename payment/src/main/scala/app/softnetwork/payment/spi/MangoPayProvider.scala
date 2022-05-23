@@ -97,6 +97,17 @@ trait MangoPayProvider extends PaymentProvider {
     }
   }
 
+  implicit def MangopayKycDocumentTypeTokycDocumentType(documentType: KycDocumentType): KycDocument.KycDocumentType = {
+    documentType match {
+      case KycDocumentType.IDENTITY_PROOF => KycDocument.KycDocumentType.KYC_IDENTITY_PROOF
+      case KycDocumentType.REGISTRATION_PROOF => KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF
+      case KycDocumentType.ARTICLES_OF_ASSOCIATION => KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION
+      case KycDocumentType.SHAREHOLDER_DECLARATION => KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION
+      case KycDocumentType.ADDRESS_PROOF => KycDocument.KycDocumentType.KYC_ADDRESS_PROOF
+      case KycDocumentType.NotSpecified => KycDocument.KycDocumentType.Unrecognized(-1)
+    }
+  }
+
   implicit def mangopayUboDeclarationStatus2DeclarationStatus(status: UboDeclarationStatus): UboDeclaration.UboDeclarationStatus = {
     status match {
       case UboDeclarationStatus.CREATED => UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_CREATED
@@ -294,8 +305,8 @@ trait MangoPayProvider extends PaymentProvider {
       case Some(mangoPayBankAccount) =>
         import mangoPayBankAccount._
         val bankAccount = new MangoPayBankAccount
-        if(bankAccountId.isDefined){
-          bankAccount.setId(bankAccountId)
+        if(id.isDefined){
+          bankAccount.setId(getId)
         }
         bankAccount.setActive(true)
         val details = new BankAccountDetailsIBAN
@@ -312,8 +323,8 @@ trait MangoPayProvider extends PaymentProvider {
         bankAccount.setTag(tag)
         bankAccount.setType(BankAccountType.IBAN)
         bankAccount.setUserId(userId)
-        (if(bankAccountId.isDefined)
-          Try(MangoPay().getUserApi.getBankAccount(userId, bankAccountId)) match {
+        (if(id.isDefined)
+          Try(MangoPay().getUserApi.getBankAccount(userId, getId)) match {
             case Success(b) => Option(b)
             case Failure(f) =>
               mlog.error(f.getMessage, f)
@@ -394,10 +405,10 @@ trait MangoPayProvider extends PaymentProvider {
           case Success(cardRegistration) =>
             Some(
               CardPreRegistration.defaultInstance
-                .withId(cardPreRegistration.getId)
-                .withAccessKey(cardPreRegistration.getAccessKey)
-                .withPreregistrationData(cardPreRegistration.getPreregistrationData)
-                .withRegistrationURL(cardPreRegistration.getCardRegistrationUrl)
+                .withId(cardRegistration.getId)
+                .withAccessKey(cardRegistration.getAccessKey)
+                .withPreregistrationData(cardRegistration.getPreregistrationData)
+                .withRegistrationURL(cardRegistration.getCardRegistrationUrl)
             )
           case Failure(f)                      =>
             mlog.error(f.getMessage, f)
@@ -1354,8 +1365,8 @@ trait MangoPayProvider extends PaymentProvider {
     Try(MangoPay().getUserApi.getKycDocument(userId, documentId)) match {
       case Success(s) =>
         KycDocumentValidationReport.defaultInstance
-          .withUserId(userId)
-          .withDocumentId(documentId)
+          .withId(documentId)
+          .withType(s.getType)
           .withStatus(s.getStatus)
           .copy(
             tag = Option(s.getTag),
@@ -1365,8 +1376,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Failure(f) =>
         mlog.error(f.getMessage, f.getCause)
         KycDocumentValidationReport.defaultInstance
-          .withUserId(userId)
-          .withDocumentId(documentId)
+          .withId(documentId)
           .withStatus(KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED)
     }
 
@@ -1643,7 +1653,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Success(declaration) =>
         Some(
           UboDeclaration.defaultInstance
-            .withUboDeclarationId(declaration.getId)
+            .withId(declaration.getId)
             .withStatus(declaration.getStatus)
             .withCreatedDate(declaration.getCreationDate)
             .copy(
@@ -1688,14 +1698,10 @@ trait MangoPayProvider extends PaymentProvider {
         a.setCountry(CountryIso.valueOf(country))
         ubo.setAddress(a)
 
-        birthPlace match{
-          case Some(s) =>
-            val b = new MangoPayBirthplace
-            b.setCity(s.city)
-            b.setCountry(CountryIso.valueOf(s.country))
-            ubo.setBirthplace(b)
-          case _ =>
-        }
+        val b = new MangoPayBirthplace
+        b.setCity(birthPlace.city)
+        b.setCountry(CountryIso.valueOf(birthPlace.country))
+        ubo.setBirthplace(b)
         ubo.setActive(active)
 
         {
@@ -1729,7 +1735,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Success(s) =>
         import scala.collection.JavaConverters._
         Some(
-          UboDeclaration.defaultInstance.withUboDeclarationId(uboDeclarationId)
+          UboDeclaration.defaultInstance.withId(uboDeclarationId)
             .withStatus(s.getStatus)
             .withCreatedDate(s.getCreationDate)
             .copy(
@@ -1750,15 +1756,10 @@ trait MangoPayProvider extends PaymentProvider {
                   .withRegion(ubo.getAddress.getRegion)
                   .withCountry(ubo.getAddress.getCountry.name())
                   .withActive(ubo.getActive)
-                  .copy(
-                    birthPlace = Option(ubo.getBirthplace) match {
-                      case Some(b) => Some(
-                        UboDeclaration.UltimateBeneficialOwner.BirthPlace.defaultInstance
-                          .withCity(b.getCity)
-                          .withCountry(b.getCountry.name())
-                      )
-                      case _ => None
-                    }
+                  .withBirthPlace(
+                    UboDeclaration.UltimateBeneficialOwner.BirthPlace.defaultInstance
+                      .withCity(ubo.getBirthplace.getCity)
+                      .withCountry(ubo.getBirthplace.getCountry.name())
                   )
               }
             ))
@@ -1780,7 +1781,7 @@ trait MangoPayProvider extends PaymentProvider {
       case Success(s) =>
         Some(
           UboDeclaration.defaultInstance
-            .withUboDeclarationId(uboDeclarationId)
+            .withId(uboDeclarationId)
             .withStatus(s.getStatus)
             .withCreatedDate(s.getCreationDate)
             .copy(

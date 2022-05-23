@@ -51,9 +51,9 @@ message KycDocument {
     }
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "KycDocumentDecorator";
-    required KycDocumentType documentType = 1 [default = KYC_IDENTITY_PROOF];
-    required KycDocumentStatus documentStatus = 2 [default = KYC_DOCUMENT_NOT_SPECIFIED];
-    optional string documentId = 3;
+    required KycDocumentType type = 1 [default = KYC_IDENTITY_PROOF];
+    required KycDocumentStatus status = 2 [default = KYC_DOCUMENT_NOT_SPECIFIED];
+    optional string id = 3;
     optional string refusedReasonType = 4;
     optional string refusedReasonMessage = 5;
     optional google.protobuf.Timestamp createdDate = 6 [(scalapb.field).type = "java.util.Date"];
@@ -79,7 +79,7 @@ message UboDeclaration {
         required string postalCode = 8;
         required string region = 9 [default = "Ile de France"];
         required string country = 10 [default = "FR"];
-        optional BirthPlace birthPlace = 11;
+        required BirthPlace birthPlace = 11;
         required bool active = 12;
     }
     
@@ -92,7 +92,7 @@ message UboDeclaration {
     }
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "UboDeclarationDecorator";
-    required string uboDeclarationId = 1;
+    required string id = 1;
     required UboDeclarationStatus status = 2 [default = UBO_DECLARATION_CREATED];
     optional string reason = 3;
     optional string message = 4;
@@ -101,9 +101,10 @@ message UboDeclaration {
 }
 
 message KycDocumentValidationReport{
-    required string userId = 1;
-    required string documentId = 2;
-    required KycDocument.KycDocumentStatus status = 3;
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    required string id = 1;
+    required KycDocumentType type = 2;
+    required KycDocumentStatus status = 3;
     optional string tag = 4;
     optional string refusedReasonType = 5;
     optional string refusedReasonMessage = 6;
