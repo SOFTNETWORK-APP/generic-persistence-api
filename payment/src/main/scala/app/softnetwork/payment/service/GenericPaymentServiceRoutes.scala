@@ -6,10 +6,14 @@ import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.payment.serialization.paymentFormats
 import org.json4s.Formats
 
-trait PaymentServiceRoutes extends ApiRoutes{
+trait GenericPaymentServiceRoutes extends ApiRoutes{
   override implicit def formats: Formats = paymentFormats
 }
 
-trait MockPaymentServiceRoutes extends PaymentServiceRoutes {
+trait PaymentServiceRoutes extends GenericPaymentServiceRoutes {
+  override def apiRoutes(system: ActorSystem[_]): Route = PaymentService(system).route
+}
+
+trait MockPaymentServiceRoutes extends GenericPaymentServiceRoutes {
   override def apiRoutes(system: ActorSystem[_]): Route = MockPaymentService(system).route
 }

@@ -1,25 +1,18 @@
 package app.softnetwork.persistence.query
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{Behavior, PostStop, ActorSystem}
-
-import akka.{NotUsed, Done}
-
+import akka.actor.typed.{ActorSystem, Behavior, PostStop}
+import akka.{Done, NotUsed}
 import akka.persistence.query.Offset
-
 import akka.persistence.typed.PersistenceId
-import akka.stream.scaladsl.{Sink, RestartSource, Source}
-
-import akka.stream.{RestartSettings, KillSwitches, SharedKillSwitch, Materializer}
+import akka.stream.scaladsl.{RestartSource, Sink, Source}
+import akka.stream.{KillSwitches, Materializer, RestartSettings, SharedKillSwitch}
 import com.typesafe.scalalogging.StrictLogging
-
 import app.softnetwork.persistence.message.Event
-
 import app.softnetwork.persistence.typed._
-
 import akka.{actor => classic}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
 
 /**
@@ -56,7 +49,7 @@ trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging { 
 
   implicit def system: ActorSystem[_]
 
-  implicit lazy val ec = system.executionContext
+  implicit lazy val ec: ExecutionContextExecutor = system.executionContext
 
   override implicit lazy val classicSystem: classic.ActorSystem = system
 

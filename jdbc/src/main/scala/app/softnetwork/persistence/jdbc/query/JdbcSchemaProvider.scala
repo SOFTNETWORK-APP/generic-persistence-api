@@ -21,7 +21,7 @@ import akka.persistence.jdbc.config.SlickConfiguration
 import akka.persistence.jdbc.util.SlickDatabase
 import app.softnetwork.utils.ClasspathResources
 import app.softnetwork.persistence.query.SchemaProvider
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import app.softnetwork.persistence.jdbc.query.JdbcSchema.{H2, Postgres, SchemaType}
 import com.typesafe.scalalogging.StrictLogging
 import slick.jdbc.JdbcBackend.{Database, Session}
@@ -31,7 +31,7 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
 
   def schemaType: SchemaType
 
-  def cfg = ConfigFactory.load()
+  def cfg: Config = ConfigFactory.load()
 
   def db: Database = SlickDatabase.forConfig(cfg, new SlickConfiguration(cfg.getConfig("slick")))
 

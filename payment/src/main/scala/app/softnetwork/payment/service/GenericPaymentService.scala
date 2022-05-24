@@ -3,7 +3,7 @@ package app.softnetwork.payment.service
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import app.softnetwork.api.server.DefaultComplete
-import app.softnetwork.payment.handlers.{GenericPaymentHandler, MockPaymentHandler}
+import app.softnetwork.payment.handlers.{GenericPaymentHandler, MockPaymentHandler, PaymentHandler}
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.serialization._
 import app.softnetwork.payment.config.Settings
@@ -35,7 +35,7 @@ import java.util.TimeZone
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
-trait PaymentService extends SessionService
+trait GenericPaymentService extends SessionService
   with Directives
   with DefaultComplete
   with Json4sSupport
@@ -474,11 +474,21 @@ trait PaymentService extends SessionService
 
 }
 
-trait MockPaymentService extends PaymentService with MockPaymentHandler
+trait MockPaymentService extends GenericPaymentService with MockPaymentHandler
 
 object MockPaymentService {
   def apply(_system: ActorSystem[_]): MockPaymentService = {
     new MockPaymentService {
+      override implicit def system: ActorSystem[_] = _system
+    }
+  }
+}
+
+trait PaymentService extends GenericPaymentService with PaymentHandler
+
+object PaymentService {
+  def apply(_system: ActorSystem[_]): PaymentService = {
+    new PaymentService {
       override implicit def system: ActorSystem[_] = _system
     }
   }
