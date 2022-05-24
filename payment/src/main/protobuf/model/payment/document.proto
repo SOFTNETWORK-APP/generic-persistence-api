@@ -103,8 +103,8 @@ message UboDeclaration {
 message KycDocumentValidationReport{
     option (scalapb.message).extends = "ProtobufDomainObject";
     required string id = 1;
-    required KycDocumentType type = 2;
-    required KycDocumentStatus status = 3;
+    required KycDocument.KycDocumentType type = 2;
+    required KycDocument.KycDocumentStatus status = 3;
     optional string tag = 4;
     optional string refusedReasonType = 5;
     optional string refusedReasonMessage = 6;
