@@ -408,7 +408,7 @@ trait MangoPayProvider extends PaymentProvider {
                 .withId(cardRegistration.getId)
                 .withAccessKey(cardRegistration.getAccessKey)
                 .withPreregistrationData(cardRegistration.getPreregistrationData)
-                .withRegistrationURL(cardRegistration.getCardRegistrationUrl)
+                .withCardRegistrationURL(cardRegistration.getCardRegistrationUrl)
             )
           case Failure(f)                      =>
             mlog.error(f.getMessage, f)

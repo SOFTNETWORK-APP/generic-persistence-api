@@ -767,7 +767,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
             .withId(cardPreRegistration.getId)
             .withAccessKey(cardPreRegistration.getAccessKey)
             .withPreregistrationData(cardPreRegistration.getPreregistrationData)
-            .withRegistrationURL(cardPreRegistration.getCardRegistrationUrl)
+            .withCardRegistrationURL(cardPreRegistration.getCardRegistrationUrl)
         )
       case _ => None
     }
