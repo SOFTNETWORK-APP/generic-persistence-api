@@ -3,7 +3,7 @@ package app.softnetwork.payment.service
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import app.softnetwork.api.server.DefaultComplete
-import app.softnetwork.payment.handlers.{GenericPaymentHandler, MockPaymentHandler, PaymentHandler}
+import app.softnetwork.payment.handlers.{GenericPaymentHandler, MockPaymentHandler, MangoPayPaymentHandler}
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.serialization._
 import app.softnetwork.payment.config.Settings
@@ -484,11 +484,11 @@ object MockPaymentService {
   }
 }
 
-trait PaymentService extends GenericPaymentService with PaymentHandler
+trait MangoPayPaymentService extends GenericPaymentService with MangoPayPaymentHandler
 
-object PaymentService {
-  def apply(_system: ActorSystem[_]): PaymentService = {
-    new PaymentService {
+object MangoPayPaymentService {
+  def apply(_system: ActorSystem[_]): MangoPayPaymentService = {
+    new MangoPayPaymentService {
       override implicit def system: ActorSystem[_] = _system
     }
   }

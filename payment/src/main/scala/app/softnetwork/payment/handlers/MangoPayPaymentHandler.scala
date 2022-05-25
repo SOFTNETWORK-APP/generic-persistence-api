@@ -7,7 +7,7 @@ import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model._
 import app.softnetwork.persistence._
-import app.softnetwork.payment.persistence.typed.{MockPaymentAccountBehavior, PaymentAccountBehavior}
+import app.softnetwork.payment.persistence.typed.{MangoPayPaymentBehavior, MockPaymentBehavior}
 import app.softnetwork.persistence.typed.CommandTypeKey
 
 import scala.concurrent.{ExecutionContextExecutor, Future, Promise}
@@ -18,14 +18,14 @@ import scala.util.{Failure, Success}
 /**
   * Created by smanciot on 22/04/2022.
   */
-trait PaymentTypeKey extends CommandTypeKey[PaymentCommand]{
+trait MangoPayPaymentTypeKey extends CommandTypeKey[PaymentCommand]{
   override def TypeKey(implicit tTag: ClassTag[PaymentCommand]): EntityTypeKey[PaymentCommand] =
-    PaymentAccountBehavior.TypeKey
+    MangoPayPaymentBehavior.TypeKey
 }
 
 trait MockPaymentTypeKey extends CommandTypeKey[PaymentCommand]{
   override def TypeKey(implicit tTag: ClassTag[PaymentCommand]): EntityTypeKey[PaymentCommand] =
-    MockPaymentAccountBehavior.TypeKey
+    MockPaymentBehavior.TypeKey
 }
 
 trait GenericPaymentHandler extends EntityPattern[PaymentCommand, PaymentResult] {_:  CommandTypeKey[PaymentCommand] =>
@@ -53,9 +53,9 @@ trait GenericPaymentHandler extends EntityPattern[PaymentCommand, PaymentResult]
 
 }
 
-trait PaymentHandler extends GenericPaymentHandler with PaymentTypeKey
+trait MangoPayPaymentHandler extends GenericPaymentHandler with MangoPayPaymentTypeKey
 
-object PaymentHandler extends PaymentHandler
+object MangoPayPaymentHandler extends MangoPayPaymentHandler
 
 trait MockPaymentHandler extends GenericPaymentHandler with MockPaymentTypeKey
 
@@ -100,6 +100,6 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
 
 }
 
-object PaymentDao extends GenericPaymentDao with PaymentHandler
+object MangoPayPaymentDao extends GenericPaymentDao with MangoPayPaymentHandler
 
 object MockPaymentDao extends GenericPaymentDao with MockPaymentHandler

@@ -5,13 +5,14 @@ import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.kv.handlers.KeyValueDao
 import app.softnetwork.kv.persistence.typed.KeyValueBehavior
-import app.softnetwork.payment.handlers.{GenericPaymentDao, MockPaymentDao, PaymentDao}
+import app.softnetwork.payment.handlers.{GenericPaymentDao, MockPaymentDao, MangoPayPaymentDao}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model.LegalUser.LegalUserType
 import app.softnetwork.payment.model._
 import app.softnetwork.payment.spi._
 import app.softnetwork.persistence._
+import app.softnetwork.persistence.message.CrudEvent
 import app.softnetwork.persistence.typed._
 import app.softnetwork.serialization.asJson
 import org.slf4j.Logger
@@ -22,14 +23,14 @@ import scala.util.{Failure, Success}
 /**
   * Created by smanciot on 22/04/2022.
   */
-trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAccount, PaymentEvent, PaymentResult] {
-  _: PaymentProvider =>
+trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, PaymentAccount, PaymentEvent, PaymentResult]
+  with ManifestWrapper[PaymentAccount] { _: PaymentProvider =>
 
   override protected val manifestWrapper: ManifestW = ManifestW()
 
   lazy val keyValueDao: KeyValueDao = KeyValueDao
 
-  lazy val paymentDao: GenericPaymentDao = PaymentDao
+  lazy val paymentDao: GenericPaymentDao = MangoPayPaymentDao
 
   override def init(system: ActorSystem[_])(implicit c: ClassTag[PaymentCommand]): Unit = {
     KeyValueBehavior.init(system)
@@ -46,7 +47,8 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
     */
   override protected def tagEvent(entityId: String, event: PaymentEvent): Set[String] =
     event match {
-      case _ => super.tagEvent(entityId, event)
+      case _: CrudEvent => Set(s"${persistenceId.toLowerCase}-to-elastic")
+      case _ => Set(persistenceId)
     }
 
   /**
@@ -1719,9 +1721,11 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
   }
 }
 
-case object PaymentAccountBehavior extends PaymentAccountBehavior with MangoPayProvider
+trait MangoPayPaymentBehavior extends GenericPaymentBehavior with MangoPayProvider
 
-case object MockPaymentAccountBehavior extends PaymentAccountBehavior with MockMangoPayProvider{
+case object MangoPayPaymentBehavior extends MangoPayPaymentBehavior
+
+case object MockPaymentBehavior extends GenericPaymentBehavior with MockMangoPayProvider{
   override def persistenceId = s"Mock${super.persistenceId}"
   override lazy val paymentDao: GenericPaymentDao = MockPaymentDao
 }

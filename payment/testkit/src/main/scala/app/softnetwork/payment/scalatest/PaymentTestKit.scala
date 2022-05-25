@@ -8,7 +8,7 @@ import app.softnetwork.api.server.config.Settings.RootPath
 import app.softnetwork.payment.config.Settings.PaymentPath
 import app.softnetwork.payment.config.Settings.MangoPayConfig._
 import app.softnetwork.payment.model.{BankAccountView, Card, KycDocument, KycDocumentValidationReport, PaymentAccountView, UboDeclarationView}
-import app.softnetwork.payment.persistence.typed.{MockPaymentAccountBehavior, MockTransactionBehavior}
+import app.softnetwork.payment.persistence.typed.MockPaymentBehavior
 import app.softnetwork.payment.serialization.paymentFormats
 import app.softnetwork.payment.service.MockPaymentService
 import app.softnetwork.persistence.query.EventProcessorStream
@@ -28,9 +28,8 @@ trait PaymentTestKit extends InMemoryPersistenceTestKit {_: Suite =>
     *
     */
   override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => Seq(
-    MockPaymentAccountBehavior,
-    SessionRefreshTokenBehavior,
-    MockTransactionBehavior
+    MockPaymentBehavior,
+    SessionRefreshTokenBehavior
   )
 
   /**

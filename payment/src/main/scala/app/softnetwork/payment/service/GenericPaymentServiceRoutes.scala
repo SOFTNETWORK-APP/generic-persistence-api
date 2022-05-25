@@ -11,7 +11,7 @@ trait GenericPaymentServiceRoutes extends ApiRoutes{
 }
 
 trait PaymentServiceRoutes extends GenericPaymentServiceRoutes {
-  override def apiRoutes(system: ActorSystem[_]): Route = PaymentService(system).route
+  override def apiRoutes(system: ActorSystem[_]): Route = MangoPayPaymentService(system).route
 }
 
 trait MockPaymentServiceRoutes extends GenericPaymentServiceRoutes {
