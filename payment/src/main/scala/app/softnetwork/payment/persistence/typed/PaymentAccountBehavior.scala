@@ -65,6 +65,62 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
     implicit val log: Logger = context.log
     command match {
 
+      case cmd: CreateOrUpdatePaymentAccount =>
+        import cmd._
+        val lastUpdated = now()
+        var updated = false
+        val updatedPaymentAccount =
+          state match {
+            case Some(previousPaymentAccount) =>
+              updated = true
+              paymentAccount
+                .withTransactions(
+                  previousPaymentAccount.transactions.filterNot(
+                    transaction => paymentAccount.transactions.map(_.id).contains(transaction.id)
+                  ) ++ paymentAccount.transactions
+                ).withLastUpdated(lastUpdated)
+            case _ =>
+              paymentAccount.withCreatedDate(lastUpdated).withLastUpdated(lastUpdated)
+          }
+        keyValueDao.addKeyValue(updatedPaymentAccount.externalUuid, entityId)
+        updatedPaymentAccount.userId match {
+          case Some(userId) => keyValueDao.addKeyValue(userId, entityId)
+          case _ =>
+        }
+        updatedPaymentAccount.walletId match {
+          case Some(walletId) => keyValueDao.addKeyValue(walletId, entityId)
+          case _ =>
+        }
+        updatedPaymentAccount.bankAccount match {
+          case Some(bankAccount) =>
+            bankAccount.id match {
+              case Some(bankAccountId) => keyValueDao.addKeyValue(bankAccountId, entityId)
+              case _ =>
+            }
+        }
+        updatedPaymentAccount.documents.foreach{ document =>
+          document.id match {
+            case Some(documentId) => keyValueDao.addKeyValue(documentId, entityId)
+            case _ =>
+          }
+        }
+        updatedPaymentAccount.transactions.foreach{ transaction =>
+          keyValueDao.addKeyValue(transaction.id, entityId)
+        }
+        if(updatedPaymentAccount.legalUser){
+          updatedPaymentAccount.getLegalUser.uboDeclaration match {
+            case Some(declaration) => keyValueDao.addKeyValue(declaration.id, entityId)
+            case _ =>
+          }
+        }
+        Effect.persist(
+          PaymentAccountUpsertedEvent.defaultInstance
+            .withDocument(
+              updatedPaymentAccount
+            )
+            .withLastUpdated(lastUpdated)
+        ).thenRun(_ => if(updated) PaymentAccountUpdated else PaymentAccountCreated ~> replyTo)
+
       case cmd: PreRegisterCard =>
         import cmd._
         var registerWallet: Boolean = false
@@ -505,6 +561,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                                         .withDebitedWalletId(debitedWalletId)
                                         .withCreditedUserId(creditedUserId)
                                         .withCreditedWalletId(creditedWalletId)
+                                        .copy(orderUuid = orderUuid)
                                     )
                                   case _ => None
                                 }
@@ -528,7 +585,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   val payOutTransactionId =
                     if(payOutRequired){
                       paymentDao.payOut(
-                        orderUuid, creditedAccount, debitedAmount, feesAmount = 0/* fees have already been applied */
+                        orderUuid.getOrElse(""), creditedAccount, debitedAmount, feesAmount = 0/* fees have already been applied */
                       ) complete() match {
                         case Success(s) => s
                         case Failure(_) => None
@@ -540,14 +597,16 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
                   Effect.persist(
                     broadcastEvent(
                       TransferedEvent.defaultInstance
-                        .withOrderUuid(orderUuid)
                         .withFeesAmount(feesAmount)
                         .withDebitedAmount(debitedAmount)
                         .withDebitedAccount(debitedAccount)
                         .withLastUpdated(lastUpdated)
                         .withCreditedAccount(creditedAccount)
                         .withTransactionId(transaction.id)
-                        .copy(payOutTransactionId = payOutTransactionId)
+                        .copy(
+                          payOutTransactionId = payOutTransactionId,
+                          orderUuid = orderUuid
+                        )
                     ) :+
                       PaymentAccountUpsertedEvent.defaultInstance
                         .withDocument(updatedPaymentAccount)

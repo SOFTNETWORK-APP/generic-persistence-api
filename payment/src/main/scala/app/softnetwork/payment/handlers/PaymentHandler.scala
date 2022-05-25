@@ -72,6 +72,20 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     }
   }
 
+  def createOrUpdatePaymentAccount(paymentAccount: PaymentAccount)(implicit system: ActorSystem[_]): Future[Boolean] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    if(paymentAccount.externalUuid.trim.isEmpty){
+      Future.successful(false)
+    }
+    else{
+      ? (CreateOrUpdatePaymentAccount(paymentAccount)) map {
+        case PaymentAccountCreated => true
+        case PaymentAccountUpdated => true
+        case _ => false
+      }
+    }
+  }
+
   def payOut(orderUuid: String,
              creditedAccount: String,
              creditedAmount: Int,

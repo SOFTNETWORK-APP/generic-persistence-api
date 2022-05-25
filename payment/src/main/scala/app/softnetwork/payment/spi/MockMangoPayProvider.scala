@@ -159,7 +159,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         val meanOfPaymentDetails = new PayOutPaymentDetailsBankWire
         meanOfPaymentDetails.setBankAccountId(bankAccountId)
         payOut.setMeanOfPaymentDetails(meanOfPaymentDetails)
-        payOut.setId(orderUuid.substring(0, orderUuid.length - 1) + "o")
+        payOut.setId(generateUUID()/*orderUuid.substring(0, orderUuid.length - 1) + "o"*/)
         mlog.info(s"debitedAmount -> $debitedAmount, fees -> $feesAmount")
         assert(debitedAmount > feesAmount)
         payOut.setStatus(MangoPayTransactionStatus.SUCCEEDED)
@@ -180,7 +180,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
             authorId = Some(authorId),
             creditedUserId = Some(creditedUserId),
             debitedWalletId = Some(debitedWalletId)
-          )
+          ).withPaymentType(Transaction.PaymentType.BANK_WIRE)
         )
       case _ => None
     }
@@ -253,7 +253,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         refund.getFees.setAmount(0) // fees are only set during transfer or payOut
         refund.getFees.setCurrency(CurrencyIso.EUR)
 
-        refund.setId(orderUuid.substring(0, orderUuid.length - 1) + "r")
+        refund.setId(generateUUID()/*orderUuid.substring(0, orderUuid.length - 1) + "r"*/)
         refund.setStatus(MangoPayTransactionStatus.SUCCEEDED)
         refund.setResultCode(OK)
         refund.setResultMessage(SUCCEEDED)
@@ -307,7 +307,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
           Transaction().copy(
             id = transfer.getId,
             nature = Transaction.TransactionNature.REGULAR,
-            `type` = Transaction.TransactionType.PAYOUT,
+            `type` = Transaction.TransactionType.TRANSFER,
             status = transfer.getStatus,
             amount = debitedAmount,
             fees = feesAmount,
@@ -316,8 +316,9 @@ trait MockMangoPayProvider extends MangoPayProvider {
             authorId = Some(authorId),
             creditedUserId = Some(creditedUserId),
             creditedWalletId = Some(creditedWalletId),
-            debitedWalletId = Some(debitedWalletId)
-          )
+            debitedWalletId = Some(debitedWalletId),
+            orderUuid = orderUuid
+          ).withPaymentType(Transaction.PaymentType.BANK_WIRE)
         )
       case _ => None
     }
@@ -662,7 +663,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
             authorId = payIn.getAuthorId,
             creditedWalletId = Option(payIn.getCreditedWalletId),
             preAuthorizationId = Some(cardPreAuthorizedTransactionId)
-          )
+          ).withPaymentType(Transaction.PaymentType.PREAUTHORIZED)
         )
       case None => None
     }
@@ -718,7 +719,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         executionDetails.setSecureModeReturnUrl(s"$secureModeReturnUrl/$orderUuid")
         payIn.setExecutionDetails(executionDetails)
 
-        payIn.setId(orderUuid.substring(0, orderUuid.length - 1) + "p")
+        payIn.setId(generateUUID()/*orderUuid.substring(0, orderUuid.length - 1) + "p"*/)
         payIn.setStatus(MangoPayTransactionStatus.SUCCEEDED)
         payIn.setResultCode(OK)
         payIn.setResultMessage(SUCCEEDED)
@@ -924,7 +925,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
             creditedUserId = Some(creditedUserId),
             creditedWalletId = Some(creditedWalletId),
             mandateId = Some(mandateId)
-          )
+          ).withPaymentType(Transaction.PaymentType.DIRECT_DEBITED)
         )
       case _ => None
     }

@@ -132,7 +132,7 @@ object PaymentMessages {
     lazy val key: String = payInTransactionId
   }
 
-  case class Transfer(orderUuid: String,
+  case class Transfer(orderUuid: Option[String] = None,
                       debitedAccount: String,
                       creditedAccount: String,
                       debitedAmount: Int,
@@ -261,6 +261,11 @@ object PaymentMessages {
     lazy val key: String = userId
   }
 
+  @InternalApi
+  private[payment] case class CreateOrUpdatePaymentAccount(paymentAccount: PaymentAccount) extends PaymentCommandWithKey {
+    lazy val key: String = paymentAccount.externalUuid
+  }
+
   trait PaymentResult extends CommandResult
 
   case class CardPreRegistered(cardPreRegistration: CardPreRegistration) extends PaymentResult
@@ -306,6 +311,10 @@ object PaymentMessages {
   case class CardsLoaded(cards: Seq[Card]) extends PaymentResult
 
   case object CardDisabled extends PaymentResult
+
+  case object PaymentAccountCreated extends PaymentResult
+
+  case object PaymentAccountUpdated extends PaymentResult
 
   class PaymentError(override val message: String) extends ErrorMessage(message) with PaymentResult
 

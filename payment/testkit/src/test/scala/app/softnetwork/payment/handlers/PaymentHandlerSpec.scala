@@ -500,9 +500,34 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               assert(paymentAccount.documents.size == 1)
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
               vendorBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
-              ? (Transfer(orderUuid, sellerUuid, vendorUuid, 50, 10)) await {
+              ? (Transfer(Some(orderUuid), sellerUuid, vendorUuid, 50, 10)) await {
                 case result: Transfered =>
                   assert(result.paidOutTransactionId.isDefined)
+                case other => fail(other.toString)
+              }
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    "create or update payment account" in {
+      ? (LoadPaymentAccount(vendorUuid)) await {
+        case result: PaymentAccountLoaded =>
+          val paymentAccount = result.paymentAccount
+          val legalUser = paymentAccount.getLegalUser
+          val externalUuid = "other"
+          ? (
+            CreateOrUpdatePaymentAccount(
+              paymentAccount.withLegalUser(
+                legalUser.withLegalRepresentative(legalUser.legalRepresentative.withExternalUuid(externalUuid))
+              )
+            )
+          ) await {
+            case PaymentAccountCreated =>
+              ? (LoadPaymentAccount(externalUuid)) await {
+                case result: PaymentAccountLoaded =>
+                  logger.info(result.paymentAccount.toProtoString)
                 case other => fail(other.toString)
               }
             case other => fail(other.toString)

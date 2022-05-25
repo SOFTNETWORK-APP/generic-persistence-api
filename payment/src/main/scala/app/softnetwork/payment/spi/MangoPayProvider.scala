@@ -700,7 +700,7 @@ trait MangoPayProvider extends PaymentProvider {
                 redirectUrl = None,
                 authorId = result.getAuthorId,
                 creditedWalletId = Option(result.getCreditedWalletId)
-              )
+              ).withPaymentType(Transaction.PaymentType.PREAUTHORIZED)
             )
           case Failure(f)           =>
             mlog.error(f.getMessage, f)
@@ -1012,8 +1012,9 @@ trait MangoPayProvider extends PaymentProvider {
                 authorId = result.getAuthorId,
                 creditedUserId = Option(result.getCreditedUserId),
                 creditedWalletId = Some(creditedWalletId),
-                debitedWalletId = Option(result.getDebitedWalletId)
-              )
+                debitedWalletId = Option(result.getDebitedWalletId),
+                orderUuid = orderUuid
+              ).withPaymentType(Transaction.PaymentType.BANK_WIRE)
             )
           case Failure(f) =>
             f match {
@@ -1096,7 +1097,7 @@ trait MangoPayProvider extends PaymentProvider {
                 authorId = result.getAuthorId,
                 creditedUserId = Option(result.getCreditedUserId),
                 debitedWalletId = Option(result.getDebitedWalletId)
-              )
+              ).withPaymentType(Transaction.PaymentType.BANK_WIRE)
             )
           case Failure(f)      =>
             f match {
@@ -1567,7 +1568,7 @@ trait MangoPayProvider extends PaymentProvider {
                 creditedUserId = Option(result.getCreditedUserId),
                 creditedWalletId = Option(result.getCreditedWalletId),
                 mandateId = Some(mandateId)
-              )
+              ).withPaymentType(Transaction.PaymentType.DIRECT_DEBITED)
             )
           case Failure(f)           =>
             mlog.error(f.getMessage, f)

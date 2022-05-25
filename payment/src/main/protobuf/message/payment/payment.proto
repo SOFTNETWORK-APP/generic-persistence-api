@@ -107,7 +107,7 @@ message RefundedEvent {
 message TransferedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "DebitedAccountEvent";
-    required string orderUuid = 1;
+    optional string orderUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
     required string debitedAccount = 3;
     required int32 debitedAmount = 4;

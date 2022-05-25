@@ -44,6 +44,8 @@ message Transaction {
         APPLEPAY = 3;
         GOOGLEPAY = 4;
         BANK_WIRE = 5;
+        PREAUTHORIZED = 6;
+        DIRECT_DEBITED = 7;
     }
     
     option (scalapb.message).extends = "ProtobufDomainObject";
@@ -121,6 +123,7 @@ message TransferTransaction {
     required string creditedUserId = 5;
     required string creditedWalletId = 6;
     required string debitedWalletId = 7;
+    optional string orderUuid = 8;
 }
 
 message PayOutTransaction {
