@@ -97,6 +97,7 @@ trait PaymentAccountBehavior extends PaymentBehavior[PaymentCommand, PaymentAcco
               case Some(bankAccountId) => keyValueDao.addKeyValue(bankAccountId, entityId)
               case _ =>
             }
+          case None =>
         }
         updatedPaymentAccount.documents.foreach{ document =>
           document.id match {
