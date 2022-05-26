@@ -179,6 +179,12 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                               .withUserId(userId)
                               .withWalletId(walletId)
                               .withCardPreRegistrationId(cardPreRegistration.id)
+                              .withOwner(
+                                CardOwner.defaultInstance
+                                  .withFirstName(user.firstName)
+                                  .withLastName(user.lastName)
+                                  .withBirthday(user.birthday)
+                              )
                           ) ++ walletEvents :+ createOrUpdatePaymentAccount
                         ).thenRun(_ => CardPreRegistered(cardPreRegistration) ~> replyTo)
                       case _ =>

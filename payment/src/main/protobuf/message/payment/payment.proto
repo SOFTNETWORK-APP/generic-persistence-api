@@ -47,6 +47,7 @@ message CardPreRegisteredEvent {
     required string userId = 4;
     required string walletId = 5;
     required string cardPreRegistrationId = 6;
+    required app.softnetwork.payment.model.CardOwner owner = 7;
 }
 
 message CardRegisteredEvent {
