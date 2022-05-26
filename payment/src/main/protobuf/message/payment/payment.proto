@@ -31,10 +31,11 @@ message WalletRegisteredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "PaymentEvent";
     option (scalapb.message).extends = "BroadcastEvent";
-    required string externalUuid = 1;
-    required string userId = 2;
-    required string walletId = 3;
-    required google.protobuf.Timestamp lastUpdated = 4 [(scalapb.field).type = "java.util.Date"];
+    required string orderUuid = 1;
+    required string externalUuid = 2;
+    required string userId = 3;
+    required string walletId = 4;
+    required google.protobuf.Timestamp lastUpdated = 5 [(scalapb.field).type = "java.util.Date"];
 }
 
 message CardPreRegisteredEvent {

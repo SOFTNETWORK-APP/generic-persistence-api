@@ -161,6 +161,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           if (registerWallet) {
                             broadcastEvent(
                               WalletRegisteredEvent.defaultInstance
+                                .withOrderUuid(orderUuid)
                                 .withExternalUuid(user.externalUuid)
                                 .withUserId(userId)
                                 .withWalletId(walletId)
@@ -192,6 +193,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           Effect.persist(
                             broadcastEvent(
                               WalletRegisteredEvent.defaultInstance
+                                .withOrderUuid(orderUuid)
                                 .withExternalUuid(user.externalUuid)
                                 .withUserId(userId)
                                 .withWalletId(walletId)
