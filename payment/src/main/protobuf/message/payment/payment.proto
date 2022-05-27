@@ -69,6 +69,7 @@ message CardPreAuthorizedEvent {
     required string debitedAccount = 3;
     required int32 debitedAmount = 4;
     required string transactionId = 5;
+    required string cardId = 6;
 }
 
 message PaidInEvent {

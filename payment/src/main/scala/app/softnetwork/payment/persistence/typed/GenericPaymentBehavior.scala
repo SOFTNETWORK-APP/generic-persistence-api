@@ -1077,8 +1077,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                         .withLastUpdated(lastUpdated)
                     ).thenRun(_ => UboCreatedOrUpdated(ubo) ~> replyTo)
 
-                  case _ =>
-                    Effect.persist(events).thenRun(_ => UboNotCreatedOrUpdated ~> replyTo)
+                  case _ => Effect.persist(events).thenRun(_ => UboNotCreatedOrUpdated ~> replyTo)
                 }
 
               case _ => Effect.none.thenRun(_ => UboDeclarationNotFound ~> replyTo)
@@ -1093,7 +1092,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
             paymentAccount.getLegalUser.uboDeclaration match {
               case None => Effect.none.thenRun(_ => UboDeclarationNotFound ~> replyTo)
               case Some(uboDeclaration) if uboDeclaration.status.isUboDeclarationCreated ||
-                uboDeclaration.status.isUboDeclarationIncomplete =>
+                uboDeclaration.status.isUboDeclarationIncomplete || uboDeclaration.status.isUboDeclarationRefused =>
                 validateDeclaration(paymentAccount.userId.getOrElse(""), uboDeclaration.id) match {
                   case Some(declaration) =>
                     val updatedUbo = declaration.withUbos(uboDeclaration.ubos)
@@ -1546,6 +1545,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 CardPreAuthorizedEvent.defaultInstance
                   .withOrderUuid(orderUuid)
                   .withTransactionId(transaction.id)
+                  .withCardId(transaction.getCardId)
                   .withDebitedAccount(paymentAccount.externalUuid)
                   .withDebitedAmount(transaction.amount)
                   .withLastUpdated(lastUpdated)
