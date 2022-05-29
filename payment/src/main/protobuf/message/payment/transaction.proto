@@ -12,14 +12,48 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.serialization._"
     import: "app.softnetwork.payment.model._"
+    import: "app.softnetwork.payment.message.PaymentEvents._"
     import: "app.softnetwork.payment.serialization._"
-    preamble: "trait TransactionEvent extends Event"
     preserve_unknown_fields: false
+    preamble: "trait TransactionFailedEvent extends PaymentEvent with BroadcastEvent {def orderUuid: String; val externalUuid: String = orderUuid;}"
 };
 
-message TransactionCreatedEvent {
+message PreAuthorizeFailedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "Updated[Transaction]";
-    option (scalapb.message).extends = "TransactionEvent";
-    required app.softnetwork.payment.model.Transaction document = 1;
+    option (scalapb.message).extends = "TransactionFailedEvent";
+    required string orderUuid = 1;
+    required string resultMessage = 2;
+    optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message PayInFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "TransactionFailedEvent";
+    required string orderUuid = 1;
+    required string resultMessage = 2;
+    optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message PayOutFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "TransactionFailedEvent";
+    required string orderUuid = 1;
+    required string resultMessage = 2;
+    optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message RefundFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "TransactionFailedEvent";
+    required string orderUuid = 1;
+    required string resultMessage = 2;
+    optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message TransferFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "TransactionFailedEvent";
+    required string orderUuid = 1;
+    required string resultMessage = 2;
+    optional app.softnetwork.payment.model.Transaction transaction = 3;
 }

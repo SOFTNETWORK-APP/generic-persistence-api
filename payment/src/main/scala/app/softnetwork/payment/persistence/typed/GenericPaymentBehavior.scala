@@ -5,9 +5,10 @@ import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.kv.handlers.KeyValueDao
 import app.softnetwork.kv.persistence.typed.KeyValueBehavior
-import app.softnetwork.payment.handlers.{GenericPaymentDao, MockPaymentDao, MangoPayPaymentDao}
+import app.softnetwork.payment.handlers.{GenericPaymentDao, MangoPayPaymentDao, MockPaymentDao}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
+import app.softnetwork.payment.message.TransactionEvents._
 import app.softnetwork.payment.model.LegalUser.LegalUserType
 import app.softnetwork.payment.model._
 import app.softnetwork.payment.spi._
@@ -445,7 +446,14 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       transaction.status match {
                         case Transaction.TransactionStatus.TRANSACTION_FAILED_FOR_TECHNICAL_REASON =>
                           log.error("Order-{} could not be refunded: {} -> {}", orderUuid, transaction.id, asJson(transaction))
-                          Effect.persist(upsertedEvent).thenRun(_ => RefundFailed(transaction.resultMessage) ~> replyTo)
+                          Effect.persist(
+                            broadcastEvent(
+                              RefundFailedEvent.defaultInstance
+                                .withOrderUuid(orderUuid)
+                                .withResultMessage(transaction.resultMessage)
+                                .withTransaction(transaction)
+                            ) :+ upsertedEvent
+                          ).thenRun(_ => RefundFailed(transaction.resultMessage) ~> replyTo)
                         case _ =>
                           if (transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
                             log.info("Order-{} refunded: {} -> {}", orderUuid, transaction.id, asJson(transaction))
@@ -466,13 +474,25 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           }
                           else{
                             log.info("Order-{} could not be refunded: {} -> {}", orderUuid, transaction.id, asJson(transaction))
-                            Effect.persist(upsertedEvent)
-                              .thenRun(_ => RefundFailed(transaction.resultMessage) ~> replyTo)
+                            Effect.persist(
+                              broadcastEvent(
+                                RefundFailedEvent.defaultInstance
+                                  .withOrderUuid(orderUuid)
+                                  .withResultMessage(transaction.resultMessage)
+                                  .withTransaction(transaction)
+                              ) :+ upsertedEvent
+                            ).thenRun(_ => RefundFailed(transaction.resultMessage) ~> replyTo)
                           }
                       }
                     case _ =>
                       log.error("Order-{} could not be refunded: no transaction returned by provider", orderUuid)
-                      Effect.none.thenRun(_ => RefundFailed("no transaction returned by provider") ~> replyTo)
+                      Effect.persist(
+                        broadcastEvent(
+                          RefundFailedEvent.defaultInstance
+                            .withOrderUuid(orderUuid)
+                            .withResultMessage("no transaction returned by provider")
+                        )
+                      ).thenRun(_ => RefundFailed("no transaction returned by provider") ~> replyTo)
                   }
                 }
               case _ => Effect.none.thenRun(_ => IllegalTransactionStatus ~> replyTo)
@@ -509,7 +529,21 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                               paymentAccount.transactions.filterNot(_.id == transaction.id)
                                 :+ transaction
                             )
-                            if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
+                            if(transaction.status.isTransactionFailedForTechnicalReason){
+                              log.error("Order-{} could not be paid out: {} -> {}", orderUuid, transaction.id, asJson(transaction))
+                              Effect.persist(
+                                broadcastEvent(
+                                  PayOutFailedEvent.defaultInstance
+                                    .withOrderUuid(orderUuid)
+                                    .withResultMessage(transaction.resultMessage)
+                                    .withTransaction(transaction)
+                                ) :+
+                                  PaymentAccountUpsertedEvent.defaultInstance
+                                    .withDocument(updatedPaymentAccount)
+                                    .withLastUpdated(lastUpdated)
+                              ).thenRun(_ => PayOutFailed(transaction.resultMessage) ~> replyTo)
+                            }
+                            else if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
                               log.info("Order-{} paid out : {} -> {}", orderUuid, transaction.id, asJson(transaction))
                               Effect.persist(
                                 broadcastEvent(
@@ -529,14 +563,26 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                             else{
                               log.error("Order-{} could not be paid out : {} -> {}", orderUuid, transaction.id, asJson(transaction))
                               Effect.persist(
-                                PaymentAccountUpsertedEvent.defaultInstance
-                                  .withDocument(updatedPaymentAccount)
-                                  .withLastUpdated(lastUpdated)
+                                broadcastEvent(
+                                  PayOutFailedEvent.defaultInstance
+                                    .withOrderUuid(orderUuid)
+                                    .withResultMessage(transaction.resultMessage)
+                                    .withTransaction(transaction)
+                                ) :+
+                                  PaymentAccountUpsertedEvent.defaultInstance
+                                    .withDocument(updatedPaymentAccount)
+                                    .withLastUpdated(lastUpdated)
                               ).thenRun(_ => PayOutFailed(transaction.resultMessage) ~> replyTo)
                             }
                           case _ =>
                             log.error("Order-{} could not be paid out: no transaction returned by provider", orderUuid)
-                            Effect.none.thenRun(_ => PayOutFailed("no transaction returned by provider") ~> replyTo)
+                            Effect.persist(
+                              broadcastEvent(
+                                PayOutFailedEvent.defaultInstance
+                                  .withOrderUuid(orderUuid)
+                                  .withResultMessage("no transaction returned by provider")
+                              )
+                            ).thenRun(_ => PayOutFailed("no transaction returned by provider") ~> replyTo)
                         }
                       case _ => Effect.none.thenRun(_ => PayOutFailed("no bank account") ~> replyTo)
                     }
@@ -628,9 +674,19 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 }
                 else{
                   Effect.persist(
-                    PaymentAccountUpsertedEvent.defaultInstance
-                      .withDocument(updatedPaymentAccount)
-                      .withLastUpdated(lastUpdated)
+                    (orderUuid match {
+                      case Some(uuid) =>
+                        broadcastEvent(
+                          TransferFailedEvent.defaultInstance
+                            .withOrderUuid(uuid)
+                            .withResultMessage(transaction.resultMessage)
+                            .withTransaction(transaction)
+                        )
+                      case _ => List.empty
+                    }) :+
+                      PaymentAccountUpsertedEvent.defaultInstance
+                        .withDocument(updatedPaymentAccount)
+                        .withLastUpdated(lastUpdated)
                   ).thenRun(_ => TransferFailed(transaction.resultMessage) ~> replyTo)
                 }
               case _ => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
@@ -1472,9 +1528,15 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         else {
           log.error("Order-{} could not be paid in: {} -> {}", orderUuid, transaction.id, asJson(transaction))
           Effect.persist(
-            PaymentAccountUpsertedEvent.defaultInstance
-              .withDocument(updatedPaymentAccount)
-              .withLastUpdated(lastUpdated)
+            broadcastEvent(
+              PayInFailedEvent.defaultInstance
+                .withOrderUuid(orderUuid)
+                .withResultMessage(transaction.resultMessage)
+                .withTransaction(transaction)
+            ) :+
+              PaymentAccountUpsertedEvent.defaultInstance
+                .withDocument(updatedPaymentAccount)
+                .withLastUpdated(lastUpdated)
           ).thenRun(_ =>
             PayInFailed(transaction.resultMessage) ~> replyTo
           )
@@ -1558,9 +1620,15 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         else {
           log.error("Order-{} could not be pre authorized: {} -> {}", orderUuid, transaction.id, asJson(transaction))
           Effect.persist(
-            PaymentAccountUpsertedEvent.defaultInstance
-              .withDocument(updatedPaymentAccount)
-              .withLastUpdated(lastUpdated)
+            broadcastEvent(
+              PreAuthorizeFailedEvent.defaultInstance
+                .withOrderUuid(orderUuid)
+                .withResultMessage(transaction.resultMessage)
+                .withTransaction(transaction)
+            ) :+
+              PaymentAccountUpsertedEvent.defaultInstance
+                .withDocument(updatedPaymentAccount)
+                .withLastUpdated(lastUpdated)
           ).thenRun(_ =>
             CardPreAuthorizationFailed(transaction.resultMessage) ~> replyTo
           )
