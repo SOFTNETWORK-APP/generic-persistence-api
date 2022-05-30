@@ -272,7 +272,9 @@ object PaymentMessages {
 
   case class CardPreAuthorized(transactionId: String) extends PaymentResult
 
-  case class PaidIn(transactionId: String) extends PaymentResult
+  trait PaidInResult extends PaymentResult
+
+  case class PaidIn(transactionId: String) extends PaidInResult
 
   case class PaidOut(transactionId: String) extends PaymentResult
 
@@ -280,7 +282,7 @@ object PaymentMessages {
 
   case class Transfered(transferedTransactionId: String, paidOutTransactionId: Option[String] = None) extends PaymentResult
 
-  case class PaymentRedirection(redirectUrl: String) extends PaymentResult
+  case class PaymentRedirection(redirectUrl: String) extends PaidInResult
 
   case class PaymentAccountLoaded(paymentAccount: PaymentAccount) extends PaymentResult
 
