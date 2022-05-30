@@ -30,11 +30,12 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
     */
   override protected def processEvent(event: PaymentCommandEvent, persistenceId: PersistenceId, sequenceNr: Long): Future[Done] = {
     event match {
+      case evt: WrapPaymentCommandEvent => processEvent(evt.event, persistenceId, sequenceNr)
       case evt: PayInWithCardPreAuthorizedCommandEvent =>
         import evt._
         val command = PayInWithCardPreAuthorized(preAuthorizationId, creditedAccount)
         ? (command) map {
-          case _: PaidIn =>
+          case _: PaidInResult =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done
           case other =>

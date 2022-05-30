@@ -21,6 +21,7 @@ option (scalapb.options) = {
     preamble: "trait PaymentEvent extends Event"
     preamble: "trait PaymentAccountEvent extends PaymentEvent"
     preamble: "trait PaymentCommandEvent extends PaymentEvent"
+    preamble: "trait WrapPaymentCommandEvent extends PaymentCommandEvent {def event: PaymentCommandEvent}"
     preserve_unknown_fields: false
 };
 
