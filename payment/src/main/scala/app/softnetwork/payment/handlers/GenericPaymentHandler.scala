@@ -92,6 +92,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     ? (PayInWithCardPreAuthorized(preAuthorizationId, creditedAccount)) map {
       case result: PaidIn => Right(result)
       case error: PayInFailed => Left(error)
+      case _ => Left(PayInFailed("unknown"))
     }
   }
 
@@ -104,6 +105,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     ? (Refund(orderUuid, payInTransactionId, refundAmount, reasonMessage, initializedByClient)) map {
       case result: Refunded => Right(result)
       case error: RefundFailed => Left(error)
+      case _ => Left(RefundFailed("unknown"))
     }
   }
 
@@ -115,6 +117,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     ? (PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount)) map {
       case result: PaidOut => Right(result)
       case error: PayOutFailed => Left(error)
+      case _ => Left(PayOutFailed("unknown"))
     }
   }
 
@@ -129,6 +132,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     ? (Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, payOutRequired)) map {
       case result: Transfered => Right(result)
       case error: TransferFailed => Left(error)
+      case _ => Left(TransferFailed("unknown"))
     }
   }
 }

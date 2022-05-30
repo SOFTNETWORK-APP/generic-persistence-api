@@ -1,6 +1,7 @@
 syntax = "proto2";
 
 import "scalapb/scalapb.proto";
+import "google/protobuf/timestamp.proto";
 import "model/payment/transaction.proto";
 
 package app.softnetwork.payment.message.TransactionEvents;
@@ -13,10 +14,25 @@ option (scalapb.options) = {
     import: "app.softnetwork.serialization._"
     import: "app.softnetwork.payment.model._"
     import: "app.softnetwork.payment.message.PaymentEvents._"
+    import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "app.softnetwork.payment.serialization._"
     preserve_unknown_fields: false
-    preamble: "trait TransactionFailedEvent extends PaymentEvent with BroadcastEvent {def orderUuid: String; val externalUuid: String = orderUuid;}"
+    preamble: "trait TransactionEvent extends PaymentEvent"
+    preamble: "trait DebitedAccountEvent extends TransactionEvent with BroadcastEvent {def debitedAccount: String; val externalUuid: String = debitedAccount;}"
+    preamble: "trait CreditedAccountEvent extends TransactionEvent with BroadcastEvent {def creditedAccount: String; val externalUuid: String = creditedAccount;}"
+    preamble: "trait TransactionFailedEvent extends TransactionEvent with BroadcastEvent {def orderUuid: String; val externalUuid: String = orderUuid;}"
 };
+
+message CardPreAuthorizedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "DebitedAccountEvent";
+    required string orderUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    required string debitedAccount = 3;
+    required int32 debitedAmount = 4;
+    required string transactionId = 5;
+    required string cardId = 6;
+}
 
 message PreAuthorizeFailedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
@@ -24,6 +40,16 @@ message PreAuthorizeFailedEvent {
     required string orderUuid = 1;
     required string resultMessage = 2;
     optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message PaidInEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "DebitedAccountEvent";
+    required string orderUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    required string debitedAccount = 3;
+    required int32 debitedAmount = 4;
+    required string transactionId = 5;
 }
 
 message PayInFailedEvent {
@@ -34,6 +60,17 @@ message PayInFailedEvent {
     optional app.softnetwork.payment.model.Transaction transaction = 3;
 }
 
+message PaidOutEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "CreditedAccountEvent";
+    required string orderUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    required string creditedAccount = 3;
+    required int32 creditedAmount = 4;
+    required int32 feesAmount = 5;
+    required string transactionId = 6;
+}
+
 message PayOutFailedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "TransactionFailedEvent";
@@ -42,12 +79,39 @@ message PayOutFailedEvent {
     optional app.softnetwork.payment.model.Transaction transaction = 3;
 }
 
+message RefundedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "DebitedAccountEvent";
+    required string orderUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    required string debitedAccount = 3;
+    required int32 debitedAmount = 4;
+    required int32 refundedAmount = 5;
+    required string refundTransactionId = 6;
+    required string payInTransactionId = 7;
+    required string reasonMessage = 9;
+    required bool initializedByClient = 10;
+}
+
 message RefundFailedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "TransactionFailedEvent";
     required string orderUuid = 1;
     required string resultMessage = 2;
     optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message TransferedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "DebitedAccountEvent";
+    optional string orderUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    required string debitedAccount = 3;
+    required int32 debitedAmount = 4;
+    required string creditedAccount = 5;
+    required int32 feesAmount = 6;
+    required string transactionId = 7;
+    optional string payOutTransactionId = 8;
 }
 
 message TransferFailedEvent {

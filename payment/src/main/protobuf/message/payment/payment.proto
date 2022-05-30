@@ -19,17 +19,14 @@ option (scalapb.options) = {
     import: "app.softnetwork.payment.persistence.typed._"
     import: "app.softnetwork.payment.serialization._"
     preamble: "trait PaymentEvent extends Event"
-    preamble: "trait DebitedAccountEvent extends PaymentEvent with BroadcastEvent {def debitedAccount: String; val externalUuid: String = debitedAccount;}"
-    preamble: "trait CreditedAccountEvent extends PaymentEvent with BroadcastEvent {def creditedAccount: String; val externalUuid: String = creditedAccount;}"
+    preamble: "trait PaymentAccountEvent extends PaymentEvent"
+    preamble: "trait PaymentCommandEvent extends PaymentEvent"
     preserve_unknown_fields: false
 };
 
-message PaymentEvents {
-    
-}
 message WalletRegisteredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string orderUuid = 1;
     required string externalUuid = 2;
@@ -40,7 +37,7 @@ message WalletRegisteredEvent {
 
 message CardPreRegisteredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string orderUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -53,7 +50,7 @@ message CardPreRegisteredEvent {
 
 message CardRegisteredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string orderUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -61,76 +58,17 @@ message CardRegisteredEvent {
     required app.softnetwork.payment.model.Card card = 4;
 }
 
-message CardPreAuthorizedEvent {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "DebitedAccountEvent";
-    required string orderUuid = 1;
-    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
-    required string debitedAccount = 3;
-    required int32 debitedAmount = 4;
-    required string transactionId = 5;
-    required string cardId = 6;
-}
-
-message PaidInEvent {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "DebitedAccountEvent";
-    required string orderUuid = 1;
-    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
-    required string debitedAccount = 3;
-    required int32 debitedAmount = 4;
-    required string transactionId = 5;
-}
-
-message PaidOutEvent {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "CreditedAccountEvent";
-    required string orderUuid = 1;
-    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
-    required string creditedAccount = 3;
-    required int32 creditedAmount = 4;
-    required int32 feesAmount = 5;
-    required string transactionId = 6;
-}
-
-message RefundedEvent {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "DebitedAccountEvent";
-    required string orderUuid = 1;
-    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
-    required string debitedAccount = 3;
-    required int32 debitedAmount = 4;
-    required int32 refundedAmount = 5;
-    required string refundTransactionId = 6;
-    required string payInTransactionId = 7;
-    required string reasonMessage = 9;
-    required bool initializedByClient = 10;
-}
-
-message TransferedEvent {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "DebitedAccountEvent";
-    optional string orderUuid = 1;
-    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
-    required string debitedAccount = 3;
-    required int32 debitedAmount = 4;
-    required string creditedAccount = 5;
-    required int32 feesAmount = 6;
-    required string transactionId = 7;
-    optional string payOutTransactionId = 8;
-}
-
 message PaymentAccountUpsertedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "Updated[PaymentAccount]";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     required app.softnetwork.payment.model.PaymentAccount document = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
 }
 
 message BankAccountUpdatedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string externalUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -141,7 +79,7 @@ message BankAccountUpdatedEvent {
 
 message TermsOfPSPAcceptedEvent{
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string externalUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -150,7 +88,7 @@ message TermsOfPSPAcceptedEvent{
 
 message UboDeclarationUpdatedEvent{
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string externalUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -159,7 +97,7 @@ message UboDeclarationUpdatedEvent{
 
 message PaymentAccountStatusUpdatedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string externalUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -168,7 +106,7 @@ message PaymentAccountStatusUpdatedEvent {
 
 message DocumentsUpdatedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string externalUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -177,7 +115,7 @@ message DocumentsUpdatedEvent {
 
 message DocumentUpdatedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string externalUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
@@ -186,8 +124,45 @@ message DocumentUpdatedEvent {
 
 message BankAccountDeletedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "PaymentEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
     option (scalapb.message).extends = "BroadcastEvent";
     required string externalUuid = 1;
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+}
+
+message PayInWithCardPreAuthorizedCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string preAuthorizationId = 1;
+    required string creditedAccount = 2;
+}
+
+message RefundCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string orderUuid = 1;
+    required string payInTransactionId = 2;
+    required int32 refundAmount = 3;
+    required string reasonMessage = 4;
+    required bool initializedByClient = 5;
+}
+
+message PayOutCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string orderUuid = 1;
+    required string creditedAccount = 2;
+    required int32 creditedAmount = 3;
+    required int32 feesAmount = 4;
+}
+
+message TransferCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    optional string orderUuid = 1;
+    required string debitedAccount = 2;
+    required string creditedAccount = 3;
+    required int32 debitedAmount = 4;
+    required int32 feesAmount = 5;
+    required bool payOutRequired = 6 [default = true];
 }
