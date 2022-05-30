@@ -86,18 +86,51 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     }
   }
 
-  def payOut(orderUuid: String,
-             creditedAccount: String,
-             creditedAmount: Int,
-             feesAmount: Int)(implicit system: ActorSystem[_]
-            ): Future[Option[String]] = {
+  def payInWithCardPreAuthorized(preAuthorizationId: String, creditedAccount: String)(implicit system: ActorSystem[_]
+  ): Future[Either[PayInFailed, PaidIn]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    ? (PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount)) map {
-      case result: PaidOut => Some(result.transactionId)
-      case _ => None
+    ? (PayInWithCardPreAuthorized(preAuthorizationId, creditedAccount)) map {
+      case result: PaidIn => Right(result)
+      case error: PayInFailed => Left(error)
     }
   }
 
+  def refund(orderUuid: String,
+             payInTransactionId: String,
+             refundAmount: Int,
+             reasonMessage: String,
+             initializedByClient: Boolean)(implicit system: ActorSystem[_]): Future[Either[RefundFailed, Refunded]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    ? (Refund(orderUuid, payInTransactionId, refundAmount, reasonMessage, initializedByClient)) map {
+      case result: Refunded => Right(result)
+      case error: RefundFailed => Left(error)
+    }
+  }
+
+  def payOut(orderUuid: String,
+             creditedAccount: String,
+             creditedAmount: Int,
+             feesAmount: Int)(implicit system: ActorSystem[_]): Future[Either[PayOutFailed, PaidOut]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    ? (PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount)) map {
+      case result: PaidOut => Right(result)
+      case error: PayOutFailed => Left(error)
+    }
+  }
+
+  def transfer(orderUuid: Option[String] = None,
+               debitedAccount: String,
+               creditedAccount: String,
+               debitedAmount: Int,
+               feesAmount: Int = 0,
+               payOutRequired: Boolean = true)(implicit system: ActorSystem[_]
+  ): Future[Either[TransferFailed, Transfered]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    ? (Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, payOutRequired)) map {
+      case result: Transfered => Right(result)
+      case error: TransferFailed => Left(error)
+    }
+  }
 }
 
 object MangoPayPaymentDao extends GenericPaymentDao with MangoPayPaymentHandler

@@ -644,7 +644,11 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       paymentDao.payOut(
                         orderUuid.getOrElse(""), creditedAccount, debitedAmount, feesAmount = 0/* fees have already been applied */
                       ) complete() match {
-                        case Success(s) => s
+                        case Success(s) =>
+                          s match {
+                            case Right(r) => Some(r.transactionId)
+                            case _ => None
+                          }
                         case Failure(_) => None
                       }
                     }
