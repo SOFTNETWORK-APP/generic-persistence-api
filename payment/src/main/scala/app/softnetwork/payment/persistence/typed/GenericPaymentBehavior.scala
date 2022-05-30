@@ -1523,6 +1523,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                   .withDebitedAccount(paymentAccount.externalUuid)
                   .withDebitedAmount(transaction.amount)
                   .withLastUpdated(lastUpdated)
+                  .withCardId(transaction.cardId.getOrElse(""))
               ) :+
               PaymentAccountUpsertedEvent.defaultInstance
                 .withDocument(updatedPaymentAccount)
