@@ -31,6 +31,19 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
   override protected def processEvent(event: PaymentCommandEvent, persistenceId: PersistenceId, sequenceNr: Long): Future[Done] = {
     event match {
       case evt: WrapPaymentCommandEvent => processEvent(evt.event, persistenceId, sequenceNr)
+      case evt: CreateOrUpdatePaymentAccountCommandEvent =>
+        val command = CreateOrUpdatePaymentAccount(evt.paymentAccount)
+        ? (command) map {
+          case PaymentAccountCreated =>
+            if(forTests) system.eventStream.tell(Publish(event))
+            Done
+          case PaymentAccountUpdated =>
+            if(forTests) system.eventStream.tell(Publish(event))
+            Done
+          case other =>
+            logger.error(s"$platformEventProcessorId - command $command returns unexpectedly ${other.getClass}")
+            Done
+        }
       case evt: PayInWithCardPreAuthorizedCommandEvent =>
         import evt._
         val command = PayInWithCardPreAuthorized(preAuthorizationId, creditedAccount)

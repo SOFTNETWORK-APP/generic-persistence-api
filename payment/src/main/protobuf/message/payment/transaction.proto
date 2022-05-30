@@ -34,7 +34,7 @@ message CardPreAuthorizedEvent {
     required string cardId = 6;
 }
 
-message PreAuthorizeFailedEvent {
+message CardPreAuthorizationFailedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "TransactionFailedEvent";
     required string orderUuid = 1;

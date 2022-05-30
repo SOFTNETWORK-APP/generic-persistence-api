@@ -1625,7 +1625,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           log.error("Order-{} could not be pre authorized: {} -> {}", orderUuid, transaction.id, asJson(transaction))
           Effect.persist(
             broadcastEvent(
-              PreAuthorizeFailedEvent.defaultInstance
+              CardPreAuthorizationFailedEvent.defaultInstance
                 .withOrderUuid(orderUuid)
                 .withResultMessage(transaction.resultMessage)
                 .withTransaction(transaction)

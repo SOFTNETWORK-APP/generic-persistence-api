@@ -167,3 +167,9 @@ message TransferCommandEvent{
     required int32 feesAmount = 5;
     required bool payOutRequired = 6 [default = true];
 }
+
+message CreateOrUpdatePaymentAccountCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required app.softnetwork.payment.model.PaymentAccount paymentAccount = 1;
+}
