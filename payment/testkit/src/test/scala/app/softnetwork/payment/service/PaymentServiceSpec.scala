@@ -95,9 +95,8 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "pre authorize card" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath", PreAuthorizeCard(
+        Post(s"/$RootPath/$PaymentPath/preAuthorize", Payment(
           orderUuid,
-          customerUuid,
           5100,
           Some(cardPreRegistration)
         ))
@@ -112,8 +111,8 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       }
     }
 
-    "update card pre authorization" in {
-      Get(s"/$RootPath/$PaymentPath/$secureModeRoute/$orderUuid?preAuthorizationId=$preAuthorizationId&registerCard=true"
+    "card pre authorization with 3ds" in {
+      Get(s"/$RootPath/$PaymentPath/$secureModeRoute/preAuthorize/$orderUuid?preAuthorizationId=$preAuthorizationId&registerCard=true"
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val paymentAccount = loadPaymentAccount()
@@ -128,6 +127,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       assert(card.lastName == lastName)
       assert(card.birthday == birthday)
       assert(card.getActive)
+      assert(!card.expired)
       cardId = card.id
     }
 
@@ -340,10 +340,9 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "pay in / out with pre authorized card" in {
       createSession(customerUuid)
       withCookies(
-        Post(s"/$RootPath/$PaymentPath",
-          PreAuthorizeCard(
+        Post(s"/$RootPath/$PaymentPath/preAuthorize",
+          Payment(
             orderUuid,
-            customerUuid,
             100,
             Some(cardPreRegistration)
           )
@@ -359,6 +358,36 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
               case other => fail(other.toString)
             }
           case other => fail(other.toString)
+        }
+      }
+    }
+
+    "pay in / out with 3ds" in {
+      createSession(customerUuid)
+      withCookies(
+        Post(s"/$RootPath/$PaymentPath?creditedAccount=$sellerUuid",
+          Payment(
+            orderUuid,
+            5100,
+            Some(cardPreRegistration)
+          )
+        )
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        val redirection = responseAs[PaymentRedirection]
+        val params = redirection.redirectUrl.split("\\?").last.split("&|=")
+          .grouped(2)
+          .map(a => (a(0), a(1)))
+          .toMap
+        val transactionId = params.getOrElse("transactionId", "")
+        Get(s"/$RootPath/$PaymentPath/$secureModeRoute/payIn/$orderUuid?transactionId=$transactionId&registerCard=true"
+        ) ~> routes ~> check {
+          status shouldEqual StatusCodes.OK
+          implicit val tSystem: ActorSystem[_] = typedSystem()
+          MockPaymentDao ? PayOut(orderUuid, sellerUuid, 5100) await {
+            case _: PaidOut =>
+            case other => fail(other.toString)
+          }
         }
       }
     }

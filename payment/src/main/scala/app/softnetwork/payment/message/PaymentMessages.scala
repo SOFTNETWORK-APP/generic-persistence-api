@@ -23,22 +23,22 @@ object PaymentMessages {
     val key: String = user.userId.getOrElse(generateUUID())
   }
 
-  case class CardPreAuthorization(orderUuid: String,
-                                  debitedAmount: Int = 100,
-                                  cardPreRegistration: Option[CardPreRegistration] = None, javaEnabled: Boolean = false,
-                                  javascriptEnabled: Boolean = true,
-                                  colorDepth: Option[Int] = None,
-                                  screenWidth: Option[Int] = None,
-                                  screenHeight: Option[Int] = None)
+  case class Payment(orderUuid: String,
+                     debitedAmount: Int = 100,
+                     cardPreRegistration: Option[CardPreRegistration] = None,
+                     javaEnabled: Boolean = false,
+                     javascriptEnabled: Boolean = true,
+                     colorDepth: Option[Int] = None,
+                     screenWidth: Option[Int] = None,
+                     screenHeight: Option[Int] = None)
 
   /**
-    * Flow [PreRegisterCard -> ] PreAuthorizeCard
+    * Flow [PreRegisterCard -> ] PreAuthorizeCard [ -> PreAuthorizeCardFor3DS]
     *
     * @param orderUuid           - order uuid
     * @param debitedAccount      - account to debit
     * @param debitedAmount       - amount to debit from the debited account
     * @param cardPreRegistration - optional card pre registration
-    * @param javaEnabled         - java enabled
     * @param ipAddress           - ip address
     * @param browserInfo         - browser info
     */
@@ -47,7 +47,6 @@ object PaymentMessages {
                                                debitedAccount: String,
                                                debitedAmount: Int = 100,
                                                cardPreRegistration: Option[CardPreRegistration] = None,
-                                               javaEnabled: Boolean = false,
                                                ipAddress: Option[String] = None,
                                                browserInfo: Option[BrowserInfo] = None
                                               ) extends PaymentCommandWithKey {
@@ -55,7 +54,7 @@ object PaymentMessages {
   }
 
   /**
-    * hook command
+    * 3ds command
     *
     * @param orderUuid          - order unique id
     * @param preAuthorizationId - pre authorization transaction id
@@ -70,7 +69,7 @@ object PaymentMessages {
   }
 
   /**
-    * Flow [PreRegisterCard -> ] PreAuthorizeCard -> PayInWithCardPreAuthorized
+    * Flow [PreRegisterCard -> ] PreAuthorizeCard [ -> PreAuthorizeCardFor3DS] -> PayInWithCardPreAuthorized
     *
     * @param preAuthorizationId - pre authorization transaction id
     * @param creditedAccount    - account to credit
@@ -81,7 +80,7 @@ object PaymentMessages {
   }
 
   /**
-    * Flow [PreRegisterCard ->] PayIn
+    * Flow [PreRegisterCard ->] PayIn [ -> PayInFor3DS]
     *
     * @param orderUuid           - order uuid
     * @param debitedAccount      - account to debit
@@ -103,7 +102,7 @@ object PaymentMessages {
   }
 
   /**
-    * hook command
+    * 3ds command
     *
     * @param orderUuid     - order unique id
     * @param transactionId - payin transaction id

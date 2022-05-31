@@ -552,7 +552,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         cardPreAuthorization.setExecutionType(PreAuthorizationExecutionType.DIRECT)
         cardPreAuthorization.setSecureMode(SecureMode.DEFAULT)
         cardPreAuthorization.setSecureModeReturnUrl(
-          s"$secureModeReturnUrl/$orderUuid?registerCard=${registerCard.getOrElse(false)}"
+          s"$preAuthorizeCardFor3DS/$orderUuid?registerCard=${registerCard.getOrElse(false)}"
         )
 
         cardPreAuthorization.setId(generateUUID())
@@ -716,13 +716,16 @@ trait MockMangoPayProvider extends MangoPayProvider {
         executionDetails.setCardId(cardId)
         // Secured Mode is activated from €100.
         executionDetails.setSecureMode(SecureMode.DEFAULT)
-        executionDetails.setSecureModeReturnUrl(s"$secureModeReturnUrl/$orderUuid")
+        executionDetails.setSecureModeReturnUrl(s"$payInFor3DS/$orderUuid?registerCard=${registerCard.getOrElse(false)}")
         payIn.setExecutionDetails(executionDetails)
 
         payIn.setId(generateUUID()/*orderUuid.substring(0, orderUuid.length - 1) + "p"*/)
-        payIn.setStatus(MangoPayTransactionStatus.SUCCEEDED)
+        payIn.setStatus(MangoPayTransactionStatus.CREATED)
         payIn.setResultCode(OK)
-        payIn.setResultMessage(SUCCEEDED)
+        payIn.setResultMessage(CREATED)
+        executionDetails.setSecureModeRedirectUrl(
+          s"${executionDetails.getSecureModeReturnUrl}&transactionId=${payIn.getId}"
+        )
         PayIns = PayIns.updated(payIn.getId, payIn)
 
         Some(
@@ -737,7 +740,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
             fees = 0,
             resultCode = payIn.getResultCode,
             resultMessage = payIn.getResultMessage,
-            redirectUrl = None,
+            redirectUrl = if(debitedAmount > 5000) Option(executionDetails.getSecureModeRedirectUrl) else None,
             authorId = Some(authorId),
             creditedWalletId = Some(creditedWalletId)
           )

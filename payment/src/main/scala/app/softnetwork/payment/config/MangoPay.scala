@@ -29,7 +29,11 @@ object MangoPay extends StrictLogging{
                      directDebitPath: String,
                      directDebitRoute: String = "directDebit"){
 
-    lazy val secureModeReturnUrl = s"""${Settings.BaseUrl}/$secureModePath/$secureModeRoute"""
+    lazy val secureModeReturnUrl = s"""${Settings.BaseUrl}$secureModePath/$secureModeRoute"""
+
+    lazy val preAuthorizeCardFor3DS = s"$secureModeReturnUrl/preAuthorize"
+
+    lazy val payInFor3DS = s"$secureModeReturnUrl/payIn"
 
     lazy val hooksBaseUrl = s"""${Settings.BaseUrl}/$hooksPath/$hooksRoute"""
 

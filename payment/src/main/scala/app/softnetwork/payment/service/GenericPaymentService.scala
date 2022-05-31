@@ -3,11 +3,10 @@ package app.softnetwork.payment.service
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import app.softnetwork.api.server.DefaultComplete
-import app.softnetwork.payment.handlers.{GenericPaymentHandler, MockPaymentHandler, MangoPayPaymentHandler}
+import app.softnetwork.payment.handlers.{GenericPaymentHandler, MangoPayPaymentHandler, MockPaymentHandler}
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.serialization._
 import app.softnetwork.payment.config.Settings
-import Settings.MangoPayConfig._
 import akka.actor.typed.ActorSystem
 import app.softnetwork.config.{Settings => CommonSettings}
 import akka.http.javadsl.model.headers.{AcceptLanguage, UserAgent}
@@ -27,6 +26,7 @@ import org.json4s.{Formats, jackson}
 import org.json4s.jackson.Serialization
 import org.softnetwork.session.model.Session
 import app.softnetwork.api.server._
+import app.softnetwork.payment.config.Settings._
 import app.softnetwork.payment.model._
 import com.mangopay.core.enumerations.EventType
 
@@ -55,7 +55,8 @@ trait GenericPaymentService extends SessionService
     pathPrefix(Settings.PaymentPath){
       hooks ~
         card ~
-        `3ds` ~
+        payInFor3ds ~
+        preAuthorizeCardFor3ds ~
         bank ~
         declaration ~
         kyc ~
@@ -87,7 +88,7 @@ trait GenericPaymentService extends SessionService
           post {
             entity(as[PreRegisterCard]){ cmd =>
               run(cmd.copy(user = cmd.user.withUserId(session.id))) completeWith {
-                case r: CardPreRegistered         =>
+                case r: CardPreRegistered =>
                   complete(
                     HttpResponse(
                       StatusCodes.OK,
@@ -122,108 +123,173 @@ trait GenericPaymentService extends SessionService
     randomTokenCsrfProtection(checkHeader) {
       // check if a session exists
       _requiredSession(ec) { session =>
-        pathEnd {
-          get{
+        get {
+          pathEnd {
             run(LoadPaymentAccount(session.id)) completeWith {
               case r: PaymentAccountLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.paymentAccount.view))
               case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
               case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
               case _ => complete(HttpResponse(StatusCodes.BadRequest))
             }
-          } ~
+          }
+        } ~
           post {
             optionalHeaderValueByType[AcceptLanguage]((): Unit) { language =>
               optionalHeaderValueByType[Accept]((): Unit) { acceptHeader =>
                 optionalHeaderValueByType[UserAgent]((): Unit) { userAgent =>
                   extractClientIP { ipAddress =>
-                    entity(as[CardPreAuthorization]) { cardPreAuthorization =>
-                      import cardPreAuthorization._
-                      val browserInfo =
-                        if(language.isDefined &&
-                          acceptHeader.isDefined &&
-                          userAgent.isDefined &&
-                          colorDepth.isDefined &&
-                          screenWidth.isDefined &&
-                          screenHeight.isDefined){
-                          Some(
-                            BrowserInfo.defaultInstance.copy(
-                              colorDepth = colorDepth.get,
-                              screenWidth = screenWidth.get,
-                              screenHeight = screenHeight.get,
-                              acceptHeader = acceptHeader.get.value(),
-                              language = "fr-FR"/*language.get.value().replace('_', '-')*/,
-                              timeZoneOffset = "+" + (TimeZone.getTimeZone("Europe/Paris").getRawOffset/(60*1000)),
-                              userAgent = userAgent.get.value()
+                      entity(as[Payment]) { payment =>
+                        import payment._
+                        val browserInfo =
+                          if (language.isDefined &&
+                            acceptHeader.isDefined &&
+                            userAgent.isDefined &&
+                            colorDepth.isDefined &&
+                            screenWidth.isDefined &&
+                            screenHeight.isDefined) {
+                            Some(
+                              BrowserInfo.defaultInstance.copy(
+                                colorDepth = colorDepth.get,
+                                screenWidth = screenWidth.get,
+                                screenHeight = screenHeight.get,
+                                acceptHeader = acceptHeader.get.value(),
+                                javaEnabled = javaEnabled,
+                                javascriptEnabled = javascriptEnabled,
+                                language = "fr-FR" /*language.get.value().replace('_', '-')*/ ,
+                                timeZoneOffset = "+" + (TimeZone.getTimeZone("Europe/Paris").getRawOffset / (60 * 1000)),
+                                userAgent = userAgent.get.value()
+                              )
                             )
-                          )
-                        }
-                        else{
-                          var missingParameters: Set[String] = Set.empty
-                          if(colorDepth.isEmpty)
-                            missingParameters += "colorDepth"
-                          if(screenWidth.isEmpty)
-                            missingParameters += "screenWidth"
-                          if(screenHeight.isEmpty)
-                            missingParameters += "screenHeight"
-                          if(missingParameters.nonEmpty)
-                            logger.warn(s"Missing parameters ${missingParameters.mkString(", ")} will be mandatory")
+                          }
+                          else {
+                            var missingParameters: Set[String] = Set.empty
+                            if (colorDepth.isEmpty)
+                              missingParameters += "colorDepth"
+                            if (screenWidth.isEmpty)
+                              missingParameters += "screenWidth"
+                            if (screenHeight.isEmpty)
+                              missingParameters += "screenHeight"
+                            if (missingParameters.nonEmpty)
+                              logger.warn(s"Missing parameters ${missingParameters.mkString(", ")} will be mandatory")
 
-                          var missingHeaders: Set[String] = Set.empty
-                          if(language.isEmpty)
-                            missingHeaders += "Accept-Language"
-                          if(acceptHeader.isEmpty)
-                            missingHeaders += "Accept"
-                          if(userAgent.isEmpty)
-                            missingHeaders += "User-Agent"
-                          if(missingHeaders.nonEmpty)
-                            logger.warn(s"Missing Http headers ${missingHeaders.mkString(", ")} will be mandatory")
-                          None
+                            var missingHeaders: Set[String] = Set.empty
+                            if (language.isEmpty)
+                              missingHeaders += "Accept-Language"
+                            if (acceptHeader.isEmpty)
+                              missingHeaders += "Accept"
+                            if (userAgent.isEmpty)
+                              missingHeaders += "User-Agent"
+                            if (missingHeaders.nonEmpty)
+                              logger.warn(s"Missing Http headers ${missingHeaders.mkString(", ")} will be mandatory")
+                            None
+                          }
+                        pathPrefix("preAuthorize") {
+                          run(
+                            PreAuthorizeCard(
+                              orderUuid,
+                              session.id,
+                              debitedAmount,
+                              cardPreRegistration,
+                              if (browserInfo.isDefined) Some(ipAddress) else None,
+                              browserInfo
+                            )
+                          ) completeWith {
+                            case r: CardPreAuthorized =>
+                              complete(
+                                HttpResponse(
+                                  StatusCodes.OK,
+                                  entity = r
+                                )
+                              )
+                            case r: PaymentRedirection =>
+                              complete(
+                                HttpResponse(
+                                  StatusCodes.OK,
+                                  entity = r
+                                )
+                              )
+                            case r: CardPreAuthorizationFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+                            case r: CardNotPreAuthorized.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                            case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                            case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                            case other =>
+                              logger.error(other.toString)
+                              complete(HttpResponse(StatusCodes.BadRequest))
+                          }
+                        } ~ pathEnd {
+                          parameters("creditedAccount") { creditedAccount: String =>
+                            run(
+                              PayIn(
+                                orderUuid,
+                                session.id,
+                                debitedAmount,
+                                creditedAccount,
+                                cardPreRegistration,
+                                if (browserInfo.isDefined) Some(ipAddress) else None,
+                                browserInfo
+                              )
+                            ) completeWith {
+                              case r: PaidIn =>
+                                complete(
+                                  HttpResponse(
+                                    StatusCodes.OK,
+                                    entity = r
+                                  )
+                                )
+                              case r: PaymentRedirection =>
+                                complete(
+                                  HttpResponse(
+                                    StatusCodes.OK,
+                                    entity = r
+                                  )
+                                )
+                              case r: PayInFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+                              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                              case other =>
+                                logger.error(other.toString)
+                                complete(HttpResponse(StatusCodes.BadRequest))
+                            }
+                          }
                         }
-                      run(
-                        PreAuthorizeCard(
-                          orderUuid,
-                          session.id,
-                          debitedAmount,
-                          cardPreRegistration,
-                          javaEnabled,
-                          if(browserInfo.isDefined) Some(ipAddress) else None,
-                          browserInfo
-                        )
-                      ) completeWith {
-                        case r: CardPreAuthorized =>
-                          complete(
-                            HttpResponse(
-                              StatusCodes.OK,
-                              entity = r
-                            )
-                          )
-                        case r: PaymentRedirection =>
-                          complete(
-                            HttpResponse(
-                              StatusCodes.OK,
-                              entity = r
-                            )
-                          )
-                        case r: CardPreAuthorizationFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
-                        case r: CardNotPreAuthorized.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
-                        case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
-                        case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
-                        case other =>
-                          logger.error(other.toString)
-                          complete(HttpResponse(StatusCodes.BadRequest))
-                      }
                     }
                   }
                 }
               }
             }
           }
+      }
+    }
+  }
+
+  lazy val payInFor3ds: Route = pathPrefix(SecureModeRoute/"payIn"){
+    pathPrefix(Segment) {orderUuid =>
+      parameters("transactionId", "registerCard".as[Boolean]) {(transactionId, registerCard) =>
+        run(PayInFor3DS(orderUuid, transactionId, registerCard)) completeWith {
+          case _: PaidIn =>
+            complete(
+              HttpResponse(
+                StatusCodes.OK
+              )
+            )
+          case r: PaymentRedirection =>
+            complete(
+              HttpResponse(
+                StatusCodes.OK,
+                entity = r
+              )
+            )
+          case r: PayInFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+          case r: TransactionNotFound.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+          case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+          case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+          case _ => complete(HttpResponse(StatusCodes.BadRequest))
         }
       }
     }
   }
 
-  lazy val `3ds`: Route = pathPrefix(secureModeRoute){
+  lazy val preAuthorizeCardFor3ds: Route = pathPrefix(SecureModeRoute/"preAuthorize"){
     pathPrefix(Segment) {orderUuid =>
       parameters("preAuthorizationId", "registerCard".as[Boolean]) {(preAuthorizationId, registerCard) =>
         run(PreAuthorizeCardFor3DS(orderUuid, preAuthorizationId, registerCard)) completeWith {
@@ -233,7 +299,7 @@ trait GenericPaymentService extends SessionService
                 StatusCodes.OK
               )
             )
-          case r: PaymentRedirection      =>
+          case r: PaymentRedirection =>
             complete(
               HttpResponse(
                 StatusCodes.OK,
@@ -250,7 +316,7 @@ trait GenericPaymentService extends SessionService
     }
   }
 
-  lazy val hooks: Route = pathPrefix(hooksRoute){
+  lazy val hooks: Route = pathPrefix(HooksRoute){
     pathEnd{
       parameters("EventType", "RessourceId") {(eventType, ressourceId) =>
         Option(EventType.valueOf(eventType)) match {

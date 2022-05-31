@@ -532,7 +532,7 @@ trait MangoPayProvider extends PaymentProvider {
         }
         cardPreAuthorization.setSecureMode(SecureMode.DEFAULT)
         cardPreAuthorization.setSecureModeReturnUrl(
-          s"$secureModeReturnUrl/$orderUuid?registerCard=${registerCard.getOrElse(false)}"
+          s"$preAuthorizeCardFor3DS/$orderUuid?registerCard=${registerCard.getOrElse(false)}"
         )
         Try(
           idempotency match {
@@ -810,7 +810,7 @@ trait MangoPayProvider extends PaymentProvider {
         executionDetails.setCardId(cardId)
         // Secured Mode is activated from €100.
         executionDetails.setSecureMode(SecureMode.DEFAULT)
-        executionDetails.setSecureModeReturnUrl(s"$secureModeReturnUrl/$orderUuid?registerCard=${registerCard.getOrElse(false)}")
+        executionDetails.setSecureModeReturnUrl(s"$payInFor3DS/$orderUuid?registerCard=${registerCard.getOrElse(false)}")
         payIn.setExecutionDetails(executionDetails)
         Try(
           idempotency match {

@@ -392,8 +392,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         state match {
           case Some(paymentAccount) =>
             (paymentAccount.transactions.find(_.id == transactionId) match {
-              case None =>
-                loadPayIn(orderUuid, transactionId)
+              case None => loadPayIn(orderUuid, transactionId)
               case some => some
             }) match {
               case Some(transaction) =>
@@ -1477,11 +1476,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           PaymentAccountUpsertedEvent.defaultInstance
             .withDocument(updatedPaymentAccount)
             .withLastUpdated(lastUpdated)
-        ).thenRun(_ =>
-          PaymentRedirection(
-            transaction.redirectUrl.get
-          ) ~> replyTo
-        )
+        ).thenRun(_ => PaymentRedirection(transaction.redirectUrl.get) ~> replyTo)
       case _ =>
         if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
           log.debug("Order-{} paid in: {} -> {}", orderUuid, transaction.id, asJson(transaction))
@@ -1542,9 +1537,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
               PaymentAccountUpsertedEvent.defaultInstance
                 .withDocument(updatedPaymentAccount)
                 .withLastUpdated(lastUpdated)
-          ).thenRun(_ =>
-            PayInFailed(transaction.resultMessage) ~> replyTo
-          )
+          ).thenRun(_ => PayInFailed(transaction.resultMessage) ~> replyTo)
         }
     }
   }
