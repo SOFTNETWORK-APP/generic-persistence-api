@@ -3,8 +3,7 @@ package app.softnetwork.payment.service
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import app.softnetwork.api.server.config.Settings.RootPath
-import app.softnetwork.payment.config.Settings.MangoPayConfig._
-import app.softnetwork.payment.config.Settings.PaymentPath
+import app.softnetwork.payment.config.Settings._
 import app.softnetwork.payment.handlers.MockPaymentDao
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner
@@ -83,7 +82,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "pre register card" in {
       createSession(customerUuid)
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/card", PreRegisterCard(
+        Post(s"/$RootPath/$PaymentPath/$CardRoute", PreRegisterCard(
           orderUuid,
           naturalUser.withExternalUuid(customerUuid)
         ))
@@ -95,7 +94,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "pre authorize card" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/preAuthorize", Payment(
+        Post(s"/$RootPath/$PaymentPath/$PreAuthorizeCardRoute", Payment(
           orderUuid,
           5100,
           Some(cardPreRegistration)
@@ -112,7 +111,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     }
 
     "card pre authorization with 3ds" in {
-      Get(s"/$RootPath/$PaymentPath/$secureModeRoute/preAuthorize/$orderUuid?preAuthorizationId=$preAuthorizationId&registerCard=true"
+      Get(s"/$RootPath/$PaymentPath/$SecureModeRoute/$PreAuthorizeCardRoute/$orderUuid?preAuthorizationId=$preAuthorizationId&registerCard=true"
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val paymentAccount = loadPaymentAccount()
@@ -134,7 +133,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "not create bank account with wrong iban" in {
       createSession(sellerUuid)
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank", BankAccountCommand(
+        Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, "", bic),
           naturalUser.withExternalUuid(sellerUuid),
           None
@@ -147,7 +146,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "not create bank account with wrong bic" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank", BankAccountCommand(
+        Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, iban, ""),
           naturalUser.withExternalUuid(sellerUuid),
           None
@@ -160,7 +159,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "create bank account with natural user" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank", BankAccountCommand(
+        Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, iban, bic),
           naturalUser.withExternalUuid(sellerUuid),
           None
@@ -174,7 +173,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "update bank account with natural user" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank", BankAccountCommand(
+        Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(Some(sellerBankAccountId), ownerName, ownerAddress, iban, bic),
           naturalUser.withLastName("anotherLastName").withExternalUuid(sellerUuid),
           None
@@ -190,7 +189,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "not update bank account with wrong siret" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank",
+        Post(s"/$RootPath/$PaymentPath/$BankRoute",
           BankAccountCommand(
             BankAccount(
               Some(sellerBankAccountId),
@@ -211,7 +210,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "not update bank account with empty legal name" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank",
+        Post(s"/$RootPath/$PaymentPath/$BankRoute",
           BankAccountCommand(
             BankAccount(
               Some(sellerBankAccountId),
@@ -232,7 +231,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "not update bank account without accepted terms of PSP" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank",
+        Post(s"/$RootPath/$PaymentPath/$BankRoute",
           BankAccountCommand(
             BankAccount(
               Some(sellerBankAccountId),
@@ -253,7 +252,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "update bank account with sole trader legal user" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank",
+        Post(s"/$RootPath/$PaymentPath/$BankRoute",
           BankAccountCommand(
             BankAccount(
               Some(sellerBankAccountId),
@@ -277,7 +276,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "update bank account with business legal user" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/bank",
+        Post(s"/$RootPath/$PaymentPath/$BankRoute",
           BankAccountCommand(
             BankAccount(
               Some(sellerBankAccountId),
@@ -309,7 +308,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "create or update ultimate beneficial owner" in {
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/declaration", ubo)
+        Post(s"/$RootPath/$PaymentPath/$DeclarationRoute", ubo)
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val declaration = loadDeclaration()
@@ -320,7 +319,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "ask for declaration validation" in {
       withCookies(
-        Put(s"/$RootPath/$PaymentPath/declaration")
+        Put(s"/$RootPath/$PaymentPath/$DeclarationRoute")
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val declaration = loadDeclaration()
@@ -329,7 +328,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     }
 
     "update declaration status" in {
-      Get(s"/$RootPath/$PaymentPath/$hooksRoute?EventType=UBO_DECLARATION_VALIDATED&RessourceId=$uboDeclarationId"
+      Get(s"/$RootPath/$PaymentPath/$HooksRoute?EventType=UBO_DECLARATION_VALIDATED&RessourceId=$uboDeclarationId"
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val declaration = loadDeclaration()
@@ -340,7 +339,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "pay in / out with pre authorized card" in {
       createSession(customerUuid)
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/preAuthorize",
+        Post(s"/$RootPath/$PaymentPath/$PreAuthorizeCardRoute",
           Payment(
             orderUuid,
             100,
@@ -365,7 +364,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "pay in / out with 3ds" in {
       createSession(customerUuid)
       withCookies(
-        Post(s"/$RootPath/$PaymentPath?creditedAccount=$sellerUuid",
+        Post(s"/$RootPath/$PaymentPath/$PayInRoute?creditedAccount=$sellerUuid",
           Payment(
             orderUuid,
             5100,
@@ -380,7 +379,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
           .map(a => (a(0), a(1)))
           .toMap
         val transactionId = params.getOrElse("transactionId", "")
-        Get(s"/$RootPath/$PaymentPath/$secureModeRoute/payIn/$orderUuid?transactionId=$transactionId&registerCard=true"
+        Get(s"/$RootPath/$PaymentPath/$SecureModeRoute/$PayInRoute/$orderUuid?transactionId=$transactionId&registerCard=true"
         ) ~> routes ~> check {
           status shouldEqual StatusCodes.OK
           assert(responseAs[PaidIn].transactionId == transactionId)
@@ -396,7 +395,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "delete bank account" in {
       createSession(sellerUuid)
       withCookies(
-        Delete(s"/$RootPath/$PaymentPath/bank")
+        Delete(s"/$RootPath/$PaymentPath/$BankRoute")
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         assert(loadPaymentAccount().bankAccount.isEmpty)
@@ -406,7 +405,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "disable card" in {
       createSession(customerUuid)
       withCookies(
-        Delete(s"/$RootPath/$PaymentPath/card?cardId=$cardId")
+        Delete(s"/$RootPath/$PaymentPath/$CardRoute?cardId=$cardId")
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val cards = loadCards()

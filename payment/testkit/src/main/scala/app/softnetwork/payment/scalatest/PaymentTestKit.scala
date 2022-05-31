@@ -5,8 +5,7 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentTypes, Multipart, StatusCodes}
 import akka.http.scaladsl.server.Route
 import app.softnetwork.api.server.config.Settings.RootPath
-import app.softnetwork.payment.config.Settings.PaymentPath
-import app.softnetwork.payment.config.Settings.MangoPayConfig._
+import app.softnetwork.payment.config.Settings._
 import app.softnetwork.payment.model.{BankAccountView, Card, KycDocument, KycDocumentValidationReport, PaymentAccountView, UboDeclarationView}
 import app.softnetwork.payment.persistence.typed.MockPaymentBehavior
 import app.softnetwork.payment.serialization.paymentFormats
@@ -66,7 +65,7 @@ trait PaymentRouteTestKit extends SessionTestKit with PaymentTestKit { _: Suite 
 
   def loadCards(): Seq[Card] = {
     withCookies(
-      Get(s"/$RootPath/$PaymentPath/card")
+      Get(s"/$RootPath/$PaymentPath/$CardRoute")
     ) ~> routes ~> check {
       status shouldEqual StatusCodes.OK
       responseAs[Seq[Card]]
@@ -75,7 +74,7 @@ trait PaymentRouteTestKit extends SessionTestKit with PaymentTestKit { _: Suite 
 
   def loadBankAccount(): BankAccountView = {
     withCookies(
-      Get(s"/$RootPath/$PaymentPath/bank")
+      Get(s"/$RootPath/$PaymentPath/$BankRoute")
     ) ~> routes ~> check {
       status shouldEqual StatusCodes.OK
       responseAs[BankAccountView]
@@ -90,7 +89,7 @@ trait PaymentRouteTestKit extends SessionTestKit with PaymentTestKit { _: Suite 
       .foreach { documentType =>
         withCookies(
           Post(
-            s"/$RootPath/$PaymentPath/kyc?documentType=$documentType",
+            s"/$RootPath/$PaymentPath/$KycRoute?documentType=$documentType",
             entity = Multipart.FormData.fromPath(
               "pages", ContentTypes.`application/octet-stream`, path, 100000
             ).toEntity
@@ -107,7 +106,7 @@ trait PaymentRouteTestKit extends SessionTestKit with PaymentTestKit { _: Suite 
 
   def loadKycDocumentStatus(documentType: KycDocument.KycDocumentType): KycDocumentValidationReport = {
     withCookies(
-      Get(s"/$RootPath/$PaymentPath/kyc?documentType=$documentType")
+      Get(s"/$RootPath/$PaymentPath/$KycRoute?documentType=$documentType")
     ) ~> routes ~> check {
       status shouldEqual StatusCodes.OK
       responseAs[KycDocumentValidationReport]
@@ -120,12 +119,12 @@ trait PaymentRouteTestKit extends SessionTestKit with PaymentTestKit { _: Suite 
       .map(_.documentType)
       .foreach{ documentType =>
         withCookies(
-          Get(s"/$RootPath/$PaymentPath/kyc?documentType=$documentType")
+          Get(s"/$RootPath/$PaymentPath/$KycRoute?documentType=$documentType")
         ) ~> routes ~> check {
           status shouldEqual StatusCodes.OK
           val report = responseAs[KycDocumentValidationReport]
           assert(report.status == KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATION_ASKED)
-          Get(s"/$RootPath/$PaymentPath/$hooksRoute?EventType=KYC_SUCCEEDED&RessourceId=${report.id}"
+          Get(s"/$RootPath/$PaymentPath/$HooksRoute?EventType=KYC_SUCCEEDED&RessourceId=${report.id}"
           ) ~> routes ~> check {
             status shouldEqual StatusCodes.OK
             assert(loadKycDocumentStatus(documentType).status == KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATED)
@@ -136,7 +135,7 @@ trait PaymentRouteTestKit extends SessionTestKit with PaymentTestKit { _: Suite 
 
   def loadDeclaration(): UboDeclarationView = {
     withCookies(
-      Get(s"/$RootPath/$PaymentPath/declaration")
+      Get(s"/$RootPath/$PaymentPath/$DeclarationRoute")
     ) ~> routes ~> check {
       status shouldEqual StatusCodes.OK
       responseAs[UboDeclarationView]

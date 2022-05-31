@@ -64,7 +64,7 @@ trait GenericPaymentService extends SessionService
     }
   }
 
-  lazy val card: Route = pathPrefix("card"){
+  lazy val card: Route = pathPrefix(CardRoute){
     // check anti CSRF token
     randomTokenCsrfProtection(checkHeader) {
       // check if a session exists
@@ -183,7 +183,7 @@ trait GenericPaymentService extends SessionService
                               logger.warn(s"Missing Http headers ${missingHeaders.mkString(", ")} will be mandatory")
                             None
                           }
-                        pathPrefix("preAuthorize") {
+                        pathPrefix(PreAuthorizeCardRoute) {
                           run(
                             PreAuthorizeCard(
                               orderUuid,
@@ -216,7 +216,7 @@ trait GenericPaymentService extends SessionService
                               logger.error(other.toString)
                               complete(HttpResponse(StatusCodes.BadRequest))
                           }
-                        } ~ pathEnd {
+                        } ~ pathPrefix(PayInRoute) {
                           parameters("creditedAccount") { creditedAccount: String =>
                             run(
                               PayIn(
@@ -262,7 +262,7 @@ trait GenericPaymentService extends SessionService
     }
   }
 
-  lazy val payInFor3ds: Route = pathPrefix(SecureModeRoute/"payIn"){
+  lazy val payInFor3ds: Route = pathPrefix(SecureModeRoute/PayInRoute){
     pathPrefix(Segment) {orderUuid =>
       parameters("transactionId", "registerCard".as[Boolean]) {(transactionId, registerCard) =>
         run(PayInFor3DS(orderUuid, transactionId, registerCard)) completeWith {
@@ -290,7 +290,7 @@ trait GenericPaymentService extends SessionService
     }
   }
 
-  lazy val preAuthorizeCardFor3ds: Route = pathPrefix(SecureModeRoute/"preAuthorize"){
+  lazy val preAuthorizeCardFor3ds: Route = pathPrefix(SecureModeRoute/PreAuthorizeCardRoute){
     pathPrefix(Segment) {orderUuid =>
       parameters("preAuthorizationId", "registerCard".as[Boolean]) {(preAuthorizationId, registerCard) =>
         run(PreAuthorizeCardFor3DS(orderUuid, preAuthorizationId, registerCard)) completeWith {
@@ -398,7 +398,7 @@ trait GenericPaymentService extends SessionService
     }
   }
 
-  lazy val bank: Route = pathPrefix("bank") {
+  lazy val bank: Route = pathPrefix(BankRoute) {
     // check anti CSRF token
     randomTokenCsrfProtection(checkHeader) {
       // check if a session exists
@@ -447,7 +447,7 @@ trait GenericPaymentService extends SessionService
     }
   }
 
-  lazy val declaration: Route = pathPrefix("declaration") {
+  lazy val declaration: Route = pathPrefix(DeclarationRoute) {
     // check anti CSRF token
     randomTokenCsrfProtection(checkHeader) {
       // check if a session exists
@@ -480,7 +480,7 @@ trait GenericPaymentService extends SessionService
   }
 
   lazy val kyc: Route = {
-    pathPrefix("kyc"){
+    pathPrefix(KycRoute){
       parameter("documentType"){ documentType =>
         val maybeKycDocumentType: Option[KycDocument.KycDocumentType] =
           documentType match {

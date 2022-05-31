@@ -1,5 +1,6 @@
 package app.softnetwork.payment.config
 
+import Settings._
 import com.mangopay.MangoPayApi
 import com.mangopay.core.enumerations.{EventType, HookStatus}
 import com.mangopay.entities.Hook
@@ -23,21 +24,18 @@ object MangoPay extends StrictLogging{
                      debug: Boolean,
                      technicalErrors: Set[String],
                      secureModePath: String,
-                     secureModeRoute: String = "3ds",
                      hooksPath: String,
-                     hooksRoute: String = "hooks",
-                     directDebitPath: String,
-                     directDebitRoute: String = "directDebit"){
+                     directDebitPath: String){
 
-    lazy val secureModeReturnUrl = s"""${Settings.BaseUrl}$secureModePath/$secureModeRoute"""
+    lazy val secureModeReturnUrl = s"""$BaseUrl$secureModePath/$SecureModeRoute"""
 
-    lazy val preAuthorizeCardFor3DS = s"$secureModeReturnUrl/preAuthorize"
+    lazy val preAuthorizeCardFor3DS = s"$secureModeReturnUrl/$PreAuthorizeCardRoute"
 
-    lazy val payInFor3DS = s"$secureModeReturnUrl/payIn"
+    lazy val payInFor3DS = s"$secureModeReturnUrl/$PayInRoute"
 
-    lazy val hooksBaseUrl = s"""${Settings.BaseUrl}/$hooksPath/$hooksRoute"""
+    lazy val hooksBaseUrl = s"""$BaseUrl/$hooksPath/$HooksRoute"""
 
-    lazy val directDebitReturnUrl = s"""${Settings.BaseUrl}/$directDebitPath/$directDebitRoute"""
+    lazy val directDebitReturnUrl = s"""$BaseUrl/$directDebitPath/$DirectDebitRoute"""
   }
 
   def apply(): MangoPayApi = {
