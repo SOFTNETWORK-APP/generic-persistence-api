@@ -409,13 +409,14 @@ trait MockMangoPayProvider extends MangoPayProvider {
           else {
             None
           }
+        val status: Transaction.TransactionStatus = result.getStatus
         Some(
           Transaction().copy(
             id = transactionId,
             orderUuid = orderUuid,
             nature = Transaction.TransactionNature.REGULAR,
             `type` = `type`,
-            status = result.getStatus,
+            status = if(status.isTransactionCreated && redirectUrl.isDefined) Transaction.TransactionStatus.TRANSACTION_SUCCEEDED else status,
             amount = result.getDebitedFunds.getAmount,
             cardId = cardId,
             fees = result.getFees.getAmount,

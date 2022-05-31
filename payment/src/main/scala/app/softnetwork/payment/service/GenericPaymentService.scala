@@ -266,10 +266,11 @@ trait GenericPaymentService extends SessionService
     pathPrefix(Segment) {orderUuid =>
       parameters("transactionId", "registerCard".as[Boolean]) {(transactionId, registerCard) =>
         run(PayInFor3DS(orderUuid, transactionId, registerCard)) completeWith {
-          case _: PaidIn =>
+          case r: PaidIn =>
             complete(
               HttpResponse(
-                StatusCodes.OK
+                StatusCodes.OK,
+                entity = r
               )
             )
           case r: PaymentRedirection =>

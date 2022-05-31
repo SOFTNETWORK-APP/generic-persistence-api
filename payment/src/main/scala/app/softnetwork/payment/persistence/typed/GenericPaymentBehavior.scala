@@ -391,10 +391,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            (paymentAccount.transactions.find(_.id == transactionId) match {
-              case None => loadPayIn(orderUuid, transactionId)
-              case some => some
-            }) match {
+            loadPayIn(orderUuid, transactionId) match {
               case Some(transaction) =>
                 handlePayIn(entityId, orderUuid, replyTo, paymentAccount, registerCard, transaction)
               case _ => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)

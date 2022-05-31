@@ -383,6 +383,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
         Get(s"/$RootPath/$PaymentPath/$secureModeRoute/payIn/$orderUuid?transactionId=$transactionId&registerCard=true"
         ) ~> routes ~> check {
           status shouldEqual StatusCodes.OK
+          assert(responseAs[PaidIn].transactionId == transactionId)
           implicit val tSystem: ActorSystem[_] = typedSystem()
           MockPaymentDao ? PayOut(orderUuid, sellerUuid, 5100) await {
             case _: PaidOut =>
