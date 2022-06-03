@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Route
 import app.softnetwork.api.server.config.Settings.RootPath
 import app.softnetwork.payment.config.Settings._
 import app.softnetwork.payment.model.{BankAccountView, Card, KycDocument, KycDocumentValidationReport, PaymentAccountView, UboDeclarationView}
+import app.softnetwork.payment.persistence.data.paymentKvDao
 import app.softnetwork.payment.persistence.typed.MockPaymentBehavior
 import app.softnetwork.payment.serialization.paymentFormats
 import app.softnetwork.payment.service.MockPaymentService
@@ -35,7 +36,7 @@ trait PaymentTestKit extends InMemoryPersistenceTestKit {_: Suite =>
     *
     * initialize all singletons
     */
-  override def singletons: ActorSystem[_] => Seq[Singleton[_]] = _ => Seq.empty
+  override def singletons: ActorSystem[_] => Seq[Singleton[_]] = _ => Seq(paymentKvDao)
 
   /**
     * initialize all event processor streams

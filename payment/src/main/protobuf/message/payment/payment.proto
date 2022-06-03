@@ -78,6 +78,17 @@ message BankAccountUpdatedEvent {
     required string bankAccountId = 5;
 }
 
+message MandateUpdatedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
+    option (scalapb.message).extends = "BroadcastEvent";
+    required string externalUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    optional string mandateId = 3;
+    optional app.softnetwork.payment.model.BankAccount.MandateStatus mandateStatus = 4;
+    required string bankAccountId = 5;
+}
+
 message TermsOfPSPAcceptedEvent{
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "PaymentAccountEvent";
@@ -144,8 +155,9 @@ message RefundCommandEvent{
     required string orderUuid = 1;
     required string payInTransactionId = 2;
     required int32 refundAmount = 3;
-    required string reasonMessage = 4;
-    required bool initializedByClient = 5;
+    required string currency = 4 [default = "EUR"];
+    required string reasonMessage = 5;
+    required bool initializedByClient = 6;
 }
 
 message PayOutCommandEvent{
@@ -155,6 +167,7 @@ message PayOutCommandEvent{
     required string creditedAccount = 2;
     required int32 creditedAmount = 3;
     required int32 feesAmount = 4;
+    required string currency = 5 [default = "EUR"];
 }
 
 message TransferCommandEvent{
@@ -165,7 +178,18 @@ message TransferCommandEvent{
     required string creditedAccount = 3;
     required int32 debitedAmount = 4;
     required int32 feesAmount = 5;
-    required bool payOutRequired = 6 [default = true];
+    required string currency = 6 [default = "EUR"];
+    required bool payOutRequired = 7 [default = true];
+}
+
+message DirectDebitCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string creditedAccount = 1;
+    required int32 debitedAmount = 2;
+    required int32 feesAmount = 3;
+    required string currency = 4 [default = "EUR"];
+    required string statementDescriptor = 5;
 }
 
 message CreateOrUpdatePaymentAccountCommandEvent{

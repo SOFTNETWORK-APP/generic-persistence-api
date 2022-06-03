@@ -75,6 +75,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
 
   var cardId: String = _
 
+  var mandateId: String = _
+
   "Payment handler" must {
     "pre register card" in {
       ? (PreRegisterCard(
@@ -105,6 +107,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         orderUuid,
         customerUuid,
         5100,
+        "EUR",
         Some(cardPreRegistration)
       )) await {
         case result: PaymentRedirection =>
@@ -442,6 +445,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         orderUuid,
         customerUuid,
         100,
+        "EUR",
         Some(cardPreRegistration)
       )) await {
         case result: CardPreAuthorized =>
@@ -460,7 +464,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "pay in / out" in {
-      ? (PayIn(orderUuid, customerUuid, 100, sellerUuid)) await {
+      ? (PayIn(orderUuid, customerUuid, 100, "EUR", sellerUuid)) await {
         case _: PaidIn =>
           ? (PayOut(orderUuid, sellerUuid, 100)) await {
             case _: PaidOut =>
@@ -471,12 +475,12 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "pay in / refund" in {
-      ? (PayIn(orderUuid, customerUuid, 100, sellerUuid)) await {
+      ? (PayIn(orderUuid, customerUuid, 100, "EUR", sellerUuid)) await {
         case result: PaidIn =>
           val payInTransactionId = result.transactionId
-          ? (Refund(orderUuid, payInTransactionId, 101, "change my mind", initializedByClient = true)) await {
+          ? (Refund(orderUuid, payInTransactionId, 101, "EUR", "change my mind", initializedByClient = true)) await {
             case IllegalTransactionAmount => // 101 > 100
-              ? (Refund(orderUuid, payInTransactionId, 50, "change my mind", initializedByClient = true)) await {
+              ? (Refund(orderUuid, payInTransactionId, 50, "EUR", "change my mind", initializedByClient = true)) await {
                 case _: Refunded =>
                 case other => fail(other.toString)
               }
@@ -499,12 +503,88 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 1)
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
-              vendorBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
+              vendorBankAccountId = paymentAccount.getBankAccount.getId
+              ? (AddKycDocument(vendorUuid, Seq.empty, KycDocument.KycDocumentType.KYC_IDENTITY_PROOF)) await {
+                case result: KycDocumentAdded =>
+                  ?(UpdateKycDocumentStatus(
+                    result.kycDocumentId,
+                    Some(KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATED)
+                  )) await {
+                    case _: KycDocumentStatusUpdated =>
+                    case other => fail(other.toString)
+                  }
+                case other => fail(other.toString)
+              }
               ? (Transfer(Some(orderUuid), sellerUuid, vendorUuid, 50, 10)) await {
                 case result: Transfered =>
                   assert(result.paidOutTransactionId.isDefined)
                 case other => fail(other.toString)
               }
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    "create mandate" in {
+      ? (CreateMandate(vendorUuid)) await {
+        case MandateCreated =>
+          ? (LoadPaymentAccount(vendorUuid)) await {
+            case result: PaymentAccountLoaded =>
+              val bankAccount = result.paymentAccount.getBankAccount
+              assert(bankAccount.mandateId.isDefined)
+              mandateId = bankAccount.getMandateId
+              assert(bankAccount.getMandateStatus == BankAccount.MandateStatus.MANDATE_SUBMITTED)
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    "direct debit" in {
+      ? (DirectDebit(vendorUuid, 100, 0, "EUR", "Direct Debit")) await {
+        case r: DirectDebited =>
+          ? (LoadPaymentAccount(vendorUuid)) await {
+            case result: PaymentAccountLoaded =>
+              result.paymentAccount.transactions.find(_.id == r.transactionId) match {
+                case Some(transaction) =>
+                  assert(transaction.currency == "EUR")
+                  assert(transaction.paymentType == Transaction.PaymentType.DIRECT_DEBITED)
+                  assert(transaction.amount == 100)
+                  assert(transaction.fees == 0)
+                case _ => fail("transaction not found")
+              }
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    "update mandate status" in {
+      ? (UpdateMandateStatus(mandateId, Some(BankAccount.MandateStatus.MANDATE_ACTIVATED))) await {
+        case r: MandateStatusUpdated =>
+          val result = r.result
+          assert(result.id == mandateId)
+          assert(result.status == BankAccount.MandateStatus.MANDATE_ACTIVATED)
+          ? (LoadPaymentAccount(vendorUuid)) await {
+            case result: PaymentAccountLoaded =>
+              val bankAccount = result.paymentAccount.getBankAccount
+              assert(bankAccount.getMandateId == mandateId)
+              assert(bankAccount.getMandateStatus == BankAccount.MandateStatus.MANDATE_ACTIVATED)
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    "cancel mandate" in {
+      ? (CancelMandate(vendorUuid)) await {
+        case MandateCanceled =>
+          ? (LoadPaymentAccount(vendorUuid)) await {
+            case result: PaymentAccountLoaded =>
+              val bankAccount = result.paymentAccount.getBankAccount
+              assert(bankAccount.mandateId.isEmpty)
+              assert(bankAccount.mandateStatus.isEmpty)
             case other => fail(other.toString)
           }
         case other => fail(other.toString)

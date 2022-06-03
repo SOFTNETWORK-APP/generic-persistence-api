@@ -224,13 +224,13 @@ trait PaymentProvider {
 
   /**
     *
-    * @param storeUuid      - Store unique id
+    * @param externalUuid   - external unique id
     * @param userId         - Provider user id
     * @param bankAccountId  - Bank account id
     * @param idempotencyKey - whether to use an idempotency key for this request or not
     * @return mandate result
     */
-  def mandate(storeUuid: String, userId: String, bankAccountId: String, idempotencyKey: Option[String] = None): Option[MandateResult]
+  def mandate(externalUuid: String, userId: String, bankAccountId: String, idempotencyKey: Option[String] = None): Option[MandateResult]
 
   /**
     *

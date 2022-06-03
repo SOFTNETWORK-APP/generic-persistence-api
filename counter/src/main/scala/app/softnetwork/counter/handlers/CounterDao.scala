@@ -7,6 +7,7 @@ import app.softnetwork.persistence.typed.scaladsl.SingletonPattern
 import app.softnetwork.counter.message._
 import app.softnetwork.counter.persistence.data.Counter
 
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
 
 /**
@@ -14,38 +15,37 @@ import scala.language.implicitConversions
   */
 trait CounterDao extends SingletonPattern[CounterCommand, CounterResult]{
 
-  implicit def command2Request(command: CounterCommand): Request = replyTo =>
-    new CounterCommandWrapper(command, replyTo)
+  implicit def command2Request(command: CounterCommand): Request = replyTo => CounterCommandWrapper(command, replyTo)
 
   override lazy val behavior: Behavior[CounterCommand] = Counter(PNCounterKey(name))
 
-  override lazy val key = ServiceKey[CounterCommand](name)
+  override lazy val key: ServiceKey[CounterCommand] = ServiceKey[CounterCommand](name)
 
-  def inc()(implicit system: ActorSystem[_])  = {
+  def inc()(implicit system: ActorSystem[_]): Future[Either[CounterResult, Int]] = {
     this ! IncrementCounter
     load()
   }
 
-  def dec()(implicit system: ActorSystem[_])  = {
+  def dec()(implicit system: ActorSystem[_]): Future[Either[CounterResult, Int]] = {
     this ! DecrementCounter
     load()
   }
 
-  def reset(value: Int = 0)(implicit system: ActorSystem[_])  = {
+  def reset(value: Int = 0)(implicit system: ActorSystem[_]): Future[Either[CounterResult, Int]] = {
     this ! ResetCounter(value)
     load()
   }
 
-  def load()(implicit system: ActorSystem[_])  = {
-    implicit val ec = system.executionContext
+  def load()(implicit system: ActorSystem[_]): Future[Either[CounterResult, Int]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     (this ? GetCounterValue).map {
       case r: CounterLoaded => Right(r.value)
       case other => Left(other)
     }
   }
 
-  def loadFromCache()(implicit system: ActorSystem[_])  = {
-    implicit val ec = system.executionContext
+  def loadFromCache()(implicit system: ActorSystem[_]): Future[Either[CounterResult, Int]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     (this ? GetCounterCachedValue).map {
       case r: CounterLoaded => Right(r.value)
       case other => Left(other)

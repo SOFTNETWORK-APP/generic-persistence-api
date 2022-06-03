@@ -68,14 +68,14 @@ trait MangoPayProvider extends PaymentProvider {
       case _ => KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
     }
 
-  implicit def mangopayMandateStatusToMandateStatus(status: MandateStatus): PaymentAccount.MandateStatus =
+  implicit def mangopayMandateStatusToMandateStatus(status: MandateStatus): BankAccount.MandateStatus =
     status match {
-      case MandateStatus.ACTIVE => PaymentAccount.MandateStatus.MANDATE_ACTIVE
-      case MandateStatus.CREATED => PaymentAccount.MandateStatus.MANDATE_CREATED
-      case MandateStatus.EXPIRED => PaymentAccount.MandateStatus.MANDATE_EXPIRED
-      case MandateStatus.FAILED => PaymentAccount.MandateStatus.MANDATE_FAILED
-      case MandateStatus.SUBMITTED => PaymentAccount.MandateStatus.MANDATE_SUBMITTED
-      case _ => PaymentAccount.MandateStatus.Unrecognized(-1)
+      case MandateStatus.ACTIVE => BankAccount.MandateStatus.MANDATE_ACTIVATED
+      case MandateStatus.CREATED => BankAccount.MandateStatus.MANDATE_CREATED
+      case MandateStatus.EXPIRED => BankAccount.MandateStatus.MANDATE_EXPIRED
+      case MandateStatus.FAILED => BankAccount.MandateStatus.MANDATE_FAILED
+      case MandateStatus.SUBMITTED => BankAccount.MandateStatus.MANDATE_SUBMITTED
+      case _ => BankAccount.MandateStatus.Unrecognized(-1)
     }
 
   implicit def legalUserTypeToLegalPersonType(legalUserType: LegalUser.LegalUserType): LegalPersonType = {
@@ -785,7 +785,7 @@ trait MangoPayProvider extends PaymentProvider {
         val paymentDetails = new PayInPaymentDetailsCard
         paymentDetails.setCardId(cardId)
         paymentDetails.setCardType(CardType.CB_VISA_MASTERCARD)
-        paymentDetails.setStatementDescriptor("SOFTNETWORK")
+        paymentDetails.setStatementDescriptor(statementDescriptor)
         if(ipAddress.isDefined){
           paymentDetails.setIpAddress(ipAddress.get)
         }
@@ -1383,19 +1383,19 @@ trait MangoPayProvider extends PaymentProvider {
 
   /**
     *
-    * @param storeUuid - Store unique id
+    * @param externalUuid - external unique id
     * @param userId - Provider user id
     * @param bankAccountId - Bank account id
     * @param idempotencyKey - whether to use an idempotency key for this request or not
     * @return mandate result
     */
-  override def mandate(storeUuid: String, userId: String, bankAccountId: String, idempotencyKey: Option[String] = None): Option[MandateResult] = {
+  override def mandate(externalUuid: String, userId: String, bankAccountId: String, idempotencyKey: Option[String] = None): Option[MandateResult] = {
     val mandate = new Mandate()
     mandate.setBankAccountId(bankAccountId)
     mandate.setCulture(CultureCode.FR)
     mandate.setExecutionType(MandateExecutionType.WEB)
     mandate.setMandateType(MandateType.DIRECT_DEBIT)
-    mandate.setReturnUrl(s"$directDebitReturnUrl?StoreUuid=$storeUuid&idempotencyKey=${idempotencyKey.getOrElse("")}")
+    mandate.setReturnUrl(s"$mandateReturnUrl?externalUuid=$externalUuid&idempotencyKey=${idempotencyKey.getOrElse("")}")
     mandate.setScheme(MandateScheme.SEPA)
     mandate.setUserId(userId)
     Try(
@@ -1406,7 +1406,7 @@ trait MangoPayProvider extends PaymentProvider {
     ) match {
       case Success(s) =>
         if(s.getStatus.isMandateFailed){
-          mlog.error(s"mandate creation failed for $storeUuid -> (${s.getResultCode}, ${s.getResultMessage}")
+          mlog.error(s"mandate creation failed for $externalUuid -> (${s.getResultCode}, ${s.getResultMessage}")
         }
         Some(
           MandateResult.defaultInstance
@@ -1444,7 +1444,7 @@ trait MangoPayProvider extends PaymentProvider {
             new FilterMandates(),
             new Pagination(1, 100),
             sorting
-          ).asScala.toList.find(mandate => mandate.getStatus.isMandateActive || mandate.getStatus.isMandateSubmitted)
+          ).asScala.toList.find(mandate => mandate.getStatus.isMandateActivated || mandate.getStatus.isMandateSubmitted)
       }
     ) match {
       case Success(s) =>
@@ -1518,6 +1518,7 @@ trait MangoPayProvider extends PaymentProvider {
         import directDebitTransaction._
         val payIn = new PayIn()
         payIn.setAuthorId(authorId)
+        payIn.setCreditedUserId(creditedUserId)
         payIn.setCreditedWalletId(creditedWalletId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)
@@ -1570,7 +1571,7 @@ trait MangoPayProvider extends PaymentProvider {
                 mandateId = Some(mandateId)
               ).withPaymentType(Transaction.PaymentType.DIRECT_DEBITED)
             )
-          case Failure(f)           =>
+          case Failure(f) =>
             mlog.error(f.getMessage, f)
             None
         }

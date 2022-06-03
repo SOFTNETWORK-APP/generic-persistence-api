@@ -60,6 +60,7 @@ trait GenericPaymentService extends SessionService
         bank ~
         declaration ~
         kyc ~
+        mandate ~
         payment
     }
   }
@@ -189,6 +190,7 @@ trait GenericPaymentService extends SessionService
                               orderUuid,
                               session.id,
                               debitedAmount,
+                              currency,
                               cardPreRegistration,
                               if (browserInfo.isDefined) Some(ipAddress) else None,
                               browserInfo
@@ -223,10 +225,13 @@ trait GenericPaymentService extends SessionService
                                 orderUuid,
                                 session.id,
                                 debitedAmount,
+                                currency,
                                 creditedAccount,
                                 cardPreRegistration,
                                 if (browserInfo.isDefined) Some(ipAddress) else None,
-                                browserInfo
+                                browserInfo,
+                                statementDescriptor,
+                                paymentType
                               )
                             ) completeWith {
                               case r: PaidIn =>
@@ -383,7 +388,52 @@ trait GenericPaymentService extends SessionService
                     logger.info(s"[Payment Hooks] Regular User has been validated for $ressourceId -> $eventType")
                     complete(HttpResponse(StatusCodes.OK))
                   case _ =>
-                    logger.warn(s"[Payment Hooks] Regular User has not been validated  for $ressourceId -> $eventType")
+                    logger.warn(s"[Payment Hooks] Regular User has not been validated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                }
+              case EventType.MANDATE_FAILED =>
+                run(UpdateMandateStatus(ressourceId, Some(BankAccount.MandateStatus.MANDATE_FAILED))) completeWith {
+                  case _: MandateStatusUpdated =>
+                    logger.info(s"[Payment Hooks] Mandate has been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                  case _ =>
+                    logger.warn(s"[Payment Hooks] Mandate has not been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                }
+              case EventType.MANDATE_SUBMITTED =>
+                run(UpdateMandateStatus(ressourceId, Some(BankAccount.MandateStatus.MANDATE_SUBMITTED))) completeWith {
+                  case _: MandateStatusUpdated =>
+                    logger.info(s"[Payment Hooks] Mandate has been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                  case _ =>
+                    logger.warn(s"[Payment Hooks] Mandate has not been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                }
+              case EventType.MANDATE_CREATED =>
+                run(UpdateMandateStatus(ressourceId, Some(BankAccount.MandateStatus.MANDATE_CREATED))) completeWith {
+                  case _: MandateStatusUpdated =>
+                    logger.info(s"[Payment Hooks] Mandate has been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                  case _ =>
+                    logger.warn(s"[Payment Hooks] Mandate has not been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                }
+              case EventType.MANDATE_EXPIRED =>
+                run(UpdateMandateStatus(ressourceId, Some(BankAccount.MandateStatus.MANDATE_EXPIRED))) completeWith {
+                  case _: MandateStatusUpdated =>
+                    logger.info(s"[Payment Hooks] Mandate has been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                  case _ =>
+                    logger.warn(s"[Payment Hooks] Mandate has not been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                }
+              case EventType.MANDATE_ACTIVATED =>
+                run(UpdateMandateStatus(ressourceId, Some(BankAccount.MandateStatus.MANDATE_ACTIVATED))) completeWith {
+                  case _: MandateStatusUpdated =>
+                    logger.info(s"[Payment Hooks] Mandate has been updated for $ressourceId -> $eventType")
+                    complete(HttpResponse(StatusCodes.OK))
+                  case _ =>
+                    logger.warn(s"[Payment Hooks] Mandate has not been updated for $ressourceId -> $eventType")
                     complete(HttpResponse(StatusCodes.OK))
                 }
               case _ =>
@@ -437,7 +487,7 @@ trait GenericPaymentService extends SessionService
             } ~
             delete {
               run(DeleteBankAccount(session.id)) completeWith {
-                case r: BankAccountDeleted.type  => complete(HttpResponse(StatusCodes.OK))
+                case _: BankAccountDeleted.type  => complete(HttpResponse(StatusCodes.OK))
                 case r: PaymentError => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
@@ -538,6 +588,40 @@ trait GenericPaymentService extends SessionService
       }
     }
   }
+
+  lazy val mandate: Route =
+    pathPrefix(MandateRoute) {
+      get {
+        parameter("MandateId") { mandateId =>
+          run(UpdateMandateStatus(mandateId)) completeWith{
+            case r: MandateStatusUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.result))
+            case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+            case _ => complete(HttpResponse(StatusCodes.BadRequest))
+          }
+        }
+      } ~
+        // check anti CSRF token
+        randomTokenCsrfProtection(checkHeader) {
+          // check if a session exists
+          _requiredSession(ec) { session =>
+            post {
+              run(CreateMandate(session.id)) completeWith {
+                case r: MandateConfirmationRequired => complete(HttpResponse(StatusCodes.OK, entity = r))
+                case MandateCreated => complete(HttpResponse(StatusCodes.OK))
+                case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                case _ => complete(HttpResponse(StatusCodes.BadRequest))
+              }
+            } ~
+              delete {
+                run(CancelMandate(session.id)) completeWith {
+                  case MandateCanceled => complete(HttpResponse(StatusCodes.OK))
+                  case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                  case _ => complete(HttpResponse(StatusCodes.BadRequest))
+                }
+              }
+          }
+        }
+    }
 
 }
 

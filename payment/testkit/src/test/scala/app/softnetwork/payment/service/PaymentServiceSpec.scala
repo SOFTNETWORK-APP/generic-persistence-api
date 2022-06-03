@@ -97,6 +97,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
         Post(s"/$RootPath/$PaymentPath/$PreAuthorizeCardRoute", Payment(
           orderUuid,
           5100,
+          "EUR",
           Some(cardPreRegistration)
         ))
       ) ~> routes ~> check {
@@ -343,6 +344,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
           Payment(
             orderUuid,
             100,
+            "EUR",
             Some(cardPreRegistration)
           )
         )
@@ -368,6 +370,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
           Payment(
             orderUuid,
             5100,
+            "EUR",
             Some(cardPreRegistration)
           )
         )
@@ -392,8 +395,28 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       }
     }
 
-    "delete bank account" in {
+    "create mandate" in {
       createSession(sellerUuid)
+      withCookies(
+        Post(s"/$RootPath/$PaymentPath/$MandateRoute")
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        assert(loadPaymentAccount().bankAccount.flatMap(_.mandateId).isDefined)
+        assert(loadPaymentAccount().bankAccount.flatMap(_.mandateStatus).isDefined)
+      }
+    }
+
+    "cancel mandate" in {
+      withCookies(
+        Delete(s"/$RootPath/$PaymentPath/$MandateRoute")
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        assert(loadPaymentAccount().bankAccount.flatMap(_.mandateId).isEmpty)
+        assert(loadPaymentAccount().bankAccount.flatMap(_.mandateStatus).isEmpty)
+      }
+    }
+
+    "delete bank account" in {
       withCookies(
         Delete(s"/$RootPath/$PaymentPath/$BankRoute")
       ) ~> routes ~> check {

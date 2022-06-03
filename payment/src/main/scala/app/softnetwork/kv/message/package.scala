@@ -4,34 +4,34 @@ import app.softnetwork.persistence.message.{Command, CommandResult, ErrorMessage
 
 package object message {
 
-  sealed trait KeyValueCommand extends Command
+  sealed trait KvCommand extends Command
 
   @SerialVersionUID(0L)
-  case class AddKeyValue(value: String) extends KeyValueCommand
+  case class Put(value: String) extends KvCommand
 
-  case object RemoveKeyValue extends KeyValueCommand
+  case object Remove extends KvCommand
 
-  case object LookupKeyValue extends KeyValueCommand
+  case object Lookup extends KvCommand
 
-  trait KeyValueCommandResult extends CommandResult
-
-  @SerialVersionUID(0L)
-  case class KeyValueFound(value: String) extends KeyValueCommandResult
-
-  case object KeyValueAdded extends KeyValueCommandResult
-
-  case object KeyValueRemoved extends KeyValueCommandResult
+  trait KvCommandResult extends CommandResult
 
   @SerialVersionUID(0L)
-  class KeyValueErrorMessage(override val message: String) extends ErrorMessage(message)
-    with KeyValueCommandResult
+  case class KvFound(value: String) extends KvCommandResult
 
-  case object KeyValueNotFound extends KeyValueErrorMessage("KeyValueNotFound")
+  case object KvAdded extends KvCommandResult
 
-  sealed trait KeyValueEvent extends Event
+  case object KvRemoved extends KvCommandResult
 
-  case class KeyValueAddedEvent(key: String, value: String) extends KeyValueEvent
+  @SerialVersionUID(0L)
+  class KvErrorMessage(override val message: String) extends ErrorMessage(message)
+    with KvCommandResult
 
-  case class KeyValueRemovedEvent(key: String) extends KeyValueEvent
+  case object KvNotFound extends KvErrorMessage("KvNotFound")
+
+  sealed trait KvEvent extends Event
+
+  case class KvAddedEvent(key: String, value: String) extends KvEvent
+
+  case class KvRemovedEvent(key: String) extends KvEvent
 
 }

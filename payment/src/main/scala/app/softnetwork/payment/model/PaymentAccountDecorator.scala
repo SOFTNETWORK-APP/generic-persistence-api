@@ -39,8 +39,8 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
 
   lazy val documentOutdated: Boolean = documents.exists(_.status.isKycDocumentOutOfDate)
 
-  lazy val mandateActivated: Boolean = mandateId.isDefined &&
-    mandateStatus.exists(s => s.isMandateActive || s.isMandateSubmitted)
+  lazy val mandateActivated: Boolean = bankAccount.flatMap(_.mandateId).isDefined &&
+    bankAccount.flatMap(_.mandateStatus).exists(s => s.isMandateActivated || s.isMandateSubmitted)
 
   def resetUserId(userId: Option[String] = None): PaymentAccount = {
     val updatedBankAccount = bankAccount match {
@@ -97,8 +97,6 @@ case class PaymentAccountView(createdDate: java.util.Date,
                               bankAccount: Option[BankAccountView] = None,
                               documents: Seq[KycDocumentView] = Seq.empty,
                               paymentAccountStatus: PaymentAccount.PaymentAccountStatus,
-                              mandateId: Option[String] = None,
-                              mandateStatus: Option[PaymentAccount.MandateStatus] = None,
                               transactions: Seq[TransactionView] = Seq.empty)
 
 object PaymentAccountView{
@@ -122,8 +120,6 @@ object PaymentAccountView{
       bankAccount.map(_.view),
       documents.map(_.view),
       paymentAccountStatus,
-      mandateId,
-      mandateStatus,
       transactions.map(_.view)
     )
   }

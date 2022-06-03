@@ -25,7 +25,7 @@ object MangoPay extends StrictLogging{
                      technicalErrors: Set[String],
                      secureModePath: String,
                      hooksPath: String,
-                     directDebitPath: String){
+                     mandatePath: String){
 
     lazy val secureModeReturnUrl = s"""$BaseUrl$secureModePath/$SecureModeRoute"""
 
@@ -35,7 +35,7 @@ object MangoPay extends StrictLogging{
 
     lazy val hooksBaseUrl = s"""$BaseUrl/$hooksPath/$HooksRoute"""
 
-    lazy val directDebitReturnUrl = s"""$BaseUrl/$directDebitPath/$DirectDebitRoute"""
+    lazy val mandateReturnUrl = s"""$BaseUrl/$mandatePath/$MandateRoute"""
   }
 
   def apply(): MangoPayApi = {

@@ -49,8 +49,10 @@ message PaidInEvent {
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
     required string debitedAccount = 3;
     required int32 debitedAmount = 4;
-    required string transactionId = 5;
-    required string cardId = 6;
+    required string currency = 5 [default = "EUR"];
+    required string transactionId = 6;
+    required string cardId = 7;
+    required app.softnetwork.payment.model.Transaction.PaymentType paymentType = 8;
 }
 
 message PayInFailedEvent {
@@ -69,7 +71,9 @@ message PaidOutEvent {
     required string creditedAccount = 3;
     required int32 creditedAmount = 4;
     required int32 feesAmount = 5;
-    required string transactionId = 6;
+    required string currency = 6 [default = "EUR"];
+    required string transactionId = 7;
+    required app.softnetwork.payment.model.Transaction.PaymentType paymentType = 8;
 }
 
 message PayOutFailedEvent {
@@ -88,10 +92,12 @@ message RefundedEvent {
     required string debitedAccount = 3;
     required int32 debitedAmount = 4;
     required int32 refundedAmount = 5;
-    required string refundTransactionId = 6;
-    required string payInTransactionId = 7;
+    required string currency = 6 [default = "EUR"];
+    required string refundTransactionId = 7;
+    required string payInTransactionId = 8;
     required string reasonMessage = 9;
     required bool initializedByClient = 10;
+    required app.softnetwork.payment.model.Transaction.PaymentType paymentType = 11;
 }
 
 message RefundFailedEvent {
@@ -111,14 +117,35 @@ message TransferedEvent {
     required int32 debitedAmount = 4;
     required string creditedAccount = 5;
     required int32 feesAmount = 6;
-    required string transactionId = 7;
-    optional string payOutTransactionId = 8;
+    required string currency = 7 [default = "EUR"];
+    required string transactionId = 8;
+    optional string payOutTransactionId = 9;
+    required app.softnetwork.payment.model.Transaction.PaymentType paymentType = 10;
 }
 
 message TransferFailedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "TransactionFailedEvent";
     required string orderUuid = 1;
+    required string resultMessage = 2;
+    optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message DirectDebitedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "CreditedAccountEvent";
+    required google.protobuf.Timestamp lastUpdated = 1 [(scalapb.field).type = "java.util.Date"];
+    required string creditedAccount = 2;
+    required int32 debitedAmount = 3;
+    required int32 feesAmount = 4;
+    required string currency = 5 [default = "EUR"];
+    required string transactionId = 6;
+}
+
+message DirectDebitFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "CreditedAccountEvent";
+    required string creditedAccount = 1;
     required string resultMessage = 2;
     optional app.softnetwork.payment.model.Transaction transaction = 3;
 }

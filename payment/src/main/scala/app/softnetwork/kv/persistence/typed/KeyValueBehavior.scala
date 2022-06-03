@@ -8,10 +8,10 @@ import app.softnetwork.kv.model.KeyValue
 import app.softnetwork.persistence.typed._
 
 trait KeyValueBehavior extends EntityBehavior[
-  KeyValueCommand,
+  KvCommand,
   KeyValue,
-  KeyValueEvent,
-  KeyValueCommandResult]{
+  KvEvent,
+  KvCommandResult]{
 
   override def persistenceId: String = "KeyValue"
 
@@ -26,33 +26,33 @@ trait KeyValueBehavior extends EntityBehavior[
   override def handleCommand(
                               entityId: String,
                               state: Option[KeyValue],
-                              command: KeyValueCommand,
-                              replyTo: Option[ActorRef[KeyValueCommandResult]],
-                              timers: TimerScheduler[KeyValueCommand])(
-                              implicit context: ActorContext[KeyValueCommand]
-                            ): Effect[KeyValueEvent, Option[KeyValue]] = {
+                              command: KvCommand,
+                              replyTo: Option[ActorRef[KvCommandResult]],
+                              timers: TimerScheduler[KvCommand])(
+                              implicit context: ActorContext[KvCommand]
+                            ): Effect[KvEvent, Option[KeyValue]] = {
     command match {
 
-      case cmd: AddKeyValue =>
+      case cmd: Put =>
         Effect.persist(
-          KeyValueAddedEvent(entityId, cmd.value)
+          KvAddedEvent(entityId, cmd.value)
         ).thenRun(
-          _ => KeyValueAdded ~> replyTo
+          _ => KvAdded ~> replyTo
         )
 
-      case RemoveKeyValue =>
+      case Remove =>
         Effect.persist(
-          KeyValueRemovedEvent(
+          KvRemovedEvent(
             entityId
           )
         ).thenRun(
-          _ => KeyValueRemoved ~> replyTo
+          _ => KvRemoved ~> replyTo
         )//.thenStop()
 
-      case LookupKeyValue =>
+      case Lookup =>
         state match {
-          case Some(s) => Effect.none.thenRun(_ => KeyValueFound(s.value) ~> replyTo)
-          case _       => Effect.none.thenRun(_ => KeyValueNotFound ~> replyTo)
+          case Some(s) => Effect.none.thenRun(_ => KvFound(s.value) ~> replyTo)
+          case _       => Effect.none.thenRun(_ => KvNotFound ~> replyTo)
         }
 
       case _ => super.handleCommand(entityId, state, command, replyTo, timers)
@@ -65,11 +65,11 @@ trait KeyValueBehavior extends EntityBehavior[
     * @param event - event to hanlde
     * @return new state
     */
-  override def handleEvent(state: Option[KeyValue], event: KeyValueEvent)(
+  override def handleEvent(state: Option[KeyValue], event: KvEvent)(
     implicit context: ActorContext[_]): Option[KeyValue] = {
     event match {
-      case e: KeyValueAddedEvent => Some(KeyValue(e.key, e.value))
-      case _: KeyValueRemovedEvent => emptyState
+      case e: KvAddedEvent => Some(KeyValue(e.key, e.value))
+      case _: KvRemovedEvent => emptyState
       case _ => super.handleEvent(state, event)
     }
   }

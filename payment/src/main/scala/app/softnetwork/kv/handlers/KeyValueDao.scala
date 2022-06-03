@@ -9,26 +9,27 @@ import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed.CommandTypeKey
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 /**
   * Created by smanciot on 17/04/2020.
   */
-trait KeyValueTypeKey extends CommandTypeKey[KeyValueCommand]{
-  override def TypeKey(implicit tTag: ClassTag[KeyValueCommand]): EntityTypeKey[KeyValueCommand] =
+trait KeyValueTypeKey extends CommandTypeKey[KvCommand]{
+  override def TypeKey(implicit tTag: ClassTag[KvCommand]): EntityTypeKey[KvCommand] =
     KeyValueBehavior.TypeKey
 }
 
-trait KeyValueHandler extends EntityPattern[KeyValueCommand, KeyValueCommandResult] with KeyValueTypeKey
+trait KeyValueHandler extends EntityPattern[KvCommand, KvCommandResult] with KeyValueTypeKey
 
 object KeyValueHandler extends KeyValueHandler
 
-trait KeyValueDao {_: KeyValueHandler =>
+trait KeyValueDao extends GenericKeyValueDao {_: KeyValueHandler =>
 
   def lookupKeyValue(key: String)(implicit system: ActorSystem[_]): Future[Option[String]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    this ? (generateUUID(Some(key)), LookupKeyValue) map {
-      case r: KeyValueFound =>
+    this ? (generateUUID(Some(key)), Lookup) map {
+      case r: KvFound =>
         import r._
         logger.info(s"found $value for $key")
         Some(value)
@@ -40,12 +41,12 @@ trait KeyValueDao {_: KeyValueHandler =>
 
   def addKeyValue(key: String, value: String)(implicit system: ActorSystem[_]): Unit = {
     logger.info(s"adding ($key, $value)")
-    this ! (generateUUID(Some(key)), AddKeyValue(value))
+    this ! (generateUUID(Some(key)), Put(value))
   }
 
   def removeKeyValue(key: String)(implicit system: ActorSystem[_]): Unit = {
     logger.info(s"removing ($key)")
-    this ! (generateUUID(Some(key)), RemoveKeyValue)
+    this ! (generateUUID(Some(key)), Remove)
   }
 
 }

@@ -57,7 +57,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
         }
       case evt: RefundCommandEvent =>
         import evt._
-        val command = Refund(orderUuid, payInTransactionId, refundAmount, reasonMessage, initializedByClient)
+        val command = Refund(orderUuid, payInTransactionId, refundAmount, currency, reasonMessage, initializedByClient)
         ? (command) map {
           case _: Refunded =>
             if(forTests) system.eventStream.tell(Publish(event))
@@ -68,7 +68,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
         }
       case evt: PayOutCommandEvent =>
         import evt._
-        val command = PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount)
+        val command = PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount, currency)
         ? (command) map {
           case _: PaidOut =>
             if(forTests) system.eventStream.tell(Publish(event))
@@ -79,9 +79,20 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
         }
       case evt: TransferCommandEvent =>
         import evt._
-        val command = Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, payOutRequired)
+        val command = Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, currency, payOutRequired)
         ? (command) map {
           case _: Transfered =>
+            if(forTests) system.eventStream.tell(Publish(event))
+            Done
+          case other =>
+            logger.error(s"$platformEventProcessorId - command $command returns unexpectedly ${other.getClass}")
+            Done
+        }
+      case evt: DirectDebitCommandEvent =>
+        import evt._
+        val command = DirectDebit(creditedAccount, debitedAmount, feesAmount, currency, statementDescriptor)
+        ? (command) map {
+          case _: DirectDebited =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done
           case other =>

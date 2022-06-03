@@ -812,20 +812,20 @@ trait MockMangoPayProvider extends MangoPayProvider {
 
   /**
     *
-    * @param storeUuid      - Store unique id
+    * @param externalUuid   - external unique id
     * @param userId         - Provider user id
     * @param bankAccountId  - Bank account id
     * @param idempotencyKey - whether to use an idempotency key for this request or not
     * @return mandate result
     */
-  override def mandate(storeUuid: String, userId: String, bankAccountId: String, idempotencyKey: Option[String] = None): Option[MandateResult] = {
+  override def mandate(externalUuid: String, userId: String, bankAccountId: String, idempotencyKey: Option[String] = None): Option[MandateResult] = {
     val mandate = new Mandate()
     mandate.setId(generateUUID())
     mandate.setBankAccountId(bankAccountId)
     mandate.setCulture(CultureCode.FR)
     mandate.setExecutionType(MandateExecutionType.WEB)
     mandate.setMandateType(MandateType.DIRECT_DEBIT)
-    mandate.setReturnUrl(s"$directDebitReturnUrl?StoreUuid=$storeUuid&idempotencyKey=${idempotencyKey.getOrElse("")}")
+    mandate.setReturnUrl(s"$mandateReturnUrl?externalUuid=$externalUuid&idempotencyKey=${idempotencyKey.getOrElse("")}")
     mandate.setScheme(MandateScheme.SEPA)
     mandate.setStatus(MandateStatus.SUBMITTED)
     mandate.setUserId(userId)
@@ -888,6 +888,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         import directDebitTransaction._
         val payIn = new PayIn()
         payIn.setAuthorId(authorId)
+        payIn.setCreditedUserId(creditedUserId)
         payIn.setCreditedWalletId(creditedWalletId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)

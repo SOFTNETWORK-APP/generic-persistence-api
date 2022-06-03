@@ -24,7 +24,7 @@ package object serialization {
         GeneratedEnumSerializer(Transaction.PaymentType.enumCompanion),
         GeneratedEnumSerializer(LegalUser.LegalUserType.enumCompanion),
         GeneratedEnumSerializer(PaymentAccount.PaymentAccountStatus.enumCompanion),
-        GeneratedEnumSerializer(PaymentAccount.MandateStatus.enumCompanion),
+        GeneratedEnumSerializer(BankAccount.MandateStatus.enumCompanion),
         GeneratedEnumSerializer(Transaction.TransactionNature.enumCompanion),
         GeneratedEnumSerializer(Transaction.TransactionStatus.enumCompanion),
         GeneratedEnumSerializer(Transaction.TransactionType.enumCompanion)

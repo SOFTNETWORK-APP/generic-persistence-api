@@ -56,6 +56,8 @@ case class BankAccountView(createdDate: java.util.Date,
                            bic: String,
                            encoded: Boolean,
                            active: Boolean,
+                           mandateId: Option[String] = None,
+                           mandateStatus: Option[BankAccount.MandateStatus] = None,
                            externalUuid: String)
 
 object BankAccountView {
@@ -78,6 +80,8 @@ object BankAccountView {
       bic,
       encoded,
       active,
+      mandateId,
+      mandateStatus,
       externalUuid
     )
   }

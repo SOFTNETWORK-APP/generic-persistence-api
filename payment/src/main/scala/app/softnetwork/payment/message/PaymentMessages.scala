@@ -23,14 +23,30 @@ object PaymentMessages {
     val key: String = user.userId.getOrElse(generateUUID())
   }
 
+  /**
+    *
+    * @param orderUuid           - order unique id
+    * @param debitedAmount       - debited amount in cents
+    * @param currency            - currency
+    * @param cardPreRegistration - card pre registration if any
+    * @param javaEnabled         - java enabled
+    * @param javascriptEnabled   - javascript enabled
+    * @param colorDepth          - color depth
+    * @param screenWidth         - screen width
+    * @param screenHeight        - screen height
+    * @param paymentType         - payment type
+    */
   case class Payment(orderUuid: String,
                      debitedAmount: Int = 100,
+                     currency: String = "EUR",
                      cardPreRegistration: Option[CardPreRegistration] = None,
                      javaEnabled: Boolean = false,
                      javascriptEnabled: Boolean = true,
                      colorDepth: Option[Int] = None,
                      screenWidth: Option[Int] = None,
-                     screenHeight: Option[Int] = None)
+                     screenHeight: Option[Int] = None,
+                     statementDescriptor: Option[String] = None,
+                     paymentType: Transaction.PaymentType = Transaction.PaymentType.CARD)
 
   /**
     * Flow [PreRegisterCard -> ] PreAuthorizeCard [ -> PreAuthorizeCardFor3DS]
@@ -38,6 +54,7 @@ object PaymentMessages {
     * @param orderUuid           - order uuid
     * @param debitedAccount      - account to debit
     * @param debitedAmount       - amount to debit from the debited account
+    * @param currency            - currency
     * @param cardPreRegistration - optional card pre registration
     * @param ipAddress           - ip address
     * @param browserInfo         - browser info
@@ -46,6 +63,7 @@ object PaymentMessages {
   private[payment] case class PreAuthorizeCard(orderUuid: String,
                                                debitedAccount: String,
                                                debitedAmount: Int = 100,
+                                               currency: String = "EUR",
                                                cardPreRegistration: Option[CardPreRegistration] = None,
                                                ipAddress: Option[String] = None,
                                                browserInfo: Option[BrowserInfo] = None
@@ -85,19 +103,23 @@ object PaymentMessages {
     * @param orderUuid           - order uuid
     * @param debitedAccount      - account to debit
     * @param debitedAmount       - amount to be debited from the debited account
+    * @param currency            - currency
     * @param creditedAccount     - account to credit
     * @param cardPreRegistration - optional card pre registration
     * @param ipAddress           - ip address
     * @param browserInfo         - browser info
+    * @param paymentType         - payment type
     */
   case class PayIn(orderUuid: String,
                    debitedAccount: String,
                    debitedAmount: Int,
+                   currency: String = "EUR",
                    creditedAccount: String,
                    cardPreRegistration: Option[CardPreRegistration] = None,
                    ipAddress: Option[String] = None,
-                   browserInfo: Option[BrowserInfo] = None
-                  ) extends PaymentCommandWithKey {
+                   browserInfo: Option[BrowserInfo] = None,
+                   statementDescriptor: Option[String] = None,
+                   paymentType: Transaction.PaymentType = Transaction.PaymentType.CARD) extends PaymentCommandWithKey {
     val key: String = debitedAccount
   }
 
@@ -117,14 +139,15 @@ object PaymentMessages {
   case class PayOut(orderUuid: String,
                     creditedAccount: String,
                     creditedAmount: Int,
-                    feesAmount: Int = 0
-                   ) extends PaymentCommandWithKey {
+                    feesAmount: Int = 0,
+                    currency: String = "EUR") extends PaymentCommandWithKey {
     val key: String = creditedAccount
   }
 
   case class Refund(orderUuid: String,
                     payInTransactionId: String,
                     refundAmount: Int,
+                    currency: String = "EUR",
                     reasonMessage: String,
                     initializedByClient: Boolean)
     extends PaymentCommandWithKey {
@@ -136,8 +159,17 @@ object PaymentMessages {
                       creditedAccount: String,
                       debitedAmount: Int,
                       feesAmount: Int = 0,
+                      currency: String = "EUR",
                       payOutRequired: Boolean = true) extends PaymentCommandWithKey {
     val key: String = debitedAccount
+  }
+
+  case class DirectDebit(creditedAccount: String,
+                         debitedAmount: Int,
+                         feesAmount: Int = 0,
+                         currency: String = "EUR",
+                         statementDescriptor: String) extends PaymentCommandWithKey {
+    val key: String = creditedAccount
   }
 
   /** Commands related to the payment account */
@@ -250,6 +282,28 @@ object PaymentMessages {
     lazy val key: String = uboDeclarationId
   }
 
+  /** Commands related to the mandate */
+
+  case class CreateMandate(creditedAccount: String) extends PaymentCommandWithKey {
+    val key: String = creditedAccount
+  }
+
+  case class CancelMandate(creditedAccount: String) extends PaymentCommandWithKey {
+    val key: String = creditedAccount
+  }
+
+  /**
+    * hook command
+    *
+    * @param mandateId - mandate id
+    * @param status    - mandate status
+    */
+  @InternalApi
+  private[payment] case class UpdateMandateStatus(mandateId: String, status: Option[BankAccount.MandateStatus] = None)
+    extends PaymentCommandWithKey {
+    lazy val key: String = mandateId
+  }
+
   /**
     * hook command
     *
@@ -281,11 +335,21 @@ object PaymentMessages {
 
   case class Transfered(transferedTransactionId: String, paidOutTransactionId: Option[String] = None) extends PaymentResult
 
+  case class DirectDebited(transactionId: String) extends PaymentResult
+
   case class PaymentRedirection(redirectUrl: String) extends PaidInResult
 
   case class PaymentAccountLoaded(paymentAccount: PaymentAccount) extends PaymentResult
 
   case object BankAccountCreatedOrUpdated extends PaymentResult
+
+  case object MandateCreated extends PaymentResult
+
+  case class MandateConfirmationRequired(redirectUrl: String) extends PaymentResult
+
+  case object MandateCanceled extends PaymentResult
+
+  case class MandateStatusUpdated(result: MandateResult) extends PaymentResult
 
   case class KycDocumentAdded(kycDocumentId: String) extends PaymentResult
 
@@ -333,7 +397,25 @@ object PaymentMessages {
 
   case class TransferFailed(resultMessage: String) extends PaymentError(resultMessage)
 
+  case class DirectDebitFailed(resultMessage: String) extends PaymentError(resultMessage)
+
   case object PaymentAccountNotFound extends PaymentError("PaymentAccountNotFound")
+
+  case object MandateAlreadyExists extends PaymentError("MandateAlreadyExists")
+
+  case class MandateCreationFailed(errorCode: String, errorMessage: String) extends PaymentError(
+    s"MandateCreationFailed: $errorCode -> $errorMessage"
+  )
+
+  case object MandateNotCreated extends PaymentError("MandateNotCreated")
+
+  case object MandateNotCanceled extends PaymentError("MandateNotCanceled")
+
+  case object MandateStatusNotUpdated extends PaymentError("MandateStatusNotUpdated")
+
+  case object MandateNotFound extends PaymentError("MandateNotFound")
+
+  case object IllegalMandateStatus extends PaymentError("IllegalMandateStatus")
 
   case object WrongIban extends PaymentError("WrongIban")
 

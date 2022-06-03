@@ -23,10 +23,11 @@ object Settings extends StrictLogging {
   val PaymentPath: String = config.getString("payment.path")
 
   val PayInRoute: String = config.getString("payment.payIn-route")
+  val PayInStatementDescriptor: String = config.getString("payment.payIn-statement-descriptor")
   val PreAuthorizeCardRoute: String = config.getString("payment.pre-authorize-card-route")
   val SecureModeRoute: String = config.getString("payment.secure-mode-route")
   val HooksRoute: String = config.getString("payment.hooks-route")
-  val DirectDebitRoute: String = config.getString("payment.direct-debit-route")
+  val MandateRoute: String = config.getString("payment.mandate-route")
   val CardRoute: String = config.getString("payment.card-route")
   val BankRoute: String = config.getString("payment.bank-route")
   val DeclarationRoute: String = config.getString("payment.declaration-route")
