@@ -1530,7 +1530,8 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
 
-      case _: ValidateRegularUser =>
+      case cmd: ValidateRegularUser =>
+        import cmd._
         state match {
           case Some(paymentAccount) =>
             val lastUpdated = now()
@@ -1541,7 +1542,13 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                   .withExternalUuid(paymentAccount.externalUuid)
                   .withLastUpdated(lastUpdated)
                   .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.COMPTE_OK)
-              )
+              ) ++
+                broadcastEvent(
+                  RegularUserValidatedEvent.defaultInstance
+                    .withExternalUuid(paymentAccount.externalUuid)
+                    .withLastUpdated(lastUpdated)
+                    .withUserId(userId)
+                )
 
             var updatedPaymentAccount = paymentAccount
               .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.COMPTE_OK)

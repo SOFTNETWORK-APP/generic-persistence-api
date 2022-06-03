@@ -591,13 +591,11 @@ trait GenericPaymentService extends SessionService
 
   lazy val mandate: Route =
     pathPrefix(MandateRoute) {
-      get {
-        parameter("MandateId") { mandateId =>
-          run(UpdateMandateStatus(mandateId)) completeWith{
-            case r: MandateStatusUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.result))
-            case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
-            case _ => complete(HttpResponse(StatusCodes.BadRequest))
-          }
+      parameter("MandateId") { mandateId =>
+        run(UpdateMandateStatus(mandateId)) completeWith{
+          case r: MandateStatusUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.result))
+          case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+          case _ => complete(HttpResponse(StatusCodes.BadRequest))
         }
       } ~
         // check anti CSRF token
