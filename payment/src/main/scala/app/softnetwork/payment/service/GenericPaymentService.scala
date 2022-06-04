@@ -470,15 +470,41 @@ trait GenericPaymentService extends SessionService
             post {
               entity(as[BankAccountCommand]) { bank =>
                 import bank._
-                run(CreateOrUpdateBankAccount(
-                  session.id,
-                  bankAccount,
+                var externalUuid: String = ""
+                val updatedUser =
                   user match {
-                    case Left(naturalUser) => Some(PaymentAccount.User.NaturalUser(naturalUser))
-                    case Right(legalUser) => Some(PaymentAccount.User.LegalUser(legalUser))
-                  },
-                  acceptedTermsOfPSP
-                )) completeWith {
+                    case Left(naturalUser) =>
+                      val updatedNaturalUser = {
+                        if(naturalUser.externalUuid.trim.isEmpty){
+                          naturalUser.withExternalUuid(session.id)
+                        }
+                        else {
+                          naturalUser
+                        }
+                      }
+                      externalUuid = updatedNaturalUser.externalUuid
+                      Some(PaymentAccount.User.NaturalUser(updatedNaturalUser))
+                    case Right(legalUser) =>
+                      val updatedLegalUser =
+                        if(legalUser.legalRepresentative.externalUuid.trim.isEmpty){
+                          legalUser.withLegalRepresentative(
+                            legalUser.legalRepresentative.withExternalUuid(session.id)
+                          )
+                        }
+                        else{
+                          legalUser
+                        }
+                      externalUuid = updatedLegalUser.legalRepresentative.externalUuid
+                      Some(PaymentAccount.User.LegalUser(updatedLegalUser))
+                  }
+                run(
+                  CreateOrUpdateBankAccount(
+                    session.id,
+                    bankAccount.withExternalUuid(externalUuid),
+                    updatedUser,
+                    acceptedTermsOfPSP
+                  )
+                ) completeWith {
                   case _: BankAccountCreatedOrUpdated.type => complete(HttpResponse(StatusCodes.OK))
                   case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case _ => complete(HttpResponse(StatusCodes.BadRequest))

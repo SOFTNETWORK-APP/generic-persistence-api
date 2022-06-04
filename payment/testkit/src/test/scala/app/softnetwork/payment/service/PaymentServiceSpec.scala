@@ -33,7 +33,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
   val email = "demo@softnetwork.fr"
   val naturalUser: PaymentUser =
     PaymentUser.defaultInstance
-      .withExternalUuid(customerUuid)
+//      .withExternalUuid(customerUuid)
       .withFirstName(firstName)
       .withLastName(lastName)
       .withBirthday(birthday)
@@ -58,7 +58,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     .withSiret(siret)
     .withLegalName(ownerName)
     .withLegalUserType(LegalUser.LegalUserType.SOLETRADER)
-    .withLegalRepresentative(naturalUser.withExternalUuid(sellerUuid))
+    .withLegalRepresentative(naturalUser/*.withExternalUuid(sellerUuid)*/)
     .withLegalRepresentativeAddress(ownerAddress)
     .withHeadQuartersAddress(ownerAddress)
 
@@ -84,7 +84,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$CardRoute", PreRegisterCard(
           orderUuid,
-          naturalUser.withExternalUuid(customerUuid)
+          naturalUser/*.withExternalUuid(customerUuid)*/
         ))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
@@ -136,7 +136,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, "", bic),
-          naturalUser.withExternalUuid(sellerUuid),
+          naturalUser/*.withExternalUuid(sellerUuid)*/,
           None
         ))
       ) ~> routes ~> check {
@@ -149,7 +149,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, iban, ""),
-          naturalUser.withExternalUuid(sellerUuid),
+          naturalUser/*.withExternalUuid(sellerUuid)*/,
           None
         ))
       ) ~> routes ~> check {
@@ -162,7 +162,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, iban, bic),
-          naturalUser.withExternalUuid(sellerUuid),
+          naturalUser/*.withExternalUuid(sellerUuid)*/,
           None
         ))
       ) ~> routes ~> check {
@@ -176,7 +176,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(Some(sellerBankAccountId), ownerName, ownerAddress, iban, bic),
-          naturalUser.withLastName("anotherLastName").withExternalUuid(sellerUuid),
+          naturalUser.withLastName("anotherLastName")/*.withExternalUuid(sellerUuid)*/,
           None
         ))
       ) ~> routes ~> check {
@@ -276,20 +276,21 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     }
 
     "update bank account with business legal user" in {
-      withCookies(
-        Post(s"/$RootPath/$PaymentPath/$BankRoute",
-          BankAccountCommand(
-            BankAccount(
-              Some(sellerBankAccountId),
-              ownerName,
-              ownerAddress,
-              iban,
-              bic
-            ),
-            legalUser.withLegalUserType(LegalUser.LegalUserType.BUSINESS),
-            Some(true)
-          )
+      val bank =
+        BankAccountCommand(
+          BankAccount(
+            Some(sellerBankAccountId),
+            ownerName,
+            ownerAddress,
+            iban,
+            bic
+          ),
+          legalUser.withLegalUserType(LegalUser.LegalUserType.BUSINESS),
+          Some(true)
         )
+      logger.info(serialization.write(bank))
+      withCookies(
+        Post(s"/$RootPath/$PaymentPath/$BankRoute", bank)
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val bankAccount = loadBankAccount()
