@@ -88,7 +88,14 @@ trait GenericPaymentService extends SessionService
           } ~
           post {
             entity(as[PreRegisterCard]){ cmd =>
-              run(cmd.copy(user = cmd.user.withUserId(session.id))) completeWith {
+              val updatedUser =
+                if(cmd.user.externalUuid.trim.isEmpty){
+                  cmd.user.withExternalUuid(session.id)
+                }
+                else{
+                  cmd.user
+                }
+              run(cmd.copy(user = updatedUser)) completeWith {
                 case r: CardPreRegistered =>
                   complete(
                     HttpResponse(

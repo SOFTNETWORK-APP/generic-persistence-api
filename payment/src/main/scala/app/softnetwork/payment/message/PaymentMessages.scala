@@ -20,7 +20,7 @@ object PaymentMessages {
     * @param user      - payment user
     */
   case class PreRegisterCard(orderUuid: String, user: PaymentUser) extends PaymentCommandWithKey {
-    val key: String = user.userId.getOrElse(generateUUID())
+    val key: String = user.externalUuid
   }
 
   /**
