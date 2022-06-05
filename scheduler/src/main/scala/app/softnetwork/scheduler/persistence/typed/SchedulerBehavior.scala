@@ -117,7 +117,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
             ScheduleAddedEvent(updatedSchedule)
           ) ++ events
         ).thenRun(
-          state => {
+          _ => {
             import updatedSchedule._
             val ignored = lastTriggered.isDefined && (now().getTime - getLastTriggered.getTime) * 1000 < 120
             if(!ignored){
@@ -235,7 +235,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
           case _ => None
         }) match {
           case Some((cronTab, persist)) =>
-            def runner(state: Option[Scheduler]) = {
+            def runner(state: Option[Scheduler]): Unit = {
               if(!now().before(cronTab.getNextTriggered)){
                 if(!timers.isTimerActive(cronTab.uuid)) {
                   val ignored = cronTab.lastTriggered.isDefined &&

@@ -46,6 +46,12 @@ package query {
                   logger.info(s"$entitySchedule started at ${now()}")
                   triggerSchedule(entitySchedule)
                 }
+                else{
+                  Future.successful(true)
+                }
+              }
+              else{
+                Future.successful(true)
               }
             })
           }
@@ -69,6 +75,12 @@ package query {
                   logger.info(s"$entityCronTab started at ${now()}")
                   triggerCronTab(entityCronTab)
                 }
+                else{
+                  Future.successful(true)
+                }
+              }
+              else{
+                Future.successful(true)
               }
             })
           }
