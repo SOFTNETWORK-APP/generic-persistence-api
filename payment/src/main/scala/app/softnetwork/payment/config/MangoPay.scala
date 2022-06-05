@@ -97,7 +97,7 @@ object MangoPay extends StrictLogging{
     } match {
       case Success(_) =>
       case Failure(f) =>
-        logger.error(f.getMessage, f.getCause)
+        logger.error(s"$eventType -> ${f.getMessage}", f.getCause)
     }
   }
 }
