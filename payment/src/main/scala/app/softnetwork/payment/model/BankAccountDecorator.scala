@@ -18,10 +18,15 @@ trait BankAccountDecorator {self: BankAccount =>
   def validate(): Boolean = !wrongIban && !wrongBic && !wrongOwnerName && !wrongOwnerAddress
 
   def encode(): BankAccount = {
-    this
-      .withBic(sha256(bic))
-      .withIban(sha256(iban))
-      .withEncoded(true)
+    if(!encoded){
+      this
+        .withBic(sha256(bic))
+        .withIban(sha256(iban))
+        .withEncoded(true)
+    }
+    else{
+      this
+    }
   }
 
   def checkIfSameIban(newIban: String): Boolean = {

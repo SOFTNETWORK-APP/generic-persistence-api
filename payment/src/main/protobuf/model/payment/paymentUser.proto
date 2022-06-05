@@ -45,7 +45,7 @@ message BankAccount {
     required Address ownerAddress = 6;
     required string iban = 7;
     required string bic = 8;
-    required bool encoded = 9 [default = true];
+    required bool encoded = 9 [default = false];
     required bool active = 10 [default = true];
     required string externalUuid = 11;
     optional string mandateId = 12;
