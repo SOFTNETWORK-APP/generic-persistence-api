@@ -29,6 +29,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
     * @return
     */
   override protected def processEvent(event: PaymentCommandEvent, persistenceId: PersistenceId, sequenceNr: Long): Future[Done] = {
+    logger.info(s"handling $event|$sequenceNr for $persistenceId")
     event match {
       case evt: WrapPaymentCommandEvent => processEvent(evt.event, persistenceId, sequenceNr)
       case evt: CreateOrUpdatePaymentAccountCommandEvent =>
