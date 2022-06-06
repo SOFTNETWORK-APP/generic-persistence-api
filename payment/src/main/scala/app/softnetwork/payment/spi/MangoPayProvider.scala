@@ -254,21 +254,22 @@ trait MangoPayProvider extends PaymentProvider {
 
   /**
     *
-    * @param maybeUserId - owner of the wallet
-    * @param uuid - external id
+    * @param maybeUserId   - owner of the wallet
+    * @param currency      - currency
+    * @param externalUuid  - external unique id
     * @param maybeWalletId - wallet id to update
     * @return wallet id
     */
-  def createOrUpdateWallet(maybeUserId: Option[String], uuid: String, maybeWalletId: Option[String]): Option[String] = {
+  def createOrUpdateWallet(maybeUserId: Option[String], currency: String, externalUuid: String, maybeWalletId: Option[String]): Option[String] = {
     maybeUserId match {
       case Some(userId) =>
         val wallet = new Wallet
-        wallet.setCurrency(CurrencyIso.EUR)
+        wallet.setCurrency(CurrencyIso.valueOf(currency))
         wallet.setOwners(new util.ArrayList(List(userId).asJava))
-        wallet.setDescription(s"wallet for $uuid")
-        wallet.setTag(uuid)
+        wallet.setDescription(s"wallet for $externalUuid")
+        wallet.setTag(externalUuid)
         Try(MangoPay().getUserApi.getWallets(userId).asScala.find(w =>
-          (maybeWalletId.isDefined && w.getId == maybeWalletId.get) || w.getTag == uuid
+          (maybeWalletId.isDefined && w.getId == maybeWalletId.get) || w.getTag == externalUuid
         )) match {
           case Success(maybeWallet) => maybeWallet match {
             case Some(w) =>
@@ -390,16 +391,16 @@ trait MangoPayProvider extends PaymentProvider {
 
   /**
     *
-    * @param maybeUserId - owner of the card
-    * @param uuid - external id
+    * @param maybeUserId  - owner of the card
+    * @param externalUuid - external unique id
     * @return card pre registration
     */
-  def preRegisterCard(maybeUserId: Option[String], uuid: String): Option[CardPreRegistration] = {
+  def preRegisterCard(maybeUserId: Option[String], currency: String, externalUuid: String): Option[CardPreRegistration] = {
     maybeUserId match {
       case Some(userId) =>
         val cardPreRegistration = new CardRegistration()
-        cardPreRegistration.setCurrency(CurrencyIso.EUR)
-        cardPreRegistration.setTag(uuid)
+        cardPreRegistration.setCurrency(CurrencyIso.valueOf(currency))
+        cardPreRegistration.setTag(externalUuid)
         cardPreRegistration.setUserId(userId)
         Try(MangoPay().getCardRegistrationApi.create(cardPreRegistration)) match {
           case Success(cardRegistration) =>
@@ -525,7 +526,7 @@ trait MangoPayProvider extends PaymentProvider {
         cardPreAuthorization.setCardId(cardId)
         cardPreAuthorization.setDebitedFunds(new Money)
         cardPreAuthorization.getDebitedFunds.setAmount(debitedAmount)
-        cardPreAuthorization.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        cardPreAuthorization.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         cardPreAuthorization.setExecutionType(PreAuthorizationExecutionType.DIRECT)
         if(ipAddress.isDefined){
           cardPreAuthorization.setIpAddress(ipAddress.get)
@@ -662,11 +663,11 @@ trait MangoPayProvider extends PaymentProvider {
         payIn.setAuthorId(authorId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)
-        payIn.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payIn.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setExecutionType(PayInExecutionType.DIRECT)
         payIn.setFees(new Money)
         payIn.getFees.setAmount(0) // fees are only set during transfer or payOut
-        payIn.getFees.setCurrency(CurrencyIso.EUR)
+        payIn.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setPaymentType(PayInPaymentType.PREAUTHORIZED)
         val paymentDetails = new PayInPaymentDetailsPreAuthorized
         paymentDetails.setPreauthorizationId(cardPreAuthorizedTransactionId)
@@ -777,10 +778,10 @@ trait MangoPayProvider extends PaymentProvider {
         payIn.setAuthorId(authorId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)
-        payIn.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payIn.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setFees(new Money)
         payIn.getFees.setAmount(0) // fees are only set during transfer or payOut
-        payIn.getFees.setCurrency(CurrencyIso.EUR)
+        payIn.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setPaymentType(PayInPaymentType.CARD)
         val paymentDetails = new PayInPaymentDetailsCard
         paymentDetails.setCardId(cardId)
@@ -903,10 +904,10 @@ trait MangoPayProvider extends PaymentProvider {
         }
         refund.setDebitedFunds(new Money)
         refund.getDebitedFunds.setAmount(refundAmount)
-        refund.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        refund.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         refund.setFees(new Money)
         refund.getFees.setAmount(0) // fees are only set during transfer or payOut
-        refund.getFees.setCurrency(CurrencyIso.EUR)
+        refund.getFees.setCurrency(CurrencyIso.valueOf(currency))
         Try(
           idempotency match {
             case Some(s) if s => MangoPay().getPayInApi.createRefund(
@@ -985,10 +986,10 @@ trait MangoPayProvider extends PaymentProvider {
         transfer.setCreditedWalletId(creditedWalletId)
         transfer.setDebitedFunds(new Money)
         transfer.getDebitedFunds.setAmount(debitedAmount)
-        transfer.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        transfer.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         transfer.setFees(new Money)
         transfer.getFees.setAmount(feesAmount)
-        transfer.getFees.setCurrency(CurrencyIso.EUR)
+        transfer.getFees.setCurrency(CurrencyIso.valueOf(currency))
         transfer.setDebitedWalletId(debitedWalletId)
         Try(MangoPay().getTransferApi.create(transfer)) match {
           case Success(result) =>
@@ -1061,10 +1062,10 @@ trait MangoPayProvider extends PaymentProvider {
         payOut.setCreditedUserId(creditedUserId)
         payOut.setDebitedFunds(new Money)
         payOut.getDebitedFunds.setAmount(debitedAmount)
-        payOut.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payOut.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payOut.setFees(new Money)
         payOut.getFees.setAmount(feesAmount)
-        payOut.getFees.setCurrency(CurrencyIso.EUR)
+        payOut.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payOut.setDebitedWalletId(debitedWalletId)
         val meanOfPaymentDetails = new PayOutPaymentDetailsBankWire
         meanOfPaymentDetails.setBankAccountId(bankAccountId)
@@ -1302,28 +1303,28 @@ trait MangoPayProvider extends PaymentProvider {
 
   /**
     *
-    * @param userId - Provider user id
-    * @param uuid - System entity id
-    * @param pages - document pages
+    * @param userId       - Provider user id
+    * @param externalUuid - external unique id
+    * @param pages        - document pages
     * @param documentType - document type
     * @return Provider document id
     */
-  def addDocument(userId: String, uuid: String, pages: Seq[Array[Byte]], documentType: KycDocument.KycDocumentType): Option[String] = {
+  def addDocument(userId: String, externalUuid: String, pages: Seq[Array[Byte]], documentType: KycDocument.KycDocumentType): Option[String] = {
     // create document
     Try(MangoPay().getUserApi.createKycDocument(userId, documentType)) match {
       case Success(s) =>
-        mlog.info(s"""Create $documentType for $uuid""")
+        mlog.info(s"""Create $documentType for $externalUuid""")
         // ask for document creation
-        s.setTag(uuid)
+        s.setTag(externalUuid)
         s.setStatus(KycStatus.CREATED)
         Try(MangoPay().getUserApi.updateKycDocument(userId, s)) match {
           case Success(s2) =>
-            mlog.info(s"""Update $documentType for $uuid""")
+            mlog.info(s"""Update $documentType for $externalUuid""")
             // add document pages
             if (pages.forall {
               case page => Try(MangoPay().getUserApi.createKycPage(userId, s2.getId, page)) match {
                 case Success(_) =>
-                  mlog.info(s"""Add document page for $uuid""")
+                  mlog.info(s"""Add document page for $externalUuid""")
                   true
                 case Failure(f3) =>
                   mlog.error(f3.getMessage, f3.getCause)
@@ -1331,11 +1332,11 @@ trait MangoPayProvider extends PaymentProvider {
               }
             }) {
               // ask for document validation
-              s2.setTag(uuid)
+              s2.setTag(externalUuid)
               s2.setStatus(KycStatus.VALIDATION_ASKED)
               Try(MangoPay().getUserApi.updateKycDocument(userId, s2)) match {
                 case Success(s3) =>
-                  mlog.info(s"""Ask document ${s3.getId} validation for $uuid""")
+                  mlog.info(s"""Ask document ${s3.getId} validation for $externalUuid""")
                   Some(s3.getId)
                 case Failure(f3) =>
                   mlog.error(f3.getMessage, f3.getCause)
@@ -1522,10 +1523,10 @@ trait MangoPayProvider extends PaymentProvider {
         payIn.setCreditedWalletId(creditedWalletId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)
-        payIn.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payIn.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setFees(new Money)
         payIn.getFees.setAmount(feesAmount)
-        payIn.getFees.setCurrency(CurrencyIso.EUR)
+        payIn.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setPaymentType(PayInPaymentType.DIRECT_DEBIT)
         val paymentDetails = new PayInPaymentDetailsDirectDebit
         paymentDetails.setCulture(CultureCode.FR)

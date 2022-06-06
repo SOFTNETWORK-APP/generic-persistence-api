@@ -198,7 +198,9 @@ trait GenericPaymentService extends SessionService
                               session.id,
                               debitedAmount,
                               currency,
-                              cardPreRegistration,
+                              registrationId,
+                              registrationData,
+                              registerCard,
                               if (browserInfo.isDefined) Some(ipAddress) else None,
                               browserInfo
                             )
@@ -234,7 +236,9 @@ trait GenericPaymentService extends SessionService
                                 debitedAmount,
                                 currency,
                                 creditedAccount,
-                                cardPreRegistration,
+                                registrationId,
+                                registrationData,
+                                registerCard,
                                 if (browserInfo.isDefined) Some(ipAddress) else None,
                                 browserInfo,
                                 statementDescriptor,

@@ -52,11 +52,12 @@ trait PaymentProvider {
   /**
     *
     * @param maybeUserId   - owner of the wallet
-    * @param uuid          - mveleta id
+    * @param currency - currency
+    * @param externalUuid  - external unique id
     * @param maybeWalletId - wallet id to update
     * @return wallet id
     */
-  def createOrUpdateWallet(maybeUserId: Option[String], uuid: String, maybeWalletId: Option[String]): Option[String]
+  def createOrUpdateWallet(maybeUserId: Option[String], currency: String, externalUuid: String, maybeWalletId: Option[String]): Option[String]
 
   /**
     *
@@ -82,11 +83,12 @@ trait PaymentProvider {
 
   /**
     *
-    * @param maybeUserId - owner of the card
-    * @param uuid        - mosa  eat id
+    * @param maybeUserId  - owner of the card
+    * @param currency     - currency
+    * @param externalUuid - external unique id
     * @return card pre registration
     */
-  def preRegisterCard(maybeUserId: Option[String], uuid: String): Option[CardPreRegistration]
+  def preRegisterCard(maybeUserId: Option[String], currency: String, externalUuid: String): Option[CardPreRegistration]
 
   /**
     *
@@ -207,12 +209,12 @@ trait PaymentProvider {
   /**
     *
     * @param userId       - Provider user id
-    * @param uuid         - System entity id
+    * @param externalUuid - external unique id
     * @param pages        - document pages
     * @param documentType - document type
     * @return Provider document id
     */
-  def addDocument(userId: String, uuid: String, pages: Seq[Array[Byte]], documentType: KycDocument.KycDocumentType): Option[String]
+  def addDocument(userId: String, externalUuid: String, pages: Seq[Array[Byte]], documentType: KycDocument.KycDocumentType): Option[String]
 
   /**
     *

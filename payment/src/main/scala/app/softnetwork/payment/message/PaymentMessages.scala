@@ -2,7 +2,6 @@ package app.softnetwork.payment.message
 
 import app.softnetwork.payment.annotation.InternalApi
 import app.softnetwork.payment.model._
-import app.softnetwork.persistence.generateUUID
 import app.softnetwork.persistence.message.{Command, CommandResult, ErrorMessage}
 
 object PaymentMessages {
@@ -19,27 +18,31 @@ object PaymentMessages {
     * @param orderUuid - order uuid
     * @param user      - payment user
     */
-  case class PreRegisterCard(orderUuid: String, user: PaymentUser) extends PaymentCommandWithKey {
+  case class PreRegisterCard(orderUuid: String, user: PaymentUser, currency: String = "EUR") extends PaymentCommandWithKey {
     val key: String = user.externalUuid
   }
 
   /**
     *
-    * @param orderUuid           - order unique id
-    * @param debitedAmount       - debited amount in cents
-    * @param currency            - currency
-    * @param cardPreRegistration - card pre registration if any
-    * @param javaEnabled         - java enabled
-    * @param javascriptEnabled   - javascript enabled
-    * @param colorDepth          - color depth
-    * @param screenWidth         - screen width
-    * @param screenHeight        - screen height
-    * @param paymentType         - payment type
+    * @param orderUuid         - order unique id
+    * @param debitedAmount     - debited amount in cents
+    * @param currency          - currency
+    * @param registrationId    - card registration id
+    * @param registrationData  - card registration data
+    * @param registerCard      - register card
+    * @param javaEnabled       - java enabled
+    * @param javascriptEnabled - javascript enabled
+    * @param colorDepth        - color depth
+    * @param screenWidth       - screen width
+    * @param screenHeight      - screen height
+    * @param paymentType        - payment type
     */
   case class Payment(orderUuid: String,
                      debitedAmount: Int = 100,
                      currency: String = "EUR",
-                     cardPreRegistration: Option[CardPreRegistration] = None,
+                     registrationId: Option[String] = None,
+                     registrationData: Option[String] = None,
+                     registerCard: Boolean = false,
                      javaEnabled: Boolean = false,
                      javascriptEnabled: Boolean = true,
                      colorDepth: Option[Int] = None,
@@ -51,20 +54,24 @@ object PaymentMessages {
   /**
     * Flow [PreRegisterCard -> ] PreAuthorizeCard [ -> PreAuthorizeCardFor3DS]
     *
-    * @param orderUuid           - order uuid
-    * @param debitedAccount      - account to debit
-    * @param debitedAmount       - amount to debit from the debited account
-    * @param currency            - currency
-    * @param cardPreRegistration - optional card pre registration
-    * @param ipAddress           - ip address
-    * @param browserInfo         - browser info
+    * @param orderUuid        - order uuid
+    * @param debitedAccount   - account to debit
+    * @param debitedAmount    - amount to debit from the debited account
+    * @param currency         - currency
+    * @param registrationId   - card registration id
+    * @param registrationData - card registration data
+    * @param registerCard     - register card
+    * @param ipAddress        - ip address
+    * @param browserInfo      - browser info
     */
   @InternalApi
   private[payment] case class PreAuthorizeCard(orderUuid: String,
                                                debitedAccount: String,
                                                debitedAmount: Int = 100,
                                                currency: String = "EUR",
-                                               cardPreRegistration: Option[CardPreRegistration] = None,
+                                               registrationId: Option[String] = None,
+                                               registrationData: Option[String] = None,
+                                               registerCard: Boolean = false,
                                                ipAddress: Option[String] = None,
                                                browserInfo: Option[BrowserInfo] = None
                                               ) extends PaymentCommandWithKey {
@@ -100,22 +107,26 @@ object PaymentMessages {
   /**
     * Flow [PreRegisterCard ->] PayIn [ -> PayInFor3DS]
     *
-    * @param orderUuid           - order uuid
-    * @param debitedAccount      - account to debit
-    * @param debitedAmount       - amount to be debited from the debited account
-    * @param currency            - currency
-    * @param creditedAccount     - account to credit
-    * @param cardPreRegistration - optional card pre registration
-    * @param ipAddress           - ip address
-    * @param browserInfo         - browser info
-    * @param paymentType         - payment type
+    * @param orderUuid        - order uuid
+    * @param debitedAccount   - account to debit
+    * @param debitedAmount    - amount to be debited from the debited account
+    * @param currency         - currency
+    * @param creditedAccount  - account to credit
+    * @param registrationId   - card registration id
+    * @param registrationData - card registration data
+    * @param registerCard     - register card
+    * @param ipAddress        - ip address
+    * @param browserInfo      - browser info
+    * @param paymentType      - payment type
     */
   case class PayIn(orderUuid: String,
                    debitedAccount: String,
                    debitedAmount: Int,
                    currency: String = "EUR",
                    creditedAccount: String,
-                   cardPreRegistration: Option[CardPreRegistration] = None,
+                   registrationId: Option[String] = None,
+                   registrationData: Option[String] = None,
+                   registerCard: Boolean = false,
                    ipAddress: Option[String] = None,
                    browserInfo: Option[BrowserInfo] = None,
                    statementDescriptor: Option[String] = None,

@@ -145,7 +145,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 (paymentAccount.walletId match {
                   case None =>
                     registerWallet = true
-                    createOrUpdateWallet(Some(userId), user.externalUuid, None)
+                    createOrUpdateWallet(Some(userId), currency, user.externalUuid, None)
                   case some => some
                 }) match {
                   case Some(walletId) =>
@@ -160,7 +160,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                             )
                         )
                         .withLastUpdated(lastUpdated)
-                    preRegisterCard(Some(userId), user.externalUuid) match {
+                    preRegisterCard(Some(userId), currency, user.externalUuid) match {
                       case Some(cardPreRegistration) =>
                         keyValueDao.addKeyValue(cardPreRegistration.id, entityId)
                         val walletEvents: List[PaymentEvent] =
@@ -240,10 +240,9 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case Some(paymentAccount) =>
             paymentAccount.getNaturalUser.userId match {
               case Some(userId) =>
-                (cardPreRegistration match {
-                  case Some(registration) =>
-                    import registration._
-                    createCard(id, Some(preregistrationData))
+                (registrationId match {
+                  case Some(id) =>
+                    createCard(id, registrationData)
                   case _ => paymentAccount.cards.find(card => card.active.getOrElse(true) && !card.expired).map(_.id)
                 }) match {
                   case Some(cardId) =>
@@ -266,7 +265,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           orderUuid,
                           replyTo,
                           paymentAccount,
-                          cardPreRegistration.exists(_.registerCard),
+                          registerCard,
                           transaction
                         )
                       case _ => // pre authorization failed
@@ -347,10 +346,9 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
               case Transaction.PaymentType.CARD =>
                 paymentAccount.userId match {
                   case Some(userId) =>
-                    (cardPreRegistration match {
-                      case Some(registration) =>
-                        import registration._
-                        createCard(id, Some(preregistrationData))
+                    (registrationId match {
+                      case Some(id) =>
+                        createCard(id, registrationData)
                       case _ => paymentAccount.cards.find(card => card.active.getOrElse(true) && !card.expired).map(_.id)
                     }) match {
                       case Some(cardId) =>
@@ -381,7 +379,6 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                       )
                                     ) match {
                                       case Some(transaction) =>
-                                        val registerCard = cardPreRegistration.exists(_.registerCard)
                                         handlePayIn(
                                           entityId, orderUuid, replyTo, paymentAccount, registerCard, transaction
                                         )
@@ -1112,9 +1109,9 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       updatedPaymentAccount = updatedPaymentAccount.resetUserId(Some(userId))
                       (paymentAccount.walletId match {
                         case None =>
-                          createOrUpdateWallet(Some(userId), updatedPaymentAccount.externalUuid, None)
+                          createOrUpdateWallet(Some(userId), "EUR", updatedPaymentAccount.externalUuid, None)
                         case Some(_) if shouldUpdateUserType =>
-                          createOrUpdateWallet(Some(userId), updatedPaymentAccount.externalUuid, None)
+                          createOrUpdateWallet(Some(userId), "EUR", updatedPaymentAccount.externalUuid, None)
                         case some => some
                       }) match {
                         case Some(walletId) =>

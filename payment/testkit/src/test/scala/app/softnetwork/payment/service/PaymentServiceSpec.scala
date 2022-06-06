@@ -98,7 +98,9 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
           orderUuid,
           5100,
           "EUR",
-          Some(cardPreRegistration)
+          Some(cardPreRegistration.id),
+          Some(cardPreRegistration.preregistrationData),
+          registerCard = true
         ))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
@@ -346,7 +348,9 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
             orderUuid,
             100,
             "EUR",
-            Some(cardPreRegistration)
+            Some(cardPreRegistration.id),
+            Some(cardPreRegistration.preregistrationData),
+            registerCard = true
           )
         )
       ) ~> routes ~> check {
@@ -372,7 +376,9 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
             orderUuid,
             5100,
             "EUR",
-            Some(cardPreRegistration)
+            Some(cardPreRegistration.id),
+            Some(cardPreRegistration.preregistrationData),
+            registerCard = true
           )
         )
       ) ~> routes ~> check {

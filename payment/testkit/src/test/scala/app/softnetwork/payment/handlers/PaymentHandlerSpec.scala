@@ -108,7 +108,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         customerUuid,
         5100,
         "EUR",
-        Some(cardPreRegistration)
+        Some(cardPreRegistration.id),
+        Some(cardPreRegistration.preregistrationData),
+        registerCard = true
       )) await {
         case result: PaymentRedirection =>
           val params = result.redirectUrl.split("\\?").last.split("&|=")
@@ -446,7 +448,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         customerUuid,
         100,
         "EUR",
-        Some(cardPreRegistration)
+        Some(cardPreRegistration.id),
+        Some(cardPreRegistration.preregistrationData),
+        registerCard = true
       )) await {
         case result: CardPreAuthorized =>
           val transactionId = result.transactionId

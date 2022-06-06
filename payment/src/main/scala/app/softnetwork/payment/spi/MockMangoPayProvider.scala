@@ -151,10 +151,10 @@ trait MockMangoPayProvider extends MangoPayProvider {
         payOut.setCreditedUserId(creditedUserId)
         payOut.setDebitedFunds(new Money)
         payOut.getDebitedFunds.setAmount(debitedAmount)
-        payOut.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payOut.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payOut.setFees(new Money)
         payOut.getFees.setAmount(feesAmount)
-        payOut.getFees.setCurrency(CurrencyIso.EUR)
+        payOut.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payOut.setDebitedWalletId(debitedWalletId)
         val meanOfPaymentDetails = new PayOutPaymentDetailsBankWire
         meanOfPaymentDetails.setBankAccountId(bankAccountId)
@@ -248,10 +248,10 @@ trait MockMangoPayProvider extends MangoPayProvider {
         }
         refund.setDebitedFunds(new Money)
         refund.getDebitedFunds.setAmount(refundAmount)
-        refund.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        refund.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         refund.setFees(new Money)
         refund.getFees.setAmount(0) // fees are only set during transfer or payOut
-        refund.getFees.setCurrency(CurrencyIso.EUR)
+        refund.getFees.setCurrency(CurrencyIso.valueOf(currency))
 
         refund.setId(generateUUID()/*orderUuid.substring(0, orderUuid.length - 1) + "r"*/)
         refund.setStatus(MangoPayTransactionStatus.SUCCEEDED)
@@ -292,10 +292,10 @@ trait MockMangoPayProvider extends MangoPayProvider {
         transfer.setCreditedWalletId(creditedWalletId)
         transfer.setDebitedFunds(new Money)
         transfer.getDebitedFunds.setAmount(debitedAmount)
-        transfer.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        transfer.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         transfer.setFees(new Money)
         transfer.getFees.setAmount(feesAmount)
-        transfer.getFees.setCurrency(CurrencyIso.EUR)
+        transfer.getFees.setCurrency(CurrencyIso.valueOf(currency))
         transfer.setDebitedWalletId(debitedWalletId)
         transfer.setId(generateUUID())
 
@@ -478,25 +478,26 @@ trait MockMangoPayProvider extends MangoPayProvider {
   /**
     *
     * @param maybeUserId   - owner of the wallet
-    * @param uuid          - external id
+    * @param currency      - currency
+    * @param externalUuid  - external unique id
     * @param maybeWalletId - wallet id to update
     * @return wallet id
     */
-  override def createOrUpdateWallet(maybeUserId: Option[String], uuid: String, maybeWalletId: Option[String]): Option[String] =
+  override def createOrUpdateWallet(maybeUserId: Option[String], currency: String, externalUuid: String, maybeWalletId: Option[String]): Option[String] =
     maybeUserId match {
       case Some(userId) =>
         val wallet = new Wallet
-        wallet.setCurrency(CurrencyIso.EUR)
+        wallet.setCurrency(CurrencyIso.valueOf(currency))
         wallet.setOwners(new util.ArrayList(List(userId).asJava))
-        wallet.setDescription(s"wallet for $uuid")
-        wallet.setTag(uuid)
+        wallet.setDescription(s"wallet for $externalUuid")
+        wallet.setTag(externalUuid)
         maybeWalletId match {
           case Some(walletId) =>
             wallet.setId(walletId)
             Wallets = Wallets.updated(wallet.getId, wallet)
             Some(wallet.getId)
           case _ =>
-            Wallets.values.find(_.getTag == uuid) match {
+            Wallets.values.find(_.getTag == externalUuid) match {
               case Some(w) =>
                 wallet.setId(w.getId)
                 Wallets = Wallets.updated(wallet.getId, wallet)
@@ -549,7 +550,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         cardPreAuthorization.setCardId(cardId)
         cardPreAuthorization.setDebitedFunds(new Money)
         cardPreAuthorization.getDebitedFunds.setAmount(debitedAmount)
-        cardPreAuthorization.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        cardPreAuthorization.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         cardPreAuthorization.setExecutionType(PreAuthorizationExecutionType.DIRECT)
         cardPreAuthorization.setSecureMode(SecureMode.DEFAULT)
         cardPreAuthorization.setSecureModeReturnUrl(
@@ -633,11 +634,11 @@ trait MockMangoPayProvider extends MangoPayProvider {
         payIn.setAuthorId(authorId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)
-        payIn.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payIn.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setExecutionType(PayInExecutionType.DIRECT)
         payIn.setFees(new Money)
         payIn.getFees.setAmount(0) // fees are only set during transfer or payOut
-        payIn.getFees.setCurrency(CurrencyIso.EUR)
+        payIn.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setPaymentType(PayInPaymentType.PREAUTHORIZED)
         val paymentDetails = new PayInPaymentDetailsPreAuthorized
         paymentDetails.setPreauthorizationId(cardPreAuthorizedTransactionId)
@@ -702,10 +703,10 @@ trait MockMangoPayProvider extends MangoPayProvider {
         payIn.setAuthorId(authorId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)
-        payIn.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payIn.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setFees(new Money)
         payIn.getFees.setAmount(0) // fees are only set during transfer or payOut
-        payIn.getFees.setCurrency(CurrencyIso.EUR)
+        payIn.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setPaymentType(PayInPaymentType.CARD)
         val paymentDetails = new PayInPaymentDetailsCard
         paymentDetails.setCardId(cardId)
@@ -751,16 +752,17 @@ trait MockMangoPayProvider extends MangoPayProvider {
 
   /**
     *
-    * @param maybeUserId - owner of the card
-    * @param uuid        - external id
+    * @param maybeUserId  - owner of the card
+    * @param currency     - currency
+    * @param externalUuid - external unique id
     * @return card pre registration
     */
-  override def preRegisterCard(maybeUserId: Option[String], uuid: String): Option[CardPreRegistration] =
+  override def preRegisterCard(maybeUserId: Option[String], currency: String, externalUuid: String): Option[CardPreRegistration] =
     maybeUserId match {
       case Some(userId) =>
         val cardPreRegistration = new CardRegistration()
-        cardPreRegistration.setCurrency(CurrencyIso.EUR)
-        cardPreRegistration.setTag(uuid)
+        cardPreRegistration.setCurrency(CurrencyIso.valueOf(currency))
+        cardPreRegistration.setTag(externalUuid)
         cardPreRegistration.setUserId(userId)
         cardPreRegistration.setId(generateUUID())
         cardPreRegistration.setAccessKey("key")
@@ -780,12 +782,12 @@ trait MockMangoPayProvider extends MangoPayProvider {
   /**
     *
     * @param userId       - Provider user id
-    * @param uuid         - System entity id
+    * @param externalUuid - external unique id
     * @param pages        - document pages
     * @param documentType - document type
     * @return Provider document id
     */
-  override def addDocument(userId: String, uuid: String, pages: Seq[Array[Byte]], documentType: KycDocument.KycDocumentType): Option[String] = {
+  override def addDocument(userId: String, externalUuid: String, pages: Seq[Array[Byte]], documentType: KycDocument.KycDocumentType): Option[String] = {
     val documentId = generateUUID()
     Documents = Documents.updated(
       documentId,
@@ -892,10 +894,10 @@ trait MockMangoPayProvider extends MangoPayProvider {
         payIn.setCreditedWalletId(creditedWalletId)
         payIn.setDebitedFunds(new Money)
         payIn.getDebitedFunds.setAmount(debitedAmount)
-        payIn.getDebitedFunds.setCurrency(CurrencyIso.EUR)
+        payIn.getDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setFees(new Money)
         payIn.getFees.setAmount(feesAmount)
-        payIn.getFees.setCurrency(CurrencyIso.EUR)
+        payIn.getFees.setCurrency(CurrencyIso.valueOf(currency))
         payIn.setPaymentType(PayInPaymentType.DIRECT_DEBIT)
         val paymentDetails = new PayInPaymentDetailsDirectDebit
         paymentDetails.setCulture(CultureCode.FR)
