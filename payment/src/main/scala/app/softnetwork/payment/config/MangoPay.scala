@@ -79,20 +79,18 @@ object MangoPay extends StrictLogging{
   def createOrUpdateHook(eventType: EventType, hooks: List[Hook]): Unit = {
     import Settings.MangoPayConfig._
     Try {
-      val maybePreviousHook = hooks.find(_.getEventType == eventType)
-      if (maybePreviousHook.isEmpty) {
-        val hook = new Hook()
-        hook.setEventType(eventType)
-        hook.setStatus(HookStatus.ENABLED)
-        hook.setUrl(s"$hooksBaseUrl")
-        MangoPay().getHookApi.create(hook)
-      }
-      else {
-        val previousHook = maybePreviousHook.get
-        previousHook.setStatus(HookStatus.ENABLED)
-        previousHook.setUrl(s"$hooksBaseUrl")
-        logger.info(s"Updating Mangopay Hook ${previousHook.getId}")
-        MangoPay().getHookApi.update(previousHook)
+      hooks.find(_.getEventType == eventType) match {
+        case Some(previousHook) =>
+          previousHook.setStatus(HookStatus.ENABLED)
+          previousHook.setUrl(s"$hooksBaseUrl")
+          logger.info(s"Updating Mangopay Hook ${previousHook.getId}")
+          MangoPay().getHookApi.update(previousHook)
+        case _ =>
+          val hook = new Hook()
+          hook.setEventType(eventType)
+          hook.setStatus(HookStatus.ENABLED)
+          hook.setUrl(s"$hooksBaseUrl")
+          MangoPay().getHookApi.create(hook)
       }
     } match {
       case Success(_) =>

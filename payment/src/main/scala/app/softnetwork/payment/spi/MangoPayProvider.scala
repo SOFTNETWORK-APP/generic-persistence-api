@@ -434,15 +434,15 @@ trait MangoPayProvider extends PaymentProvider {
             Try(MangoPay().getCardRegistrationApi.update(cardRegistration).getCardId) match {
               case Success(cardId) =>
                 Option(cardId)
-              case Failure(f)      =>
+              case Failure(f) =>
                 mlog.error(f.getMessage, f)
                 None
             }
-          case Failure(f)                =>
+          case Failure(f) =>
             mlog.error(f.getMessage, f)
             None
         }
-      case None                   =>
+      case None =>
         None
     }
   }
