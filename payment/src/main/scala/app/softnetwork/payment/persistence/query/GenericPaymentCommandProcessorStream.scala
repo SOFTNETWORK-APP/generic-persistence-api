@@ -9,6 +9,7 @@ import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.persistence.query.{EventProcessorStream, JournalProvider}
 
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentCommandEvent]{
   _: JournalProvider with GenericPaymentHandler =>
@@ -29,9 +30,17 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
     * @return
     */
   override protected def processEvent(event: PaymentCommandEvent, persistenceId: PersistenceId, sequenceNr: Long): Future[Done] = {
-    logger.info(s"handling $event|$sequenceNr for $persistenceId")
+    Try(handleEvent(event)) match {
+      case Success(s) => s
+      case Failure(f) =>
+        logger.error(s"${f.getMessage} while handling  $event|$sequenceNr for $persistenceId")
+        Future.successful(Done)
+    }
+  }
+
+  protected def handleEvent(event: PaymentCommandEvent): Future[Done] = {
     event match {
-      case evt: WrapPaymentCommandEvent => processEvent(evt.event, persistenceId, sequenceNr)
+      case evt: WrapPaymentCommandEvent => handleEvent(evt.event)
       case evt: CreateOrUpdatePaymentAccountCommandEvent =>
         val command = CreateOrUpdatePaymentAccount(evt.paymentAccount)
         ? (command) map {
@@ -105,6 +114,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
         Future.successful(Done)
     }
   }
+
 }
 
 trait MangoPayPaymentCommandProcessorStream extends GenericPaymentCommandProcessorStream with MangoPayPaymentHandler {

@@ -26,7 +26,7 @@ package object model {
 
   trait CronTabItem extends StrictLogging {
     def cron: String
-    lazy val cronExpression = Try{CronExpression(cron)} match {
+    lazy val cronExpression: CronExpression = Try{CronExpression(cron)} match {
       case Success(s) => s
       case Failure(f) =>
         logger.error(f.getMessage + s" -> [$cron]")

@@ -1,5 +1,7 @@
 package app.softnetwork.payment.model
 
+import app.softnetwork.persistence._
+
 trait PaymentAccountDecorator {self: PaymentAccount =>
 
   lazy val maybeUser: Option[PaymentUser] = {
@@ -16,7 +18,7 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
 
   lazy val externalUuid: String = maybeUser match {
     case Some(user) => user.externalUuid
-    case _ => "undefined"
+    case _ => generateUUID()
   }
 
   lazy val userId: Option[String] = maybeUser.flatMap(_.userId)
