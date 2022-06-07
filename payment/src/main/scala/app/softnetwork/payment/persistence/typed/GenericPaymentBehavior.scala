@@ -73,7 +73,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         import cmd._
         val lastUpdated = now()
         var updated = false
-        val updatedPaymentAccount =
+        var updatedPaymentAccount =
           state match {
             case Some(previousPaymentAccount) =>
               updated = true
@@ -104,6 +104,13 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
             bankAccount.mandateId match {
               case Some(mandateId) => keyValueDao.addKeyValue(mandateId, entityId)
               case _ =>
+            }
+            if(bankAccount.externalUuid.trim.isEmpty){
+              updatedPaymentAccount =
+                updatedPaymentAccount
+                  .withBankAccount(
+                    bankAccount.withExternalUuid(updatedPaymentAccount.externalUuid)
+                  )
             }
           case None =>
         }

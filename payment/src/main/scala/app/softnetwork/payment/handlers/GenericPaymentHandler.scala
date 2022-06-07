@@ -45,12 +45,19 @@ trait GenericPaymentHandler extends EntityPattern[PaymentCommand, PaymentResult]
     promise.future
   }
 
-  def ?(command: PaymentCommandWithKey)(implicit tTag: ClassTag[PaymentCommandWithKey], system: ActorSystem[_]
-  ): Future[PaymentResult] = super.??(command.key, command)
+  override def !?(command: PaymentCommand)(implicit tTag: ClassTag[PaymentCommand], system: ActorSystem[_]): Future[PaymentResult] = {
+    command match {
+      case cmd: PaymentCommandWithKey => ??(cmd.key, cmd)
+      case _ => super.!?(command)
+    }
+  }
 
-  def !(command: PaymentCommandWithKey)(implicit tTag: ClassTag[PaymentCommandWithKey], system: ActorSystem[_]): Unit =
-    super.?!(command.key, command)
-
+  override def !!(command: PaymentCommand)(implicit tTag: ClassTag[PaymentCommand], system: ActorSystem[_]): Unit = {
+    command match {
+      case cmd: PaymentCommandWithKey => ?!(cmd.key, cmd)
+      case _ => super.!!(command)
+    }
+  }
 }
 
 trait MangoPayPaymentHandler extends GenericPaymentHandler with MangoPayPaymentTypeKey
@@ -66,7 +73,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
   protected[payment] def loadPaymentAccount(key: String)(implicit system: ActorSystem[_]
   ): Future[Option[PaymentAccount]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    ? (LoadPaymentAccount(key)) map {
+    !? (LoadPaymentAccount(key)) map {
       case result: PaymentAccountLoaded => Some(result.paymentAccount)
       case _ => None
     }
@@ -78,7 +85,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
       Future.successful(false)
     }
     else{
-      ? (CreateOrUpdatePaymentAccount(paymentAccount)) map {
+      !? (CreateOrUpdatePaymentAccount(paymentAccount)) map {
         case PaymentAccountCreated => true
         case PaymentAccountUpdated => true
         case _ => false
@@ -89,7 +96,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
   def payInWithCardPreAuthorized(preAuthorizationId: String, creditedAccount: String)(implicit system: ActorSystem[_]
   ): Future[Either[PayInFailed, PaidIn]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    ? (PayInWithCardPreAuthorized(preAuthorizationId, creditedAccount)) map {
+    !? (PayInWithCardPreAuthorized(preAuthorizationId, creditedAccount)) map {
       case result: PaidIn => Right(result)
       case error: PayInFailed => Left(error)
       case _ => Left(PayInFailed("unknown"))
@@ -103,7 +110,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
              reasonMessage: String,
              initializedByClient: Boolean)(implicit system: ActorSystem[_]): Future[Either[RefundFailed, Refunded]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    ? (Refund(orderUuid, payInTransactionId, refundAmount, currency, reasonMessage, initializedByClient)) map {
+    !? (Refund(orderUuid, payInTransactionId, refundAmount, currency, reasonMessage, initializedByClient)) map {
       case result: Refunded => Right(result)
       case error: RefundFailed => Left(error)
       case _ => Left(RefundFailed("unknown"))
@@ -115,7 +122,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
              creditedAmount: Int,
              feesAmount: Int)(implicit system: ActorSystem[_]): Future[Either[PayOutFailed, PaidOut]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    ? (PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount)) map {
+    !? (PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount)) map {
       case result: PaidOut => Right(result)
       case error: PayOutFailed => Left(error)
       case _ => Left(PayOutFailed("unknown"))
@@ -130,7 +137,7 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
                payOutRequired: Boolean = true)(implicit system: ActorSystem[_]
   ): Future[Either[TransferFailed, Transfered]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    ? (Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, payOutRequired)) map {
+    !? (Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, payOutRequired)) map {
       case result: Transfered => Right(result)
       case error: TransferFailed => Left(error)
       case _ => Left(TransferFailed("unknown"))

@@ -8,8 +8,8 @@ import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.persistence.query.{EventProcessorStream, JournalProvider}
 
-import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success}
 
 trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentCommandEvent]{
   _: JournalProvider with GenericPaymentHandler =>
@@ -30,20 +30,19 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
     * @return
     */
   override protected def processEvent(event: PaymentCommandEvent, persistenceId: PersistenceId, sequenceNr: Long): Future[Done] = {
-    Try(handleEvent(event)) match {
-      case Success(s) => s
-      case Failure(f) =>
-        logger.error(s"${f.getMessage} while handling  $event|$sequenceNr for $persistenceId")
-        Future.successful(Done)
-    }
-  }
-
-  protected def handleEvent(event: PaymentCommandEvent): Future[Done] = {
     event match {
-      case evt: WrapPaymentCommandEvent => handleEvent(evt.event)
+      case evt: WrapPaymentCommandEvent =>
+        val promise = Promise[Done]
+        processEvent(evt.event, persistenceId, sequenceNr) onComplete {
+          case Success(_) => promise.success(Done)
+          case Failure(f) =>
+            logger.error(f.getMessage)
+            promise.failure(f)
+        }
+        promise.future
       case evt: CreateOrUpdatePaymentAccountCommandEvent =>
         val command = CreateOrUpdatePaymentAccount(evt.paymentAccount)
-        ? (command) map {
+        !? (command) map {
           case PaymentAccountCreated =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done
@@ -57,7 +56,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
       case evt: PayInWithCardPreAuthorizedCommandEvent =>
         import evt._
         val command = PayInWithCardPreAuthorized(preAuthorizationId, creditedAccount)
-        ? (command) map {
+        !? (command) map {
           case _: PaidInResult =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done
@@ -68,7 +67,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
       case evt: RefundCommandEvent =>
         import evt._
         val command = Refund(orderUuid, payInTransactionId, refundAmount, currency, reasonMessage, initializedByClient)
-        ? (command) map {
+        !? (command) map {
           case _: Refunded =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done
@@ -79,7 +78,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
       case evt: PayOutCommandEvent =>
         import evt._
         val command = PayOut(orderUuid, creditedAccount, creditedAmount, feesAmount, currency)
-        ? (command) map {
+        !? (command) map {
           case _: PaidOut =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done
@@ -90,7 +89,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
       case evt: TransferCommandEvent =>
         import evt._
         val command = Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, currency, payOutRequired)
-        ? (command) map {
+        !? (command) map {
           case _: Transfered =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done
@@ -101,7 +100,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
       case evt: DirectDebitCommandEvent =>
         import evt._
         val command = DirectDebit(creditedAccount, debitedAmount, feesAmount, currency, statementDescriptor)
-        ? (command) map {
+        !? (command) map {
           case _: DirectDebited =>
             if(forTests) system.eventStream.tell(Publish(event))
             Done

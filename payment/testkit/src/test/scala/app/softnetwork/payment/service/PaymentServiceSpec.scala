@@ -357,9 +357,9 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
         status shouldEqual StatusCodes.OK
         preAuthorizationId = responseAs[CardPreAuthorized].transactionId
         implicit val tSystem: ActorSystem[_] = typedSystem()
-        MockPaymentDao ? PayInWithCardPreAuthorized(preAuthorizationId, sellerUuid) await {
+        MockPaymentDao !? PayInWithCardPreAuthorized(preAuthorizationId, sellerUuid) await {
           case _: PaidIn =>
-            MockPaymentDao ? PayOut(orderUuid, sellerUuid, 100) await {
+            MockPaymentDao !? PayOut(orderUuid, sellerUuid, 100) await {
               case _: PaidOut =>
               case other => fail(other.toString)
             }
@@ -394,7 +394,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
           status shouldEqual StatusCodes.OK
           assert(responseAs[PaidIn].transactionId == transactionId)
           implicit val tSystem: ActorSystem[_] = typedSystem()
-          MockPaymentDao ? PayOut(orderUuid, sellerUuid, 5100) await {
+          MockPaymentDao !? PayOut(orderUuid, sellerUuid, 5100) await {
             case _: PaidOut =>
             case other => fail(other.toString)
           }

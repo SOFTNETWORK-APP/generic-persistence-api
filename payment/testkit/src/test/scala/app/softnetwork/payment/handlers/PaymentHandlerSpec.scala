@@ -79,13 +79,13 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
 
   "Payment handler" must {
     "pre register card" in {
-      ? (PreRegisterCard(
+      !? (PreRegisterCard(
         orderUuid,
         naturalUser
       )) await {
         case cardPreRegistered: CardPreRegistered =>
           cardPreRegistration = cardPreRegistered.cardPreRegistration
-          ? (LoadPaymentAccount(customerUuid)) await {
+          !? (LoadPaymentAccount(customerUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               val naturalUser = paymentAccount.getNaturalUser
@@ -103,7 +103,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "pre authorize card" in {
-      ? (PreAuthorizeCard(
+      !? (PreAuthorizeCard(
         orderUuid,
         customerUuid,
         5100,
@@ -123,13 +123,13 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "update card pre authorization" in {
-      ? (PreAuthorizeCardFor3DS(
+      !? (PreAuthorizeCardFor3DS(
         orderUuid,
         preAuthorizationId
       )) await {
         case cardPreAuthorized: CardPreAuthorized =>
           val transactionId = cardPreAuthorized.transactionId
-          ? (LoadPaymentAccount(customerUuid)) await {
+          !? (LoadPaymentAccount(customerUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.transactions.exists(t => t.id == transactionId))
@@ -145,7 +145,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "load cards" in {
-      ?(LoadCards(customerUuid)) await {
+      !? (LoadCards(customerUuid)) await {
         case result: CardsLoaded =>
           val card = result.cards.find(_.id == cardId)
           assert(card.isDefined)
@@ -158,7 +158,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "not create bank account with wrong iban" in {
-      ?(CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(None, ownerName, ownerAddress, "", bic)
       )) await {
@@ -168,7 +168,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "not create bank account with wrong bic" in {
-      ?(CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(None, ownerName, ownerAddress, iban, "")
       )) await {
@@ -178,13 +178,13 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "create bank account with natural user" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(None, ownerName, ownerAddress, iban, bic),
         Some(User.NaturalUser(naturalUser.withExternalUuid(sellerUuid)))
       )) await {
         case BankAccountCreatedOrUpdated =>
-          ? (LoadPaymentAccount(sellerUuid)) await {
+          !? (LoadPaymentAccount(sellerUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
@@ -198,7 +198,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "update bank account with natural user" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(
           Some(sellerBankAccountId),
@@ -210,7 +210,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         Some(User.NaturalUser(naturalUser.withLastName("anotherLastName").withExternalUuid(sellerUuid)))
       )) await {
         case BankAccountCreatedOrUpdated =>
-          ? (LoadPaymentAccount(sellerUuid)) await {
+          !? (LoadPaymentAccount(sellerUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
@@ -226,7 +226,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "not update bank account with wrong siret" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(
           Some(sellerBankAccountId),
@@ -243,7 +243,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "not update bank account with empty legal name" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(
           Some(sellerBankAccountId),
@@ -260,7 +260,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "not update bank account without accepted terms of PSP" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(
           Some(sellerBankAccountId),
@@ -277,7 +277,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "update bank account with sole trader legal user" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(
           Some(sellerBankAccountId),
@@ -290,7 +290,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         Some(true)
       )) await {
         case BankAccountCreatedOrUpdated =>
-          ? (LoadPaymentAccount(sellerUuid)) await {
+          !? (LoadPaymentAccount(sellerUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
@@ -307,7 +307,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "update bank account with business legal user" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         sellerUuid,
         BankAccount(
           Some(sellerBankAccountId),
@@ -320,7 +320,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         Some(true)
       )) await {
         case BankAccountCreatedOrUpdated =>
-          ? (LoadPaymentAccount(sellerUuid)) await {
+          !? (LoadPaymentAccount(sellerUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
@@ -348,9 +348,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
         KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION
       ).foreach { `type` =>
-        ? (AddKycDocument(sellerUuid, Seq.empty, `type`)) await {
+        !? (AddKycDocument(sellerUuid, Seq.empty, `type`)) await {
           case _: KycDocumentAdded =>
-            ? (LoadPaymentAccount(sellerUuid)) await {
+            !? (LoadPaymentAccount(sellerUuid)) await {
               case result: PaymentAccountLoaded =>
                 val paymentAccount = result.paymentAccount
                 assert(
@@ -373,14 +373,14 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         KycDocument.KycDocumentType.KYC_ARTICLES_OF_ASSOCIATION,
         KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION
       ).foreach { `type` =>
-        ? (LoadKycDocumentStatus(sellerUuid, `type`)) await {
+        !? (LoadKycDocumentStatus(sellerUuid, `type`)) await {
           case result: KycDocumentStatusLoaded =>
-            ? (UpdateKycDocumentStatus(
+            !? (UpdateKycDocumentStatus(
               result.report.id,
               Some(validated)
             )) await {
               case _: KycDocumentStatusUpdated =>
-                ? (LoadPaymentAccount(sellerUuid)) await {
+                !? (LoadPaymentAccount(sellerUuid)) await {
                   case result: PaymentAccountLoaded =>
                     val paymentAccount = result.paymentAccount
                     assert(
@@ -398,16 +398,16 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "create or update ultimate beneficial owner" in {
-      ?(CreateOrUpdateUbo(sellerUuid, ubo)) await {
+      !? (CreateOrUpdateUbo(sellerUuid, ubo)) await {
         case _: UboCreatedOrUpdated =>
         case other => fail(other.toString)
       }
     }
 
     "ask for declaration validation" in {
-      ?(ValidateUboDeclaration(sellerUuid)) await {
+      !? (ValidateUboDeclaration(sellerUuid)) await {
         case UboDeclarationAskedForValidation =>
-          ? (GetUboDeclaration(sellerUuid)) await {
+          !? (GetUboDeclaration(sellerUuid)) await {
             case result: UboDeclarationLoaded =>
               assert(
                 result.declaration.status == UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_VALIDATION_ASKED
@@ -419,16 +419,16 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "update declaration status" in {
-      ?(UpdateUboDeclarationStatus(
+      !? (UpdateUboDeclarationStatus(
         uboDeclarationId, Some(UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_VALIDATED))
       ) await {
         case UboDeclarationStatusUpdated =>
-          ? (GetUboDeclaration(sellerUuid)) await {
+          !? (GetUboDeclaration(sellerUuid)) await {
             case result: UboDeclarationLoaded =>
               assert(
                 result.declaration.status == UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_VALIDATED
               )
-              ? (LoadPaymentAccount(sellerUuid)) await {
+              !? (LoadPaymentAccount(sellerUuid)) await {
                 case result: PaymentAccountLoaded =>
                   val paymentAccount = result.paymentAccount
                   assert(
@@ -443,7 +443,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "pay in / out with pre authorized card" in {
-      ? (PreAuthorizeCard(
+      !? (PreAuthorizeCard(
         orderUuid,
         customerUuid,
         100,
@@ -455,9 +455,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         case result: CardPreAuthorized =>
           val transactionId = result.transactionId
           preAuthorizationId = transactionId
-          ? (PayInWithCardPreAuthorized(preAuthorizationId, sellerUuid)) await {
+          !? (PayInWithCardPreAuthorized(preAuthorizationId, sellerUuid)) await {
             case _: PaidIn =>
-              ? (PayOut(orderUuid, sellerUuid, 100)) await {
+              !? (PayOut(orderUuid, sellerUuid, 100)) await {
                 case _: PaidOut =>
                 case other => fail(other.toString)
               }
@@ -468,9 +468,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "pay in / out" in {
-      ? (PayIn(orderUuid, customerUuid, 100, "EUR", sellerUuid)) await {
+      !? (PayIn(orderUuid, customerUuid, 100, "EUR", sellerUuid)) await {
         case _: PaidIn =>
-          ? (PayOut(orderUuid, sellerUuid, 100)) await {
+          !? (PayOut(orderUuid, sellerUuid, 100)) await {
             case _: PaidOut =>
             case other => fail(other.toString)
           }
@@ -479,12 +479,12 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "pay in / refund" in {
-      ? (PayIn(orderUuid, customerUuid, 100, "EUR", sellerUuid)) await {
+      !? (PayIn(orderUuid, customerUuid, 100, "EUR", sellerUuid)) await {
         case result: PaidIn =>
           val payInTransactionId = result.transactionId
-          ? (Refund(orderUuid, payInTransactionId, 101, "EUR", "change my mind", initializedByClient = true)) await {
+          !? (Refund(orderUuid, payInTransactionId, 101, "EUR", "change my mind", initializedByClient = true)) await {
             case IllegalTransactionAmount => // 101 > 100
-              ? (Refund(orderUuid, payInTransactionId, 50, "EUR", "change my mind", initializedByClient = true)) await {
+              !? (Refund(orderUuid, payInTransactionId, 50, "EUR", "change my mind", initializedByClient = true)) await {
                 case _: Refunded =>
                 case other => fail(other.toString)
               }
@@ -495,22 +495,22 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "transfer" in {
-      ? (CreateOrUpdateBankAccount(
+      !? (CreateOrUpdateBankAccount(
         vendorUuid,
         BankAccount(None, ownerName, ownerAddress, iban, bic),
         Some(User.NaturalUser(naturalUser.withExternalUuid(vendorUuid)))
       )) await {
         case BankAccountCreatedOrUpdated =>
-          ? (LoadPaymentAccount(vendorUuid)) await {
+          !? (LoadPaymentAccount(vendorUuid)) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 1)
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
               vendorBankAccountId = paymentAccount.getBankAccount.getId
-              ? (AddKycDocument(vendorUuid, Seq.empty, KycDocument.KycDocumentType.KYC_IDENTITY_PROOF)) await {
+              !? (AddKycDocument(vendorUuid, Seq.empty, KycDocument.KycDocumentType.KYC_IDENTITY_PROOF)) await {
                 case result: KycDocumentAdded =>
-                  ?(UpdateKycDocumentStatus(
+                  !? (UpdateKycDocumentStatus(
                     result.kycDocumentId,
                     Some(KycDocument.KycDocumentStatus.KYC_DOCUMENT_VALIDATED)
                   )) await {
@@ -519,7 +519,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
                   }
                 case other => fail(other.toString)
               }
-              ? (Transfer(Some(orderUuid), sellerUuid, vendorUuid, 50, 10)) await {
+              !? (Transfer(Some(orderUuid), sellerUuid, vendorUuid, 50, 10)) await {
                 case result: Transfered =>
                   assert(result.paidOutTransactionId.isDefined)
                 case other => fail(other.toString)
@@ -531,9 +531,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "create mandate" in {
-      ? (CreateMandate(vendorUuid)) await {
+      !? (CreateMandate(vendorUuid)) await {
         case MandateCreated =>
-          ? (LoadPaymentAccount(vendorUuid)) await {
+          !? (LoadPaymentAccount(vendorUuid)) await {
             case result: PaymentAccountLoaded =>
               val bankAccount = result.paymentAccount.getBankAccount
               assert(bankAccount.mandateId.isDefined)
@@ -546,9 +546,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "direct debit" in {
-      ? (DirectDebit(vendorUuid, 100, 0, "EUR", "Direct Debit")) await {
+      !? (DirectDebit(vendorUuid, 100, 0, "EUR", "Direct Debit")) await {
         case r: DirectDebited =>
-          ? (LoadPaymentAccount(vendorUuid)) await {
+          !? (LoadPaymentAccount(vendorUuid)) await {
             case result: PaymentAccountLoaded =>
               result.paymentAccount.transactions.find(_.id == r.transactionId) match {
                 case Some(transaction) =>
@@ -565,12 +565,12 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "update mandate status" in {
-      ? (UpdateMandateStatus(mandateId, Some(BankAccount.MandateStatus.MANDATE_ACTIVATED))) await {
+      !? (UpdateMandateStatus(mandateId, Some(BankAccount.MandateStatus.MANDATE_ACTIVATED))) await {
         case r: MandateStatusUpdated =>
           val result = r.result
           assert(result.id == mandateId)
           assert(result.status == BankAccount.MandateStatus.MANDATE_ACTIVATED)
-          ? (LoadPaymentAccount(vendorUuid)) await {
+          !? (LoadPaymentAccount(vendorUuid)) await {
             case result: PaymentAccountLoaded =>
               val bankAccount = result.paymentAccount.getBankAccount
               assert(bankAccount.getMandateId == mandateId)
@@ -582,9 +582,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "cancel mandate" in {
-      ? (CancelMandate(vendorUuid)) await {
+      !? (CancelMandate(vendorUuid)) await {
         case MandateCanceled =>
-          ? (LoadPaymentAccount(vendorUuid)) await {
+          !? (LoadPaymentAccount(vendorUuid)) await {
             case result: PaymentAccountLoaded =>
               val bankAccount = result.paymentAccount.getBankAccount
               assert(bankAccount.mandateId.isEmpty)
@@ -596,12 +596,12 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "create or update payment account" in {
-      ? (LoadPaymentAccount(vendorUuid)) await {
+      !? (LoadPaymentAccount(sellerUuid)) await {
         case result: PaymentAccountLoaded =>
           val paymentAccount = result.paymentAccount
           val legalUser = paymentAccount.getLegalUser
           val externalUuid = "other"
-          ? (
+          !? (
             CreateOrUpdatePaymentAccount(
               paymentAccount.withLegalUser(
                 legalUser.withLegalRepresentative(legalUser.legalRepresentative.withExternalUuid(externalUuid))
@@ -609,7 +609,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
             )
           ) await {
             case PaymentAccountCreated =>
-              ? (LoadPaymentAccount(externalUuid)) await {
+              !? (LoadPaymentAccount(externalUuid)) await {
                 case result: PaymentAccountLoaded =>
                   logger.info(result.paymentAccount.toProtoString)
                 case other => fail(other.toString)
@@ -621,9 +621,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "delete bank account" in {
-      ?(DeleteBankAccount(sellerUuid)) await {
+      !? (DeleteBankAccount(sellerUuid)) await {
         case BankAccountDeleted =>
-          ? (LoadBankAccount(sellerUuid)) await {
+          !? (LoadBankAccount(sellerUuid)) await {
             case BankAccountNotFound =>
             case other => fail(other.toString)
           }
@@ -632,9 +632,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "disable card" in {
-      ?(DisableCard(customerUuid, cardId)) await {
+      !? (DisableCard(customerUuid, cardId)) await {
         case CardDisabled =>
-          ?(LoadCards(customerUuid)) await {
+          !? (LoadCards(customerUuid)) await {
             case result: CardsLoaded =>
               val card = result.cards.find(_.id == cardId)
               assert(card.isDefined)

@@ -2,7 +2,7 @@ package app.softnetwork.persistence.typed.scaladsl
 
 import akka.actor.typed.receptionist.Receptionist.Find
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import akka.actor.typed.{RecipientRef, Behavior, ActorSystem, ActorRef}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior, RecipientRef}
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, EntityRef}
 import akka.util.Timeout
@@ -13,8 +13,8 @@ import app.softnetwork.persistence.model.Entity
 import app.softnetwork.persistence.typed.{CommandTypeKey, Singleton}
 import com.typesafe.scalalogging.StrictLogging
 
-import scala.concurrent.Future
-import scala.language.{postfixOps, implicitConversions}
+import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
@@ -44,7 +44,7 @@ trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with Stric
     Future.successful(Some(key))
 
   def ??[T](key: T, command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Future[R] = {
-    implicit val ec = system.executionContext
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     lookup(key) flatMap {
       case Some(recipient) => this ? (recipient, command)
       case _              => this ? (key, command)
@@ -52,7 +52,7 @@ trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with Stric
   }
 
   def ?![T](key: T, command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Unit = {
-    implicit val ec = system.executionContext
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     lookup(key) map {
       case Some(recipient) => this ! (recipient, command)
       case _              => this ! (key, command)
@@ -60,7 +60,7 @@ trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with Stric
   }
 
   def *?[T](keys: List[T], command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Future[List[R]] = {
-    implicit val ec = system.executionContext
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     Future.sequence(for(key <- keys) yield lookup(key) flatMap {
       case Some(recipient) => this ? (recipient, command)
       case _ => this ? (key, command)
@@ -68,7 +68,7 @@ trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with Stric
   }
 
   def *![T](keys: List[T], command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Unit = {
-    implicit val ec = system.executionContext
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     for(key <- keys) yield lookup(key) map {
       case Some(recipient) => this ! (recipient, command)
       case _ => this ? (key, command)
@@ -78,7 +78,7 @@ trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with Stric
 }
 
 trait CommandHandler[C <: Command, R <: CommandResult]{
-  def handleCommand(command: C, replyTo: Option[ActorRef[R]])(implicit context: ActorContext[C]) = {}
+  def handleCommand(command: C, replyTo: Option[ActorRef[R]])(implicit context: ActorContext[C]): Unit = {}
 }
 
 trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R]
