@@ -32,7 +32,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
 
   lazy val keyValueDao: GenericKeyValueDao = KeyValueDao //FIXME app.softnetwork.payment.persistence.data.paymentKvDao
 
-  lazy val paymentDao: GenericPaymentDao = MangoPayPaymentDao
+  def paymentDao: GenericPaymentDao
 
   override def init(system: ActorSystem[_])(implicit c: ClassTag[PaymentCommand]): Unit = {
     KeyValueBehavior.init(system)
@@ -135,7 +135,14 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
               updatedPaymentAccount
             )
             .withLastUpdated(lastUpdated)
-        ).thenRun(_ => if(updated) PaymentAccountUpdated else PaymentAccountCreated ~> replyTo)
+        ).thenRun(_ => {
+          val result =
+            if(updated)
+              PaymentAccountUpdated
+            else
+              PaymentAccountCreated
+          result ~> replyTo
+        })
 
       case cmd: PreRegisterCard =>
         import cmd._
@@ -2090,7 +2097,9 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
 
 trait MangoPayPaymentBehavior extends GenericPaymentBehavior with MangoPayProvider
 
-case object MangoPayPaymentBehavior extends MangoPayPaymentBehavior
+case object MangoPayPaymentBehavior extends MangoPayPaymentBehavior{
+  override lazy val paymentDao: GenericPaymentDao = MangoPayPaymentDao
+}
 
 case object MockPaymentBehavior extends GenericPaymentBehavior with MockMangoPayProvider{
   override def persistenceId = s"Mock${super.persistenceId}"
