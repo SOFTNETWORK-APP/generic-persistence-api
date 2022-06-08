@@ -191,8 +191,17 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               schedule.uuid == cmd.uuid
             ) match {
               case Some(schedule) =>
+                val events: List[SchedulerEvent] =
+                  if(schedule.entityId == ALL_KEY){
+                    scheduler.schedules.filter(
+                      s => s.entityId != ALL_KEY && s.persistenceId == schedule.persistenceId && s.key == schedule.key
+                    ).map(ct => ScheduleRemovedEvent(ct.persistenceId, ct.entityId, ct.key)).toList
+                  }
+                  else{
+                    List.empty
+                  }
                 Effect.persist(
-                  ScheduleRemovedEvent(cmd.persistenceId, cmd.entityId, cmd.key)
+                  events :+ ScheduleRemovedEvent(cmd.persistenceId, cmd.entityId, cmd.key)
                 ).thenRun(_ => {
                   timers.cancel(schedule.uuid)
                   context.log.debug(s"$schedule removed")
@@ -316,10 +325,17 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               cronTab.uuid == cmd.uuid
             ) match {
               case Some(cronTab) =>
+                val events: List[SchedulerEvent] =
+                  if(cronTab.entityId == ALL_KEY){
+                    scheduler.cronTabs.filter(
+                      ct => ct.entityId != ALL_KEY && ct.persistenceId == cronTab.persistenceId && ct.key == cronTab.key
+                    ).map(ct => CronTabRemovedEvent(ct.persistenceId, ct.entityId, ct.key)).toList
+                  }
+                  else{
+                    List.empty
+                  }
                 Effect.persist(
-                  List(
-                    CronTabRemovedEvent(cmd.persistenceId, cmd.entityId, cmd.key)
-                  )
+                  events :+ CronTabRemovedEvent(cmd.persistenceId, cmd.entityId, cmd.key)
                 ).thenRun(_ => {
                   timers.cancel(cronTab.uuid)
                   context.log.info(s"$cronTab removed")
