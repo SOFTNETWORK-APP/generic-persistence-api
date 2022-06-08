@@ -103,35 +103,30 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               }
             case _ => schedule
           }
-        val events: List[SchedulerEvent] =
-          if(updatedSchedule.entityId == ALL_KEY){
-            state.get.schedules.filter(
-              s => s.entityId != ALL_KEY && s.persistenceId == updatedSchedule.persistenceId && s.key == updatedSchedule.key
-            ).map(ct => ScheduleRemovedEvent(ct.persistenceId, ct.entityId, ct.key)).toList
-          }
-          else{
-            List.empty
-          }
+        val triggerable: Boolean = updatedSchedule.repeatedly.getOrElse(false) || updatedSchedule.lastTriggered.isEmpty
         Effect.persist(
-          List(
+          // add schedule if and only if it has to be repeatedly triggered or has never been triggered ...
+          if (triggerable) {
             ScheduleAddedEvent(updatedSchedule)
-          ) ++ events
+          }
+          // ... otherwise remove it
+          else {
+            ScheduleRemovedEvent(updatedSchedule.persistenceId, updatedSchedule.entityId, updatedSchedule.key)
+          }
         ).thenRun(
           _ => {
             import updatedSchedule._
-            val ignored = lastTriggered.isDefined && (now().getTime - getLastTriggered.getTime) * 1000 < 120
-            if(!ignored){
+            val ignored = lastTriggered.isDefined && (now().getTime - getLastTriggered.getTime) * 1000 < 120 * 1000
+            if(!ignored && triggerable){
               if(scheduledDate.isDefined){
-                // trigger schedule only if the scheduled date has been reached and the schedule has never been triggered
-                if(now().after(scheduledDate.get)){
-                  if(lastTriggered.isEmpty /*|| lastTriggered.get.before(scheduledDate.get)*/){
-                    context.log.info(s"Triggering schedule $updatedSchedule")
-                    timers.startSingleTimer(
-                      uuid,
-                      TriggerSchedule(schedule.persistenceId, schedule.entityId, key),
-                      delay.seconds
-                    )
-                  }
+                // trigger schedule only if the scheduled date has been reached
+                if(now().after(getScheduledDate)){
+                  context.log.info(s"Triggering schedule $updatedSchedule")
+                  timers.startSingleTimer(
+                    uuid,
+                    TriggerSchedule(schedule.persistenceId, schedule.entityId, key),
+                    delay.seconds
+                  )
                 }
               }
               else if(repeatedly.getOrElse(false)){
@@ -142,7 +137,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
                   delay.seconds
                 )
               }
-              else{
+              else if(lastTriggered.isEmpty){
                 context.log.debug(s"Triggering schedule $updatedSchedule")
                 timers.startSingleTimer(
                   uuid,
@@ -150,9 +145,17 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
                   delay.seconds
                 )
               }
+              else{
+                context.log.debug(s"Schedule $updatedSchedule has already been triggered")
+              }
             }
             context.log.debug(s"$schedule added")
-            ScheduleAdded ~> replyTo
+            val result =
+              if(triggerable)
+                ScheduleAdded
+              else
+                ScheduleNotAdded
+            result ~> replyTo
           }
         )
       case cmd: TriggerSchedule => // effectively trigger the schedule
@@ -239,7 +242,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               if(!now().before(cronTab.getNextTriggered)){
                 if(!timers.isTimerActive(cronTab.uuid)) {
                   val ignored = cronTab.lastTriggered.isDefined &&
-                    (abs(now().getTime - cronTab.getLastTriggered.getTime) * 1000 < 120 ||
+                    (abs(now().getTime - cronTab.getLastTriggered.getTime) * 1000 < 120 * 1000 ||
                       cronTab.getNextTriggered.getTime == cronTab.getLastTriggered.getTime)
                   if(!ignored){
                     context.log.info(s"Triggering cron tab $cronTab")
@@ -355,55 +358,31 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
     implicit context: ActorContext[_]): Option[Scheduler] =
     event match {
       case evt: ScheduleAddedEvent =>
-        Some(
-          state match {
-            case Some(s) =>
-              s.copy(
-                schedules =
-                  s.schedules.filterNot(schedule =>
-                    schedule.uuid == evt.schedule.uuid
-                  ) :+ evt.schedule
-              )
-            case _ => Scheduler(ALL_KEY, schedules = Seq(evt.schedule))
-          }
-        )
+        Option(state.map(s => s.copy(
+          schedules =
+            s.schedules.filterNot(schedule =>
+              schedule.uuid == evt.schedule.uuid
+            ) :+ evt.schedule
+        )).getOrElse(Scheduler(ALL_KEY, schedules = Seq(evt.schedule))))
       case evt: ScheduleRemovedEvent =>
-        Some(
-          state match {
-            case Some(s) =>
-              s.copy(
-                schedules = s.schedules.filterNot(schedule =>
-                  schedule.uuid == evt.uuid
-                )
-              )
-            case _ => Scheduler(ALL_KEY)
-          }
-        )
+        Option(state.map(s => s.copy(
+          schedules = s.schedules.filterNot(schedule =>
+            schedule.uuid == evt.uuid
+          )
+        )).getOrElse(Scheduler(ALL_KEY)))
       case evt: CronTabAddedEvent =>
-        Some(
-          state match {
-            case Some(s) =>
-              s.copy(
-                cronTabs =
-                  s.cronTabs.filterNot(cronTab =>
-                    cronTab.uuid == evt.cronTab.uuid
-                  ) :+ evt.cronTab
-              )
-            case _ => Scheduler(ALL_KEY, cronTabs = Seq(evt.cronTab))
-          }
-        )
+        Option(state.map(s => s.copy(
+          cronTabs =
+            s.cronTabs.filterNot(cronTab =>
+              cronTab.uuid == evt.cronTab.uuid
+            ) :+ evt.cronTab
+        )).getOrElse(Scheduler(ALL_KEY, cronTabs = Seq(evt.cronTab))))
       case evt: CronTabRemovedEvent =>
-        Some(
-          state match {
-            case Some(s) =>
-              s.copy(
-                cronTabs = s.cronTabs.filterNot(cronTab =>
-                  cronTab.uuid == evt.uuid
-                )
-              )
-            case _ => Scheduler(ALL_KEY)
-          }
-        )
+        Option(state.map(s => s.copy(
+          cronTabs = s.cronTabs.filterNot(cronTab =>
+            cronTab.uuid == evt.uuid
+          )
+        )).getOrElse(Scheduler(ALL_KEY)))
       case _ => super.handleEvent(state, event)
     }
 }

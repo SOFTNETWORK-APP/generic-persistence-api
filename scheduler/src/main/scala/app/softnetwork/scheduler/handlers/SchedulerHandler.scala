@@ -7,7 +7,7 @@ import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.scheduler.message._
 import org.softnetwork.akka.message.scheduler._
 import app.softnetwork.scheduler.config.{SchedulerConfig, Settings}
-import org.softnetwork.akka.model.{CronTab, Scheduler}
+import org.softnetwork.akka.model.{CronTab, Schedule, Scheduler}
 import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -51,6 +51,14 @@ trait SchedulerDao { _: SchedulerHandler =>
     implicit val ec: ExecutionContextExecutor = system.executionContext
     !?(ResetScheduler).map {
       case SchedulerReseted => true
+      case _ => false
+    }
+  }
+
+  def addSchedule(schedule: Schedule)(implicit system: ActorSystem[_]): Future[Boolean] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    !? (AddSchedule(schedule)).map {
+      case ScheduleAdded => true
       case _ => false
     }
   }

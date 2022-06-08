@@ -16,11 +16,16 @@ import scala.concurrent.Future
 
 package query {
 
+  import app.softnetwork.scheduler.handlers.SchedulerDao
+
   /**
    * Created by smanciot on 04/09/2020.
    */
   trait Scheduler2EntityProcessorStream[C <: Command, R <: CommandResult] extends EventProcessorStream[SchedulerEvent] {
     _: JournalProvider with EntityPattern[C, R] =>
+
+    def schedulerDao: SchedulerDao = SchedulerDao
+
     /**
       *
       * Processing event
@@ -42,9 +47,7 @@ package query {
               if(persistenceId.startsWith(schedule.persistenceId)){
                 val entityId = persistenceId.split("\\|").last
                 if(entityId != ALL_KEY){
-                  val entitySchedule = schedule.withEntityId(entityId)
-                  logger.info(s"$entitySchedule started at ${now()}")
-                  triggerSchedule(entitySchedule)
+                  schedulerDao.addSchedule(schedule.withEntityId(entityId))
                 }
                 else{
                   Future.successful(true)
@@ -71,9 +74,7 @@ package query {
               if(persistenceId.startsWith(cronTab.persistenceId)){
                 val entityId = persistenceId.split("\\|").last
                 if(entityId != ALL_KEY){
-                  val entityCronTab = cronTab.withEntityId(entityId)
-                  logger.info(s"$entityCronTab started at ${now()}")
-                  triggerCronTab(entityCronTab)
+                  schedulerDao.addCronTab(cronTab.withEntityId(entityId))
                 }
                 else{
                   Future.successful(true)
