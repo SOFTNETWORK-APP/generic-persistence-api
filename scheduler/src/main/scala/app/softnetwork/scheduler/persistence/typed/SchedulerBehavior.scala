@@ -103,10 +103,9 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               }
             case _ => schedule
           }
-        val triggerable: Boolean = updatedSchedule.repeatedly.getOrElse(false) || updatedSchedule.lastTriggered.isEmpty
         Effect.persist(
           // add schedule if and only if it has to be repeatedly triggered or has never been triggered ...
-          if (triggerable) {
+          if (updatedSchedule.triggerable) {
             ScheduleAddedEvent(updatedSchedule)
           }
           // ... otherwise remove it
@@ -172,7 +171,12 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
                   else{
                     schedule.withLastTriggered(now())
                   }
-                Effect.persist(ScheduleTriggeredEvent(updatedSchedule)).thenRun(_ => {
+                Effect.persist(
+                  List(
+                    ScheduleAddedEvent(updatedSchedule), // update schedule
+                    ScheduleTriggeredEvent(updatedSchedule)
+                  )
+                ).thenRun(_ => {
                   context.log.info(s"$schedule triggered at ${updatedSchedule.getLastTriggered}")
                   ScheduleTriggered ~> replyTo
                 })
@@ -188,9 +192,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
             ) match {
               case Some(schedule) =>
                 Effect.persist(
-                  List(
-                    ScheduleRemovedEvent(cmd.persistenceId, cmd.entityId, cmd.key)
-                  )
+                  ScheduleRemovedEvent(cmd.persistenceId, cmd.entityId, cmd.key)
                 ).thenRun(_ => {
                   timers.cancel(schedule.uuid)
                   context.log.debug(s"$schedule removed")
@@ -207,38 +209,47 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               cronTab.uuid == cmd.cronTab.uuid
             ) match {
               case Some(cronTab) =>
-                // next trigger undefined
+                // next trigger has to be (re)calculated
                 if(cronTab.nextTriggered.isEmpty ||
                   cronTab.cron != cmd.cronTab.cron ||
-                  cronTab.getNextTriggered.before(now())){
+                  (cronTab.lastTriggered.isDefined &&
+                    cronTab.getNextTriggered.getTime == cronTab.getLastTriggered.getTime)
+                ){
                   cmd.cronTab.nextLocalDateTime() match {
                     case Some(ldt) =>
-                      Some(
-                        (cronTab
+                      val updatedCronTab =
+                        cronTab
                           .withCron(cmd.cronTab.cron)
-                          .withNextTriggered(Timestamp.valueOf(ldt)),
-                          true)
-                      )
+                          .withNextTriggered(Timestamp.valueOf(ldt))
+                      context.log.info(s"$updatedCronTab updated")
+                      Some(updatedCronTab)
                     case _ => None
                   }
                 }
                 // next trigger already defined
                 else {
-                  Some((cronTab, false))
+                  Some(cronTab)
                 }
               case _ => // new cron tab
-                cmd.cronTab.nextLocalDateTime() match {
-                  case Some(ldt) =>
-                    val updatedCronTab = cmd.cronTab.withNextTriggered(Timestamp.valueOf(ldt))
-                    context.log.info(s"$updatedCronTab added")
-                    Some((updatedCronTab, true))
-                  case _ => None
+                // next trigger undefined
+                if(cmd.cronTab.nextTriggered.isEmpty){
+                  cmd.cronTab.nextLocalDateTime() match {
+                    case Some(ldt) =>
+                      val updatedCronTab = cmd.cronTab.withNextTriggered(Timestamp.valueOf(ldt))
+                      context.log.info(s"$updatedCronTab added")
+                      Some(updatedCronTab)
+                    case _ => None
+                  }
+                }
+                else{
+                  context.log.info(s"${cmd.cronTab} added")
+                  Some(cmd.cronTab)
                 }
             }
           case _ => None
         }) match {
-          case Some((cronTab, persist)) =>
-            def runner(state: Option[Scheduler]): Unit = {
+          case Some(cronTab) =>
+            def runner: Option[Scheduler] => Unit = _ => {
               if(!now().before(cronTab.getNextTriggered)){
                 if(!timers.isTimerActive(cronTab.uuid)) {
                   val ignored = cronTab.lastTriggered.isDefined &&
@@ -263,28 +274,9 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               }
               CronTabAdded ~> replyTo
             }
-            val events: List[SchedulerEvent] = 
-              if(cronTab.entityId == ALL_KEY){
-                state.get.cronTabs.filter(
-                  ct => ct.entityId != ALL_KEY && ct.persistenceId == cronTab.persistenceId && ct.key == cronTab.key
-                ).map(ct => CronTabRemovedEvent(ct.persistenceId, ct.entityId, ct.key)).toList
-              }
-              else{
-                List.empty
-              }
-            if(persist){
-              Effect.persist(
-                List(
-                  CronTabAddedEvent(cronTab)
-                ) ++ events
-              ).thenRun(state => runner(state))
-            }
-            else if(events.nonEmpty){
-              Effect.persist(events).thenRun(state => runner(state))
-            }
-            else{
-              Effect.none.thenRun(state => runner(state))
-            }
+            Effect.persist(
+              CronTabAddedEvent(cronTab)
+            ).thenRun(state => runner(state))
           case _ => Effect.none.thenRun(_ => CronTabNotAdded ~> replyTo)
         }
       case cmd: TriggerCronTab => // trigger the cron tab
@@ -294,22 +286,19 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
               cronTab.uuid == cmd.uuid
             ) match {
               case Some(cronTab) =>
-                val updatedCronTab = cronTab
-                  .withLastTriggered(
-                    if(now().after(cronTab.getNextTriggered))
-                      cronTab.getNextTriggered
-                    else
-                      now()
-                  )
-                  .withNextTriggered(
-                    cronTab.nextLocalDateTime() match {
-                      case Some(ldt) => Timestamp.valueOf(ldt)
-                      case _ => cronTab.getNextTriggered
-                    }
-                  )
+                val updatedCronTab =
+                  cronTab
+                    .withLastTriggered(cronTab.getNextTriggered)
+                    .copy(
+                      nextTriggered =
+                        cronTab.nextLocalDateTime() match {
+                          case Some(ldt) => Some(Timestamp.valueOf(ldt))
+                          case _ => None
+                        }
+                    )
                 Effect.persist(
                   List(
-                    CronTabAddedEvent(updatedCronTab),
+                    CronTabAddedEvent(updatedCronTab), // update cron tab
                     CronTabTriggeredEvent(updatedCronTab)
                   )
                 ).thenRun(_ => {

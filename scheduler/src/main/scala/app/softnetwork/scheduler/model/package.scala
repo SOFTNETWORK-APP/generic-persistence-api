@@ -4,12 +4,11 @@ import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
 import java.util.Date
-
 import com.markatta.akron.CronExpression
 import com.typesafe.scalalogging.StrictLogging
+import org.softnetwork.akka.model.Schedule
 
 import scala.concurrent.duration._
-
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -22,6 +21,10 @@ package object model {
     def entityId: String
     def key: String
     val uuid = s"$persistenceId#$entityId#$key"
+  }
+
+  trait SchedulerDecorator { _: Schedule =>
+    val triggerable: Boolean = repeatedly.getOrElse(false) || lastTriggered.isEmpty
   }
 
   trait CronTabItem extends StrictLogging {

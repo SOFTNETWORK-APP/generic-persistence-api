@@ -43,11 +43,20 @@ package query {
         case evt: ScheduleTriggeredEvent =>
           import evt._
           if(schedule.entityId == ALL_KEY){
+            val updatedSchedule: Schedule =
+              if(!schedule.triggerable){
+                schedule.copy(
+                  lastTriggered = None
+                )
+              }
+              else{
+                schedule
+              }
             currentPersistenceIds().runForeach(persistenceId => {
               if(persistenceId.startsWith(schedule.persistenceId)){
                 val entityId = persistenceId.split("\\|").last
                 if(entityId != ALL_KEY){
-                  schedulerDao.addSchedule(schedule.withEntityId(entityId))
+                  schedulerDao.addSchedule(updatedSchedule.withEntityId(entityId))
                 }
                 else{
                   Future.successful(true)
@@ -70,11 +79,15 @@ package query {
         case evt: CronTabTriggeredEvent =>
           import evt._
           if(cronTab.entityId == ALL_KEY){
+            val updatedCronTab: CronTab =
+              cronTab
+                .withNextTriggered(cronTab.getLastTriggered)
+                .copy(lastTriggered = None)
             currentPersistenceIds().runForeach(persistenceId => {
               if(persistenceId.startsWith(cronTab.persistenceId)){
                 val entityId = persistenceId.split("\\|").last
                 if(entityId != ALL_KEY){
-                  schedulerDao.addCronTab(cronTab.withEntityId(entityId))
+                  schedulerDao.addCronTab(updatedCronTab.withEntityId(entityId))
                 }
                 else{
                   Future.successful(true)

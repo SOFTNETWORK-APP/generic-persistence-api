@@ -20,6 +20,7 @@ option (scalapb.options) = {
 message Schedule {
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "SchedulerItem";
+    option (scalapb.message).extends = "SchedulerDecorator";
     required string persistenceId = 1;
     required string entityId = 2;
     required string key = 3;
