@@ -64,8 +64,7 @@ object PaymentMessages {
     * @param ipAddress        - ip address
     * @param browserInfo      - browser info
     */
-  @InternalApi
-  private[payment] case class PreAuthorizeCard(orderUuid: String,
+  case class PreAuthorizeCard(orderUuid: String,
                                                debitedAccount: String,
                                                debitedAmount: Int = 100,
                                                currency: String = "EUR",

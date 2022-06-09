@@ -3,8 +3,8 @@ package app.softnetwork.payment.handlers
 import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
 import app.softnetwork.kv.handlers.{GenericKeyValueDao, KeyValueDao}
-import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.payment.message.PaymentMessages._
+import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.payment.model._
 import app.softnetwork.persistence._
 import app.softnetwork.payment.persistence.typed.{MangoPayPaymentBehavior, MockPaymentBehavior}
@@ -79,17 +79,57 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     }
   }
 
-  def createOrUpdatePaymentAccount(paymentAccount: PaymentAccount)(implicit system: ActorSystem[_]): Future[Boolean] = {
+//  def createOrUpdatePaymentAccount(paymentAccount: PaymentAccount)(implicit system: ActorSystem[_]): Future[Boolean] = {
+//    implicit val ec: ExecutionContextExecutor = system.executionContext
+//    if(paymentAccount.externalUuid.trim.isEmpty){
+//      Future.successful(false)
+//    }
+//    else{
+//      !? (CreateOrUpdatePaymentAccount(paymentAccount)) map {
+//        case PaymentAccountCreated => true
+//        case PaymentAccountUpdated => true
+//        case _ => false
+//      }
+//    }
+//  }
+
+  def preRegisterCard(orderUuid: String, user: PaymentUser, currency: String = "EUR")(implicit system: ActorSystem[_]
+  ): Future[Option[CardPreRegistration]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    if(paymentAccount.externalUuid.trim.isEmpty){
-      Future.successful(false)
+    !? (PreRegisterCard(orderUuid, user, currency)) map {
+      case result: CardPreRegistered => Some(result.cardPreRegistration)
+      case _ => None
     }
-    else{
-      !? (CreateOrUpdatePaymentAccount(paymentAccount)) map {
-        case PaymentAccountCreated => true
-        case PaymentAccountUpdated => true
-        case _ => false
-      }
+  }
+
+  def preAuthorizeCard(orderUuid: String,
+                       debitedAccount: String,
+                       debitedAmount: Int = 100,
+                       currency: String = "EUR",
+                       registrationId: Option[String] = None,
+                       registrationData: Option[String] = None,
+                       registerCard: Boolean = false,
+                       ipAddress: Option[String] = None,
+                       browserInfo: Option[BrowserInfo] = None)(implicit system: ActorSystem[_]
+  ): Future[Either[CardPreAuthorizationFailed, Either[PaymentRedirection, CardPreAuthorized]]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    !? (
+      PreAuthorizeCard(
+        orderUuid,
+        debitedAccount,
+        debitedAmount,
+        currency,
+        registrationId,
+        registrationData,
+        registerCard,
+        ipAddress,
+        browserInfo
+      )
+    ) map {
+      case result: PaymentRedirection => Right(Left(result))
+      case result: CardPreAuthorized => Right(Right(result))
+      case error: CardPreAuthorizationFailed => Left(error)
+      case _ => Left(CardPreAuthorizationFailed("unknown"))
     }
   }
 
