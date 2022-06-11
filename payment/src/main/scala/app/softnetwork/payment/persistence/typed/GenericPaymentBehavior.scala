@@ -14,7 +14,7 @@ import app.softnetwork.payment.model.LegalUser.LegalUserType
 import app.softnetwork.payment.model._
 import app.softnetwork.payment.spi._
 import app.softnetwork.persistence._
-import app.softnetwork.persistence.message.CrudEvent
+import app.softnetwork.persistence.message.{BroadcastEvent, CrudEvent}
 import app.softnetwork.persistence.typed._
 import app.softnetwork.serialization.asJson
 import org.slf4j.Logger
@@ -49,6 +49,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
     */
   override protected def tagEvent(entityId: String, event: PaymentEvent): Set[String] =
     event match {
+      case _: BroadcastEvent => Set(s"${persistenceId.toLowerCase}-to-external")
       case _: CrudEvent => Set(s"${persistenceId.toLowerCase}-to-elastic")
       case _ => Set(persistenceId)
     }

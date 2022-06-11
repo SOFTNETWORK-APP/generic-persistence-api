@@ -79,20 +79,6 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     }
   }
 
-//  def createOrUpdatePaymentAccount(paymentAccount: PaymentAccount)(implicit system: ActorSystem[_]): Future[Boolean] = {
-//    implicit val ec: ExecutionContextExecutor = system.executionContext
-//    if(paymentAccount.externalUuid.trim.isEmpty){
-//      Future.successful(false)
-//    }
-//    else{
-//      !? (CreateOrUpdatePaymentAccount(paymentAccount)) map {
-//        case PaymentAccountCreated => true
-//        case PaymentAccountUpdated => true
-//        case _ => false
-//      }
-//    }
-//  }
-
   def preRegisterCard(orderUuid: String, user: PaymentUser, currency: String = "EUR")(implicit system: ActorSystem[_]
   ): Future[Option[CardPreRegistration]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
