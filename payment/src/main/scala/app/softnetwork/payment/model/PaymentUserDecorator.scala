@@ -10,13 +10,23 @@ case class PaymentUserView(firstName: String,
                            nationality: String,
                            birthday: String,
                            countryOfResidence: String,
-                           userId: Option[String],
-                           walletId: Option[String],
+//                           userId: Option[String],
+//                           walletId: Option[String],
                            externalUuid: String)
 
 object PaymentUserView{
   def apply(paymentUser: PaymentUser): PaymentUserView = {
     import paymentUser._
-    PaymentUserView(firstName, lastName, email, nationality, birthday, countryOfResidence, userId, walletId, externalUuid)
+    PaymentUserView(
+      firstName,
+      lastName,
+      email,
+      nationality,
+      birthday,
+      countryOfResidence,
+//      userId,
+//      walletId,
+      externalUuid
+    )
   }
 }

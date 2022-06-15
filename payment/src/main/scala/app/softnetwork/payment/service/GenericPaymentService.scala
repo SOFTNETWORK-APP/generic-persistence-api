@@ -77,7 +77,7 @@ trait GenericPaymentService extends SessionService
                 complete(
                   HttpResponse(
                     StatusCodes.OK,
-                    entity = r.cards
+                    entity = r.cards.map(_.view)
                   )
                 )
               case r: CardsNotLoaded.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))

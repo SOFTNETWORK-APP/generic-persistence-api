@@ -1,6 +1,7 @@
 package app.softnetwork.persistence.auth.service
 
 import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.model.headers.BasicHttpCredentials
 import akka.http.scaladsl.model.{HttpHeader, StatusCodes}
 import akka.http.scaladsl.testkit.InMemoryPersistenceScalatestRouteTest
 import app.softnetwork.persistence.typed.EntityBehavior
@@ -95,6 +96,16 @@ class SecurityRoutesSpec extends MockSecurityRoutes with AnyWordSpecLike with In
       Post(s"/$RootPath/${Settings.Path}/signUp", SignUp(gsm, password))  ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.BadRequest
         responseAs[AccountErrorMessage].message shouldEqual LoginAlreadyExists.message
+      }
+    }
+  }
+
+  "basic" should {
+    "work with matching username and password" in {
+      val validCredentials = BasicHttpCredentials(username, password)
+      Post(s"/$RootPath/${Settings.Path}/basic") ~> addCredentials(validCredentials) ~> mainRoutes(typedSystem()) ~> check {
+        status shouldEqual StatusCodes.OK
+        responseAs[AccountView].status shouldBe AccountStatus.Active
       }
     }
   }

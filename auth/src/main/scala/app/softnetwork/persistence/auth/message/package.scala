@@ -1,8 +1,8 @@
 package app.softnetwork.persistence.auth
 
+import akka.http.scaladsl.server.directives.Credentials
 import app.softnetwork.persistence.message._
 import org.softnetwork.notification.model.NotificationType
-
 import app.softnetwork.persistence.auth.model._
 
 /**
@@ -31,6 +31,8 @@ package object message {
   case object DestroyAccount extends AccountCommand
 
   sealed trait LookupAccountCommand  extends AccountCommand
+
+  case class BasicAuth(credentials: Credentials.Provided) extends LookupAccountCommand
 
   @SerialVersionUID(0L)
   case class Login(login: String, password: String, refreshable: Boolean = false) extends LookupAccountCommand

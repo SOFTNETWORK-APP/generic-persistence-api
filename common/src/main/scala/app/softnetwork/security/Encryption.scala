@@ -13,23 +13,28 @@ sealed trait Encryption {
 
 object Sha512Encryption extends Encryption {
 
-  def encrypt(clearText: String) = Sha2Crypt.sha512Crypt(clearText.getBytes("UTF-8").clone())
+  def encrypt(clearText: String): String = Sha2Crypt.sha512Crypt(clearText.getBytes("UTF-8").clone())
 
-  def isEncrypted(crypted: String)  = crypted.startsWith("$6$")
+  def isEncrypted(encrypted: String): Boolean = encrypted.startsWith("$6$")
 
-  def checkEncryption(crypted: String, clearText: String) = {
-    if(!isEncrypted(crypted))
-      false
+  def checkEncryption(encrypted: String, clearText: String): Boolean = {
+    encrypted.equals(hash(encrypted)(clearText))
+  }
+
+  def hash(encrypted: String): String => String = clearText => {
+    if(!isEncrypted(encrypted)){
+      clearText
+    }
     else {
-      val offset2ndDolar = crypted.indexOf('$', 1)
+      val offset2ndDolar = encrypted.indexOf('$', 1)
       if (offset2ndDolar < 0)
-        false
-      else {
-        val offset3ndDolar = crypted.indexOf('$', offset2ndDolar + 1)
+        clearText
+      else{
+        val offset3ndDolar = encrypted.indexOf('$', offset2ndDolar + 1)
         if (offset3ndDolar < 0)
-          false
-        else {
-          crypted.equals(Sha2Crypt.sha512Crypt(clearText.getBytes("UTF-8").clone(), crypted.substring(0, offset3ndDolar + 1)))
+          clearText
+        else{
+          Sha2Crypt.sha512Crypt(clearText.getBytes("UTF-8").clone(), encrypted.substring(0, offset3ndDolar + 1))
         }
       }
     }

@@ -3,6 +3,7 @@ package app.softnetwork.persistence.auth.service
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
+import akka.http.scaladsl.server.directives.Credentials
 import app.softnetwork.api.server.DefaultComplete
 import app.softnetwork.persistence.service.Service
 import com.softwaremill.session.CsrfDirectives._
@@ -10,6 +11,7 @@ import com.softwaremill.session.CsrfOptions._
 import com.typesafe.scalalogging.StrictLogging
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import app.softnetwork.api.server._
+import app.softnetwork.concurrent.Completion.AwaitCompletion
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.persistence.auth.config.Settings
 import app.softnetwork.persistence.auth.handlers.{AccountHandler, BasicAccountTypeKey, MockBasicAccountTypeKey}
@@ -20,6 +22,8 @@ import org.softnetwork.session.model.Session
 import app.softnetwork.session.service.SessionService
 import org.json4s.jackson.Serialization
 import org.json4s.{Formats, jackson}
+
+import scala.util.{Failure, Success}
 
 /**
   * Created by smanciot on 23/04/2020.
@@ -44,6 +48,7 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
     pathPrefix(Settings.Path){
       signUp ~
         principal ~
+        basic ~
         login ~
         activate ~
         logout ~
@@ -99,6 +104,22 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
             }
           case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = error))
           case _                          => complete(HttpResponse(StatusCodes.BadRequest))
+        }
+      }
+    }
+  }
+
+  lazy val basic: Route = path("basic"){
+    post{
+      authenticateBasic(Settings.Realm, BasicAuthAuthenticator) { account =>
+        // create a new session
+        val session = Session(account.uuid/** FIXME login.refreshable **/)
+        session += (Session.adminKey, account.isAdmin)
+        sessionToDirective(session)(ec) {
+          // create a new anti csrf token
+          setNewCsrfToken(checkHeader) {
+            complete(HttpResponse(StatusCodes.OK, entity = account.view))
+          }
         }
       }
     }
@@ -306,6 +327,22 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
           }
         }
       }
+    }
+  }
+
+  private def BasicAuthAuthenticator(credentials: Credentials): Option[Account] = {
+    credentials match {
+      case p @ Credentials.Provided(_) =>
+        run(p.identifier, BasicAuth(p)) await {
+          case r: LoginSucceededResult => Some(r.account)
+          case _ => None
+        } match {
+          case Failure(exception) =>
+            logger.error(exception.getMessage, exception)
+            None
+          case Success(value) => value
+        }
+      case _ => None
     }
   }
 }

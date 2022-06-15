@@ -22,8 +22,10 @@ import app.softnetwork.persistence.auth.message._
 import Sha512Encryption._
 import app.softnetwork.persistence.auth.model._
 import app.softnetwork.persistence._
+import app.softnetwork.persistence.auth.config.Password
 import app.softnetwork.validation.{EmailValidator, GsmValidator}
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 
@@ -34,7 +36,7 @@ object Accounts {
 
   @SerialVersionUID(0L)
   case class AccountKeyState(key: String, account: String) extends State {
-    val uuid = key
+    val uuid: String = key
   }
 
 }
@@ -116,7 +118,7 @@ trait AccountNotifications[T <: Account] extends Completion {
           .withFrom(From.defaultInstance.withValue(PushClientId))
           .withSubject(subject)
           .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
-          .withDevices(registrations.map((registration) => BasicDevice(registration.regId, registration.platform)))
+          .withDevices(registrations.map(registration => BasicDevice(registration.regId, registration.platform)))
           .withMaxTries(maxTries)
           .withDeferred(deferred.orNull)
       )complete ())
@@ -149,7 +151,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                         deferred: Option[Date] = None)(
     implicit log: Logger, system: ActorSystem[_]): Boolean = {
     log.info(s"about to send notification to ${account.primaryPrincipal.value}\r\n$body")
-    channels.par.map((channel) => sendNotificationByChannel(uuid, account, subject, body, channel, maxTries, deferred))
+    channels.par.map(channel => sendNotificationByChannel(uuid, account, subject, body, channel, maxTries, deferred))
       .exists(p => p)
   }
 
@@ -352,23 +354,23 @@ trait AccountNotifications[T <: Account] extends Completion {
     )
   }
 
-  def removeActivation(uuid: String)(implicit system: ActorSystem[_]) = removeNotification(
+  def removeActivation(uuid: String)(implicit system: ActorSystem[_]): Boolean = removeNotification(
     activationTokenUuid(uuid), Seq(NotificationType.MAIL_TYPE, NotificationType.PUSH_TYPE, NotificationType.SMS_TYPE)
   )
 
-  def removeRegistration(uuid: String)(implicit system: ActorSystem[_]) = removeNotification(
+  def removeRegistration(uuid: String)(implicit system: ActorSystem[_]): Boolean = removeNotification(
     registrationUuid(uuid), Seq(NotificationType.MAIL_TYPE, NotificationType.PUSH_TYPE, NotificationType.SMS_TYPE)
   )
 
   private[this] def removeNotification(uuid: String, channels: Seq[NotificationType] = Seq.empty)(
-    implicit system: ActorSystem[_]) = {
+    implicit system: ActorSystem[_]): Boolean = {
     channels.par.forall{_ => notificationDao.removeNotification(uuid) complete ()}
   }
 
 }
 
 trait MockAccountNotifications[T <: Account] extends AccountNotifications[T] {
-  override def notificationDao = MockNotificationDao
+  override def notificationDao: NotificationDao = MockNotificationDao
 }
 
 import Accounts._
@@ -381,7 +383,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
   protected val generator: Generator = this
 
-  protected val rules = passwordRules()
+  protected val rules: Password.PasswordRules = passwordRules()
 
   protected def createAccount(entityId: String, cmd: SignUp): Option[T]
 
@@ -423,9 +425,9 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                               replyTo: Option[ActorRef[AccountCommandResult]],
                               timers: TimerScheduler[AccountCommand])(implicit context: ActorContext[AccountCommand]
   ): Effect[AccountEvent, Option[T]] = {
-    implicit val log = context.log
-    implicit val system = context.system
-    implicit val ec = system.executionContext
+    implicit val log: Logger = context.log
+    implicit val system: ActorSystem[Nothing] = context.system
+    implicit val ec: ExecutionContextExecutor = system.executionContext
     command match {
 
       case cmd: InitAdminAccount =>
@@ -442,15 +444,15 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     account.verificationCode,
                     account.verificationToken
                   )
-                ).thenRun(state => AdminAccountInitialized ~> replyTo)
+                ).thenRun(_ => AdminAccountInitialized ~> replyTo)
               case _ =>
                 createAccount(entityId, cmd) match {
                   case Some(account) =>
                     import account._
-                    if(!secondaryPrincipals.exists((principal) => lookupAccount(principal.value).isDefined)){
+                    if(!secondaryPrincipals.exists(principal => lookupAccount(principal.value).isDefined)){
                       Effect.persist[AccountEvent, Option[T]](
                         createAccountCreatedEvent(account)
-                      ).thenRun(state => AdminAccountInitialized ~> replyTo)
+                      ).thenRun(_ => AdminAccountInitialized ~> replyTo)
                     }
                     else {
                       Effect.none.thenRun(_ => LoginAlreadyExists ~> replyTo)
@@ -477,7 +479,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                   createAccount(entityId, cmd) match {
                     case Some(account) =>
                       import account._
-                      if(!secondaryPrincipals.exists((principal) => lookupAccount(principal.value).isDefined)){
+                      if(!secondaryPrincipals.exists(principal => lookupAccount(principal.value).isDefined)){
                         val activationRequired = status == AccountStatus.Inactive
                         var notified = false
                         val updatedAccount =
@@ -488,7 +490,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                               ActivationTokenExpirationTime
                             )
                             accountKeyDao.addAccountKey(activationToken.token, entityId)
-                            notified = sendActivation(entityId, account.asInstanceOf[T], activationToken)
+                            notified = sendActivation(entityId, account, activationToken)
                             log.info(
                               s"activation token ${if(!notified) "not " else "" }sent for ${account.primaryPrincipal.value}"
                             )
@@ -504,7 +506,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                               account.copyWithVerificationToken(Some(activationToken)).asInstanceOf[T]
                           }
                           else{
-                            account.asInstanceOf[T]
+                            account
                           }
                         Effect.persist[AccountEvent, Option[T]](createAccountCreatedEvent(updatedAccount))
                           .thenRun(
@@ -570,61 +572,14 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           case _       => Effect.none.thenRun(_ => IllegalStateError ~> replyTo)
         }
 
-      /** handle login **/
-      case cmd: Login   =>
+      case cmd: BasicAuth =>
         import cmd._
-        state match {
-          case Some(account) if account.status == AccountStatus.Active =>
-            val checkLogin = account.principals.exists(_.value == login) //check login against account principal
-            if(checkLogin && checkEncryption(account.credentials, password)){
-              Effect.persist[AccountEvent, Option[T]](
-                LoginSucceeded(
-                  entityId,
-                  now()
-                )
-              ).thenRun(state => new LoginSucceededResult(state.get) ~> replyTo)
-            }
-            else if(!checkLogin){
-              Effect.none.thenRun(_ => LoginAndPasswordNotMatched ~> replyTo)
-            }
-            else { // wrong password
-              val nbLoginFailures = account.nbLoginFailures + 1
-              val disabled = nbLoginFailures > maxLoginFailures // disable account
-              Effect.persist[AccountEvent, Option[T]](
-                if(disabled)
-                  AccountDisabledEvent(
-                    entityId,
-                    nbLoginFailures
-                  ).withLastUpdated(now())
-                else
-                  LoginFailed(
-                    entityId,
-                    nbLoginFailures
-                  ).withLastUpdated(now())
-              )
-                .thenRun(state => {
-                  if(disabled){
-                    if(account.status != AccountStatus.Disabled){
-                      log.info(s"reset password required for ${account.primaryPrincipal.value}")
-                      sendAccountDisabled(generateUUID(), account)
-                    }
-                    AccountDisabled
-                  }
-                  else{
-                    log.info(s"$nbLoginFailures login failure(s) for ${account.primaryPrincipal.value}")
-                    LoginAndPasswordNotMatched
-                  }
-                } ~> replyTo)
-            }
-          case Some(account) if account.status == AccountStatus.Disabled =>
-            log.info(s"reset password required for ${account.primaryPrincipal.value}")
-            sendAccountDisabled(generateUUID(), account)
-            Effect.none.thenRun(_ => AccountDisabled ~> replyTo)
-          case None                                                      =>
-            Effect.none.thenRun(_ => LoginAndPasswordNotMatched ~> replyTo) //WrongLogin
-          case _                                                         =>
-            Effect.none.thenRun(_ => IllegalStateError ~> replyTo)
-        }
+        authenticate(credentials.identifier, encrypted => credentials.verify(encrypted, Sha512Encryption.hash(encrypted)), entityId, state, replyTo)
+
+      /** handle login **/
+      case cmd: Login =>
+        import cmd._
+        authenticate(login, encrypted => checkEncryption(encrypted, password), entityId, state, replyTo)
 
       /** handle send verification code **/
       case cmd: SendVerificationCode =>
@@ -632,7 +587,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         if(EmailValidator.check(principal) || GsmValidator.check(principal)){
           state match {
             case Some(account) if account.principals.exists(_.value == principal) =>
-              account.verificationCode.foreach((v) => accountKeyDao.removeAccountKey(v.code))
+              account.verificationCode.foreach(v => accountKeyDao.removeAccountKey(v.code))
               val verificationCode = generator.generatePinCode(VerificationCodeSize, VerificationCodeExpirationTime)
               accountKeyDao.addAccountKey(verificationCode.code, entityId)
               val notified = sendVerificationCode(generateUUID(), account, verificationCode)
@@ -654,7 +609,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         if(EmailValidator.check(principal) || GsmValidator.check(principal)){
           state match {
             case Some(account) if account.principals.exists(_.value == principal) =>
-              account.verificationToken.foreach((v) => accountKeyDao.removeAccountKey(v.token))
+              account.verificationToken.foreach(v => accountKeyDao.removeAccountKey(v.token))
               val verificationToken = generator.generateToken(account.primaryPrincipal.value, VerificationTokenExpirationTime)
               accountKeyDao.addAccountKey(verificationToken.token, entityId)
               val notified = sendResetPassword(generateUUID(), account, verificationToken)
@@ -811,7 +766,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
       case cmd: RegisterDevice =>
         import cmd._
         state match {
-          case Some(account) if entityId == uuid =>
+          case Some(_) if entityId == uuid =>
             Effect.persist[AccountEvent, Option[T]](
               DeviceRegisteredEvent(
                 entityId,
@@ -842,9 +797,9 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         }
 
       /** handle unsubscribe **/
-      case cmd: Unsubscribe        =>
+      case _: Unsubscribe        =>
         state match {
-          case Some(account) =>
+          case Some(_) =>
             Effect.persist[AccountEvent, Option[T]](
               AccountDeletedEvent(entityId).withLastUpdated(now())
             ).thenRun(state => AccountDeleted(state.get) ~> replyTo)
@@ -853,7 +808,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
       case _: DestroyAccount.type =>
         state match {
-          case Some(account) =>
+          case Some(_) =>
             Effect.persist[AccountEvent, Option[T]](
               AccountDestroyedEvent(entityId).withLastUpdated(now())
             ).thenRun(_ => AccountDestroyed(entityId) ~> replyTo)
@@ -1003,6 +958,58 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     }
   }
 
+  private def authenticate(login: String, verify: String => Boolean, entityId: String, state: Option[T], replyTo: Option[ActorRef[AccountCommandResult]])(implicit log: Logger, system: ActorSystem[_]): Effect[AccountEvent, Option[T]] = {
+    state match {
+      case Some(account) if account.status == AccountStatus.Active =>
+        val checkLogin = account.principals.exists(_.value == login) //check login against account principal
+        if (checkLogin && verify(account.credentials)) {
+          Effect.persist[AccountEvent, Option[T]](
+            LoginSucceeded(
+              entityId,
+              now()
+            )
+          ).thenRun(state => LoginSucceededResult(state.get) ~> replyTo)
+        }
+        else if (!checkLogin) {
+          Effect.none.thenRun(_ => LoginAndPasswordNotMatched ~> replyTo)
+        }
+        else { // wrong password
+          val nbLoginFailures = account.nbLoginFailures + 1
+          val disabled = nbLoginFailures > maxLoginFailures // disable account
+          Effect.persist[AccountEvent, Option[T]](
+            if (disabled)
+              AccountDisabledEvent(
+                entityId,
+                nbLoginFailures
+              ).withLastUpdated(now())
+            else
+              LoginFailed(
+                entityId,
+                nbLoginFailures
+              ).withLastUpdated(now())
+          ).thenRun(_ => {
+            if (disabled) {
+              if (account.status != AccountStatus.Disabled) {
+                log.info(s"reset password required for ${account.primaryPrincipal.value}")
+                sendAccountDisabled(generateUUID(), account)
+              }
+              AccountDisabled
+            }
+            else {
+              log.info(s"$nbLoginFailures login failure(s) for ${account.primaryPrincipal.value}")
+              LoginAndPasswordNotMatched
+            }
+          } ~> replyTo)
+        }
+      case Some(account) if account.status == AccountStatus.Disabled =>
+        log.info(s"reset password required for ${account.primaryPrincipal.value}")
+        sendAccountDisabled(generateUUID(), account)
+        Effect.none.thenRun(_ => AccountDisabled ~> replyTo)
+      case None => Effect.none.thenRun(_ => LoginAndPasswordNotMatched ~> replyTo) //WrongLogin
+      case _ => Effect.none.thenRun(_ => IllegalStateError ~> replyTo)
+    }
+  }
+
   /**
     *
     * @param state - current state
@@ -1011,11 +1018,11 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     */
   override def handleEvent(state: Option[T], event: AccountEvent)(
     implicit context: ActorContext[_]): Option[T] = {
-    implicit val system = context.system
+    implicit val system: ActorSystem[Nothing] = context.system
     event match {
       case evt: AccountCreatedEvent[_] =>
         val account = evt.document
-        account.secondaryPrincipals.foreach((principal) =>
+        account.secondaryPrincipals.foreach(principal =>
           accountKeyDao.addAccountKey(principal.value, account.uuid)
         )
         Some(account.asInstanceOf[T])
@@ -1044,10 +1051,10 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           .asInstanceOf[T]
         )
 
-      case evt: AccountDestroyedEvent =>
+      case _: AccountDestroyedEvent =>
         state match {
           case Some(account) =>
-            account.principals.foreach((principal) =>
+            account.principals.foreach(principal =>
               accountKeyDao.removeAccountKey(principal.value)
             )
           case _ =>
@@ -1058,11 +1065,11 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         import evt._
         state match {
           case Some(account) =>
-            account.secondaryPrincipals.foreach((principal) =>
+            account.secondaryPrincipals.foreach(principal =>
               accountKeyDao.removeAccountKey(principal.value)
             )
             val updatedAccount = account.add(principal)
-            updatedAccount.secondaryPrincipals.foreach((principal) =>
+            updatedAccount.secondaryPrincipals.foreach(principal =>
               accountKeyDao.addAccountKey(principal.value, uuid)
             )
             Some(updatedAccount
@@ -1076,11 +1083,11 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
         import evt._
         state match {
           case Some(account) =>
-            account.secondaryPrincipals.foreach((principal) =>
+            account.secondaryPrincipals.foreach(principal =>
               accountKeyDao.removeAccountKey(principal.value)
             )
             val updatedAccount = account.add(profile)
-            updatedAccount.secondaryPrincipals.foreach((principal) =>
+            updatedAccount.secondaryPrincipals.foreach(principal =>
               accountKeyDao.addAccountKey(principal.value, uuid)
             )
             Some(
@@ -1179,7 +1186,7 @@ trait BasicAccountBehavior extends AccountBehavior[BasicAccount, BasicAccountPro
   override protected def createAccount(entityId: String, cmd: SignUp): Option[BasicAccount] =
     BasicAccount(cmd, Some(entityId))
 
-  override protected def createProfileUpdatedEvent(uuid: String, profile: BasicAccountProfile, loginUpdated: Option[Boolean]) =
+  override protected def createProfileUpdatedEvent(uuid: String, profile: BasicAccountProfile, loginUpdated: Option[Boolean]): BasicAccountProfileUpdatedEvent =
     BasicAccountProfileUpdatedEvent(uuid, profile, loginUpdated).withLastUpdated(now())
 
   override protected def createAccountCreatedEvent(account: BasicAccount): AccountCreatedEvent[BasicAccount] =
