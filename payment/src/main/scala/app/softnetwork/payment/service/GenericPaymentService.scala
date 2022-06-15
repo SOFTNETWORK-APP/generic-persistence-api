@@ -72,7 +72,7 @@ trait GenericPaymentService extends SessionService
       _requiredSession(ec) { session =>
         pathEnd {
           get {
-            run(LoadCards(session.id)) completeWith {
+            run(LoadCards(_externalUuid(session))) completeWith {
               case r: CardsLoaded =>
                 complete(
                   HttpResponse(
@@ -90,7 +90,7 @@ trait GenericPaymentService extends SessionService
             entity(as[PreRegisterCard]){ cmd =>
               val updatedUser =
                 if(cmd.user.externalUuid.trim.isEmpty){
-                  cmd.user.withExternalUuid(session.id)
+                  cmd.user.withExternalUuid(_externalUuid(session))
                 }
                 else{
                   cmd.user
@@ -112,7 +112,7 @@ trait GenericPaymentService extends SessionService
           } ~
             delete {
               parameter("cardId") { cardId =>
-                run(DisableCard(session.id, cardId)) completeWith {
+                run(DisableCard(_externalUuid(session), cardId)) completeWith {
                   case _: CardDisabled.type => complete(HttpResponse(StatusCodes.OK))
                   case r: CardNotDisabled.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
                   case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
@@ -133,7 +133,7 @@ trait GenericPaymentService extends SessionService
       _requiredSession(ec) { session =>
         get {
           pathEnd {
-            run(LoadPaymentAccount(session.id)) completeWith {
+            run(LoadPaymentAccount(_externalUuid(session))) completeWith {
               case r: PaymentAccountLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.paymentAccount.view))
               case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
               case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
@@ -195,7 +195,7 @@ trait GenericPaymentService extends SessionService
                           run(
                             PreAuthorizeCard(
                               orderUuid,
-                              session.id,
+                              _externalUuid(session),
                               debitedAmount,
                               currency,
                               registrationId,
@@ -232,7 +232,7 @@ trait GenericPaymentService extends SessionService
                             run(
                               PayIn(
                                 orderUuid,
-                                session.id,
+                                _externalUuid(session),
                                 debitedAmount,
                                 currency,
                                 creditedAccount,
@@ -466,7 +466,7 @@ trait GenericPaymentService extends SessionService
       _requiredSession(ec) { session =>
         pathEnd {
           get {
-            run(LoadBankAccount(session.id)) completeWith {
+            run(LoadBankAccount(_externalUuid(session))) completeWith {
               case r: BankAccountLoaded        =>
                 complete(
                   HttpResponse(
@@ -487,7 +487,7 @@ trait GenericPaymentService extends SessionService
                     case Left(naturalUser) =>
                       val updatedNaturalUser = {
                         if(naturalUser.externalUuid.trim.isEmpty){
-                          naturalUser.withExternalUuid(session.id)
+                          naturalUser.withExternalUuid(_externalUuid(session))
                         }
                         else {
                           naturalUser
@@ -499,7 +499,7 @@ trait GenericPaymentService extends SessionService
                       val updatedLegalUser =
                         if(legalUser.legalRepresentative.externalUuid.trim.isEmpty){
                           legalUser.withLegalRepresentative(
-                            legalUser.legalRepresentative.withExternalUuid(session.id)
+                            legalUser.legalRepresentative.withExternalUuid(_externalUuid(session))
                           )
                         }
                         else{
@@ -510,7 +510,7 @@ trait GenericPaymentService extends SessionService
                   }
                 run(
                   CreateOrUpdateBankAccount(
-                    session.id,
+                    _externalUuid(session),
                     bankAccount.withExternalUuid(externalUuid),
                     updatedUser,
                     acceptedTermsOfPSP
@@ -523,7 +523,7 @@ trait GenericPaymentService extends SessionService
               }
             } ~
             delete {
-              run(DeleteBankAccount(session.id)) completeWith {
+              run(DeleteBankAccount(_externalUuid(session))) completeWith {
                 case _: BankAccountDeleted.type  => complete(HttpResponse(StatusCodes.OK))
                 case r: PaymentError => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -541,21 +541,21 @@ trait GenericPaymentService extends SessionService
       _requiredSession(ec) { session =>
         pathEnd {
           get {
-            run(GetUboDeclaration(session.id)) completeWith {
+            run(GetUboDeclaration(_externalUuid(session))) completeWith {
               case r: UboDeclarationLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.declaration.view))
               case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
               case _ => complete(HttpResponse(StatusCodes.BadRequest))
             }
           } ~ post {
             entity(as[UboDeclaration.UltimateBeneficialOwner]) { ubo =>
-              run(CreateOrUpdateUbo(session.id, ubo)) completeWith {
+              run(CreateOrUpdateUbo(_externalUuid(session), ubo)) completeWith {
                 case r: UboCreatedOrUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.ubo))
                 case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
             }
           } ~ put {
-            run(ValidateUboDeclaration(session.id)) completeWith {
+            run(ValidateUboDeclaration(_externalUuid(session))) completeWith {
               case _: UboDeclarationAskedForValidation.type => complete(HttpResponse(StatusCodes.OK))
               case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
               case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -587,7 +587,7 @@ trait GenericPaymentService extends SessionService
               _requiredSession(ec) { session =>
                 pathEnd {
                   get {
-                    run(LoadKycDocumentStatus(session.id, kycDocumentType)) completeWith {
+                    run(LoadKycDocumentStatus(_externalUuid(session), kycDocumentType)) completeWith {
                       case r: KycDocumentStatusLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.report))
                       case r: KycDocumentStatusNotLoaded.type  => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                       case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -608,7 +608,7 @@ trait GenericPaymentService extends SessionService
                               bos.close()
                               bytes
                             }
-                            run(AddKycDocument(session.id, pages, kycDocumentType)) completeWith {
+                            run(AddKycDocument(_externalUuid(session), pages, kycDocumentType)) completeWith {
                               case r: KycDocumentAdded => complete(HttpResponse(StatusCodes.OK, entity = r))
                               case r: KycDocumentNotAdded.type  => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                               case r: AcceptedTermsOfPSPRequired.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
@@ -640,7 +640,7 @@ trait GenericPaymentService extends SessionService
           // check if a session exists
           _requiredSession(ec) { session =>
             post {
-              run(CreateMandate(session.id)) completeWith {
+              run(CreateMandate(_externalUuid(session))) completeWith {
                 case r: MandateConfirmationRequired => complete(HttpResponse(StatusCodes.OK, entity = r))
                 case MandateCreated => complete(HttpResponse(StatusCodes.OK))
                 case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
@@ -648,7 +648,7 @@ trait GenericPaymentService extends SessionService
               }
             } ~
               delete {
-                run(CancelMandate(session.id)) completeWith {
+                run(CancelMandate(_externalUuid(session))) completeWith {
                   case MandateCanceled => complete(HttpResponse(StatusCodes.OK))
                   case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -658,6 +658,10 @@ trait GenericPaymentService extends SessionService
         }
     }
 
+  protected[payment] def _externalUuid(session: Session): String = session.id + (session.profile match {
+    case Some(p) => s"#$p"
+    case _ => ""
+  })
 }
 
 trait MockPaymentService extends GenericPaymentService with MockPaymentHandler

@@ -36,9 +36,9 @@ trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalat
     request.withHeaders(request.headers ++ cookies:_*)
   }
 
-  def createSession(id: String): Unit = {
+  def createSession(id: String, profile: Option[String] = None): Unit = {
     invalidateSession()
-    Post(s"/$RootPath/session", CreateSession(id)) ~> routes ~> check{
+    Post(s"/$RootPath/session", CreateSession(id, profile)) ~> routes ~> check{
       status shouldEqual StatusCodes.OK
       cookies = extractCookies(headers)
     }
@@ -58,7 +58,7 @@ trait SessionServiceRoutes extends ApiRoutes {
   override def apiRoutes(system: ActorSystem[_]): Route = SessionServiceRoute(system).route
 }
 
-case class CreateSession(id: String)
+case class CreateSession(id: String, profile: Option[String] = None)
 
 trait SessionServiceRoute extends SessionService with Directives with DefaultComplete with Json4sSupport {
 
@@ -78,8 +78,13 @@ trait SessionServiceRoute extends SessionService with Directives with DefaultCom
         } ~
           post {
             entity(as[CreateSession]) {session =>
+              val s = Session(session.id)
+              session.profile match {
+                case Some(p) => s += (profileKey, p)
+                case _ =>
+              }
               // create a new session
-              sessionToDirective(Session(session.id))(ec) {
+              sessionToDirective(s)(ec) {
                 // create a new anti csrf token
                 setNewCsrfToken(checkHeader) {
                   complete(HttpResponse(StatusCodes.OK))

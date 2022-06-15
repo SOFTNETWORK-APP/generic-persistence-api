@@ -205,4 +205,5 @@ message CreateOrUpdatePaymentAccountCommandEvent{
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "PaymentCommandEvent";
     required app.softnetwork.payment.model.PaymentAccount paymentAccount = 1;
+    optional string profile = 2;
 }

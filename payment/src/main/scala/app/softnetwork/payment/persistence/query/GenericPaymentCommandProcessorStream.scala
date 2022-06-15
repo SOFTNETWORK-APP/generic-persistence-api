@@ -41,7 +41,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
         }
         promise.future
       case evt: CreateOrUpdatePaymentAccountCommandEvent =>
-        val command = CreateOrUpdatePaymentAccount(evt.paymentAccount)
+        val command = CreateOrUpdatePaymentAccount(evt.paymentAccount, evt.profile)
         !? (command) map {
           case PaymentAccountCreated =>
             if(forTests) system.eventStream.tell(Publish(event))

@@ -113,7 +113,7 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
     post{
       authenticateBasic(Settings.Realm, BasicAuthAuthenticator) { account =>
         // create a new session
-        val session = Session(account.uuid/** FIXME login.refreshable **/)
+        val session = Session(account.uuid)
         session += (Session.adminKey, account.isAdmin)
         sessionToDirective(session)(ec) {
           // create a new anti csrf token

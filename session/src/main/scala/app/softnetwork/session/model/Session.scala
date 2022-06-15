@@ -54,10 +54,14 @@ trait SessionDecorator {_: Session =>
   lazy val id: String = data(CookieName)
 
   lazy val admin: Boolean = get(adminKey).exists(_.toBoolean)
+
+  lazy val profile: Option[String] = get(profileKey)
 }
 
 trait SessionCompanion {
   val adminKey = "admin"
+
+  val profileKey = "profile"
 
   val sessionConfig: SessionConfig = {
     SessionConfig.default(CookieSecret)
