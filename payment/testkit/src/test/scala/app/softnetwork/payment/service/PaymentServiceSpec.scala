@@ -35,7 +35,6 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
   val email = "demo@softnetwork.fr"
   val naturalUser: PaymentUser =
     PaymentUser.defaultInstance
-//      .withExternalUuid(customerUuid)
       .withFirstName(firstName)
       .withLastName(lastName)
       .withBirthday(birthday)
@@ -60,7 +59,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     .withSiret(siret)
     .withLegalName(ownerName)
     .withLegalUserType(LegalUser.LegalUserType.SOLETRADER)
-    .withLegalRepresentative(naturalUser/*.withExternalUuid(sellerUuid)*/)
+    .withLegalRepresentative(naturalUser)
     .withLegalRepresentativeAddress(ownerAddress)
     .withHeadQuartersAddress(ownerAddress)
 
@@ -86,7 +85,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$CardRoute", PreRegisterCard(
           orderUuid,
-          naturalUser/*.withExternalUuid(customerUuid)*/
+          naturalUser
         ))
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
@@ -140,7 +139,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, "", bic),
-          naturalUser/*.withExternalUuid(sellerUuid)*/,
+          naturalUser,
           None
         ))
       ) ~> routes ~> check {
@@ -153,7 +152,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, iban, ""),
-          naturalUser/*.withExternalUuid(sellerUuid)*/,
+          naturalUser,
           None
         ))
       ) ~> routes ~> check {
@@ -166,7 +165,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(None, ownerName, ownerAddress, iban, bic),
-          naturalUser/*.withExternalUuid(sellerUuid)*/,
+          naturalUser,
           None
         ))
       ) ~> routes ~> check {
@@ -180,7 +179,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       withCookies(
         Post(s"/$RootPath/$PaymentPath/$BankRoute", BankAccountCommand(
           BankAccount(Some(sellerBankAccountId), ownerName, ownerAddress, iban, bic),
-          naturalUser.withLastName("anotherLastName")/*.withExternalUuid(sellerUuid)*/,
+          naturalUser.withLastName("anotherLastName"),
           None
         ))
       ) ~> routes ~> check {
@@ -359,9 +358,9 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
         status shouldEqual StatusCodes.OK
         preAuthorizationId = responseAs[CardPreAuthorized].transactionId
         implicit val tSystem: ActorSystem[_] = typedSystem()
-        MockPaymentDao !? PayInWithCardPreAuthorized(preAuthorizationId, s"$sellerUuid#seller") await {
+        MockPaymentDao !? PayInWithCardPreAuthorized(preAuthorizationId, computeExternalUuidWithProfile(sellerUuid, Some("seller"))) await {
           case _: PaidIn =>
-            MockPaymentDao !? PayOut(orderUuid, s"$sellerUuid#seller", 100) await {
+            MockPaymentDao !? PayOut(orderUuid, computeExternalUuidWithProfile(sellerUuid, Some("seller")), 100) await {
               case _: PaidOut =>
               case other => fail(other.toString)
             }
@@ -373,7 +372,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "pay in / out with 3ds" in {
       createSession(customerUuid, Some("customer"))
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/$PayInRoute?creditedAccount=${URLEncoder.encode(s"$sellerUuid#seller", "UTF-8")}",
+        Post(s"/$RootPath/$PaymentPath/$PayInRoute?creditedAccount=${URLEncoder.encode(computeExternalUuidWithProfile(sellerUuid, Some("seller")), "UTF-8")}",
           Payment(
             orderUuid,
             5100,
@@ -396,7 +395,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
           status shouldEqual StatusCodes.OK
           assert(responseAs[PaidIn].transactionId == transactionId)
           implicit val tSystem: ActorSystem[_] = typedSystem()
-          MockPaymentDao !? PayOut(orderUuid, s"$sellerUuid#seller", 5100) await {
+          MockPaymentDao !? PayOut(orderUuid, computeExternalUuidWithProfile(sellerUuid, Some("seller")), 5100) await {
             case _: PaidOut =>
             case other => fail(other.toString)
           }

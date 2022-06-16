@@ -21,6 +21,15 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
     case _ => generateUUID()
   }
 
+  lazy val profile: Option[String] = maybeUser.flatMap(_.profile)
+
+  lazy val externalUuidWithProfile: String = {
+    maybeUser match {
+      case Some(user) => user.externalUuidWithProfile
+      case _ => externalUuid
+    }
+  }
+
   lazy val userId: Option[String] = maybeUser.flatMap(_.userId)
 
   lazy val walletId: Option[String] = maybeUser.flatMap(_.walletId)

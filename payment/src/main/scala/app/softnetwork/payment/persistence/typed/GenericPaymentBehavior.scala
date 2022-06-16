@@ -87,7 +87,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
             case _ =>
               paymentAccount.withCreatedDate(lastUpdated).withLastUpdated(lastUpdated)
           }
-        keyValueDao.addKeyValue(updatedPaymentAccount.externalUuid, entityId)
+        keyValueDao.addKeyValue(updatedPaymentAccount.externalUuidWithProfile, entityId)
         updatedPaymentAccount.userId match {
           case Some(userId) => keyValueDao.addKeyValue(userId, entityId)
           case _ =>
@@ -148,7 +148,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
       case cmd: PreRegisterCard =>
         import cmd._
         var registerWallet: Boolean = false
-        loadPaymentAccount(entityId, user.externalUuid, state, PaymentAccount.User.NaturalUser(user)) match {
+        loadPaymentAccount(entityId, state, PaymentAccount.User.NaturalUser(user)) match {
           case Some(paymentAccount) =>
             val lastUpdated = now()
             (paymentAccount.userId match {
@@ -995,7 +995,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
             case None =>
               cmd.user match {
                 case Some(user) =>
-                  loadPaymentAccount(entityId, PaymentAccount.defaultInstance.withUser(user).externalUuid, None, user)
+                  loadPaymentAccount(entityId, None, user)
                 case _ => None
               }
             case some => some
@@ -1726,7 +1726,9 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
       case _ => super.handleEvent(state, event)
     }
 
-  private[this] def loadPaymentAccount(entityId: String, uuid: String, state: Option[PaymentAccount], user: PaymentAccount.User)(implicit system: ActorSystem[_], log: Logger): Option[PaymentAccount] = {
+  private[this] def loadPaymentAccount(entityId: String, state: Option[PaymentAccount], user: PaymentAccount.User)(implicit system: ActorSystem[_], log: Logger): Option[PaymentAccount] = {
+    val pa = PaymentAccount.defaultInstance.withUser(user)
+    val uuid = pa.externalUuidWithProfile
     state match {
       case None =>
         keyValueDao.lookupKeyValue(uuid) complete() match {
@@ -1737,15 +1739,15 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 None
               case _ =>
                 keyValueDao.addKeyValue(uuid, entityId)
-                Some(PaymentAccount.defaultInstance.withUuid(entityId).withUser(user))
+                Some(pa.withUuid(entityId))
             }
           case Failure(f) =>
             log.error(f.getMessage, f)
             None
         }
       case Some(paymentAccount) =>
-        if(paymentAccount.externalUuid != uuid){
-          log.warn(s"the payment account entity $entityId has already been associated with another uuid ${paymentAccount.externalUuid}")
+        if(paymentAccount.externalUuid != pa.externalUuid){
+          log.warn(s"the payment account entity $entityId has already been associated with another external uuid ${paymentAccount.externalUuid}")
           None
         }
         else{

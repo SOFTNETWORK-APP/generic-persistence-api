@@ -1,6 +1,8 @@
 package app.softnetwork.payment.model
 
 trait PaymentUserDecorator{self: PaymentUser =>
+  lazy val externalUuidWithProfile: String = computeExternalUuidWithProfile(externalUuid, profile)
+
   lazy val view: PaymentUserView = PaymentUserView(self)
 }
 
@@ -10,9 +12,8 @@ case class PaymentUserView(firstName: String,
                            nationality: String,
                            birthday: String,
                            countryOfResidence: String,
-//                           userId: Option[String],
-//                           walletId: Option[String],
-                           externalUuid: String)
+                           externalUuid: String,
+                           profile: Option[String] = None)
 
 object PaymentUserView{
   def apply(paymentUser: PaymentUser): PaymentUserView = {
@@ -24,9 +25,8 @@ object PaymentUserView{
       nationality,
       birthday,
       countryOfResidence,
-//      userId,
-//      walletId,
-      externalUuid
+      externalUuid,
+      profile
     )
   }
 }

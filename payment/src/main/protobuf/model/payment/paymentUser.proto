@@ -66,6 +66,7 @@ message PaymentUser {
     optional string userId = 7;
     optional string walletId = 8;
     required string externalUuid = 9;
+    optional string profile = 10;
     extensions 100 to max;
 }
 
