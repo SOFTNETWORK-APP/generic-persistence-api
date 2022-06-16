@@ -325,11 +325,8 @@ object PaymentMessages {
   }
 
   @InternalApi
-  private[payment] case class CreateOrUpdatePaymentAccount(paymentAccount: PaymentAccount, profile: Option[String] = None) extends PaymentCommandWithKey {
-    lazy val key: String = paymentAccount.externalUuid + (profile match {
-      case Some(p) => s"#$p"
-      case _ => ""
-    })
+  private[payment] case class CreateOrUpdatePaymentAccount(paymentAccount: PaymentAccount) extends PaymentCommandWithKey {
+    lazy val key: String = paymentAccount.externalUuid
   }
 
   trait PaymentResult extends CommandResult
