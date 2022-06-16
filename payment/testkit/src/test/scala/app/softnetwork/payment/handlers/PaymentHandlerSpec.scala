@@ -85,7 +85,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
       )) await {
         case cardPreRegistered: CardPreRegistered =>
           cardPreRegistration = cardPreRegistered.cardPreRegistration
-          !? (LoadPaymentAccount(customerUuid)) await {
+          !? (LoadPaymentAccount(computeExternalUuidWithProfile(customerUuid, Some("customer")))) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               val naturalUser = paymentAccount.getNaturalUser

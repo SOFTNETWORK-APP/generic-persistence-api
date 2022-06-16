@@ -19,7 +19,7 @@ object PaymentMessages {
     * @param user      - payment user
     */
   case class PreRegisterCard(orderUuid: String, user: PaymentUser, currency: String = "EUR") extends PaymentCommandWithKey {
-    val key: String = user.externalUuid
+    val key: String = user.externalUuidWithProfile
   }
 
   /**
@@ -326,7 +326,7 @@ object PaymentMessages {
 
   @InternalApi
   private[payment] case class CreateOrUpdatePaymentAccount(paymentAccount: PaymentAccount) extends PaymentCommandWithKey {
-    lazy val key: String = paymentAccount.externalUuid
+    lazy val key: String = paymentAccount.externalUuidWithProfile
   }
 
   trait PaymentResult extends CommandResult
