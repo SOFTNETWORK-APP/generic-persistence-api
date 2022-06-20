@@ -6,7 +6,8 @@ trait PaymentUserDecorator{self: PaymentUser =>
   lazy val view: PaymentUserView = PaymentUserView(self)
 }
 
-case class PaymentUserView(firstName: String,
+case class PaymentUserView(userId: Option[String] = None,
+                           firstName: String,
                            lastName: String,
                            email: String,
                            nationality: String,
@@ -19,6 +20,7 @@ object PaymentUserView{
   def apply(paymentUser: PaymentUser): PaymentUserView = {
     import paymentUser._
     PaymentUserView(
+      userId,
       firstName,
       lastName,
       email,

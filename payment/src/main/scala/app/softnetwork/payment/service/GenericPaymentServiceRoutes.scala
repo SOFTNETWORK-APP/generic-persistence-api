@@ -10,7 +10,7 @@ trait GenericPaymentServiceRoutes extends ApiRoutes{
   override implicit def formats: Formats = paymentFormats
 }
 
-trait PaymentServiceRoutes extends GenericPaymentServiceRoutes {
+trait MangoPayServiceRoutes extends GenericPaymentServiceRoutes {
   override def apiRoutes(system: ActorSystem[_]): Route = MangoPayPaymentService(system).route
 }
 

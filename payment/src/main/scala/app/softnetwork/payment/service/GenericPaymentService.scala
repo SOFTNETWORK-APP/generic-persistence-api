@@ -225,7 +225,6 @@ trait GenericPaymentService extends SessionService
                                 )
                               )
                             case r: CardPreAuthorizationFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
-                            case r: CardNotPreAuthorized.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                             case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                             case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                             case other =>
@@ -329,7 +328,6 @@ trait GenericPaymentService extends SessionService
               )
             )
           case r: CardPreAuthorizationFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
-          case r: CardNotPreAuthorized.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
           case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
           case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
           case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -527,6 +525,7 @@ trait GenericPaymentService extends SessionService
                   )
                 ) completeWith {
                   case _: BankAccountCreatedOrUpdated.type => complete(HttpResponse(StatusCodes.OK))
+                  case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                   case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case _ => complete(HttpResponse(StatusCodes.BadRequest))
                 }
@@ -535,6 +534,7 @@ trait GenericPaymentService extends SessionService
             delete {
               run(DeleteBankAccount(externalUuidWithProfile(session))) completeWith {
                 case _: BankAccountDeleted.type  => complete(HttpResponse(StatusCodes.OK))
+                case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case r: PaymentError => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
@@ -554,6 +554,8 @@ trait GenericPaymentService extends SessionService
             run(GetUboDeclaration(externalUuidWithProfile(session))) completeWith {
               case r: UboDeclarationLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.declaration.view))
               case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
               case _ => complete(HttpResponse(StatusCodes.BadRequest))
             }
           } ~ post {
@@ -561,6 +563,8 @@ trait GenericPaymentService extends SessionService
               run(CreateOrUpdateUbo(externalUuidWithProfile(session), ubo)) completeWith {
                 case r: UboCreatedOrUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.ubo))
                 case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
             }
@@ -568,6 +572,8 @@ trait GenericPaymentService extends SessionService
             run(ValidateUboDeclaration(externalUuidWithProfile(session))) completeWith {
               case _: UboDeclarationAskedForValidation.type => complete(HttpResponse(StatusCodes.OK))
               case r: UboDeclarationNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
               case _ => complete(HttpResponse(StatusCodes.BadRequest))
             }
           }
@@ -593,7 +599,8 @@ trait GenericPaymentService extends SessionService
                   get {
                     run(LoadKycDocumentStatus(externalUuidWithProfile(session), kycDocumentType)) completeWith {
                       case r: KycDocumentStatusLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.report))
-                      case r: KycDocumentStatusNotLoaded.type  => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                      case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                      case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                       case _ => complete(HttpResponse(StatusCodes.BadRequest))
                     }
                   } ~
@@ -614,8 +621,8 @@ trait GenericPaymentService extends SessionService
                             }
                             run(AddKycDocument(externalUuidWithProfile(session), pages, kycDocumentType)) completeWith {
                               case r: KycDocumentAdded => complete(HttpResponse(StatusCodes.OK, entity = r))
-                              case r: KycDocumentNotAdded.type  => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
-                              case r: AcceptedTermsOfPSPRequired.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                              case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                               case _ => complete(HttpResponse(StatusCodes.BadRequest))
                             }
                           case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -647,6 +654,7 @@ trait GenericPaymentService extends SessionService
               run(CreateMandate(externalUuidWithProfile(session))) completeWith {
                 case r: MandateConfirmationRequired => complete(HttpResponse(StatusCodes.OK, entity = r))
                 case MandateCreated => complete(HttpResponse(StatusCodes.OK))
+                case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
@@ -654,6 +662,7 @@ trait GenericPaymentService extends SessionService
               delete {
                 run(CancelMandate(externalUuidWithProfile(session))) completeWith {
                   case MandateCanceled => complete(HttpResponse(StatusCodes.OK))
+                  case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                   case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case _ => complete(HttpResponse(StatusCodes.BadRequest))
                 }

@@ -1,5 +1,4 @@
 import sbt.Resolver
-
 import Common._
 import app.softnetwork.sbt.build._
 
@@ -31,7 +30,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.1.6.72"
+ThisBuild / version := "0.1.6.73"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -275,9 +274,6 @@ lazy val payment = project.in(file("payment"))
   .dependsOn(
     server % "compile->compile;test->test;it->it"
   )
-  .dependsOn(
-    sessionTestkit % "test->test;it->it"
-  )
 
 lazy val paymentTestkit = project.in(file("payment/testkit"))
   .configs(IntegrationTest)
@@ -287,6 +283,17 @@ lazy val paymentTestkit = project.in(file("payment/testkit"))
   )
   .dependsOn(
     sessionTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val paymentApi = project.in(file("payment/api"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .dependsOn(
+    payment % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    schema % "compile->compile;test->test;it->it"
   )
 
 lazy val root = project.in(file("."))
@@ -313,7 +320,8 @@ lazy val root = project.in(file("."))
     authTestkit,
     resource,
     payment,
-    paymentTestkit
+    paymentTestkit,
+    paymentApi
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)

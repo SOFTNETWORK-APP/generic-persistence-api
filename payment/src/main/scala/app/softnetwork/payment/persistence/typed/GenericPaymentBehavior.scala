@@ -984,9 +984,9 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         else if(cmd.bankAccount.wrongBic) {
           Effect.none.thenRun(_ => WrongBic ~> replyTo)
         }
-        else if(cmd.bankAccount.wrongOwnerName) {
-          Effect.none.thenRun(_ => WrongOwnerName ~> replyTo)
-        }
+//        else if(cmd.bankAccount.wrongOwnerName) {
+//          Effect.none.thenRun(_ => WrongOwnerName ~> replyTo)
+//        }
         else if(cmd.bankAccount.wrongOwnerAddress) {
           Effect.none.thenRun(_ => WrongOwnerAddress ~> replyTo)
         }
@@ -1103,7 +1103,8 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                   val shouldCancelMandate = shouldUpdateBankAccount &&
                     paymentAccount.bankAccount.flatMap(_.mandateId).isDefined
 
-                  val shouldCreateUboDeclaration = shouldUpdateUser &&
+                  val shouldCreateUboDeclaration = updatedPaymentAccount.legalUser &&
+                    shouldUpdateUser &&
                     updatedPaymentAccount.getLegalUser.uboDeclarationRequired &&
                     updatedPaymentAccount.getLegalUser.uboDeclaration.isEmpty
 
@@ -1158,7 +1159,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                     .withBankAccountId(bankAccountId)
                                 )
 
-                              if (acceptedTermsOfPSP.getOrElse(false)) {
+                              if (updatedPaymentAccount.legalUser && acceptedTermsOfPSP.getOrElse(false)) {
                                 updatedPaymentAccount = updatedPaymentAccount.withLegalUser(
                                   updatedPaymentAccount.getLegalUser.withLastAcceptedTermsOfPSP(lastUpdated)
                                 )

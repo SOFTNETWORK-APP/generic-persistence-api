@@ -9,7 +9,7 @@ package object model {
     */
   def computeExternalUuidWithProfile(externalUuid: String, profile: Option[String]): String = {
     profile match {
-      case Some(p) => externalUuid + s"#${p.toLowerCase}"
+      case Some(p) => externalUuid + s"#${p.trim.toLowerCase}"
       case _ => externalUuid
     }
   }

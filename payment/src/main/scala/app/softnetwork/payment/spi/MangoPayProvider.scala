@@ -1322,14 +1322,15 @@ trait MangoPayProvider extends PaymentProvider {
             mlog.info(s"""Update $documentType for $externalUuid""")
             // add document pages
             if (pages.forall {
-              case page => Try(MangoPay().getUserApi.createKycPage(userId, s2.getId, page)) match {
-                case Success(_) =>
-                  mlog.info(s"""Add document page for $externalUuid""")
-                  true
-                case Failure(f3) =>
-                  mlog.error(f3.getMessage, f3.getCause)
-                  false
-              }
+              page =>
+                Try(MangoPay().getUserApi.createKycPage(userId, s2.getId, page)) match {
+                  case Success(_) =>
+                    mlog.info(s"""Add document page for $externalUuid""")
+                    true
+                  case Failure(f3) =>
+                    mlog.error(f3.getMessage, f3.getCause)
+                    false
+                }
             }) {
               // ask for document validation
               s2.setTag(externalUuid)
