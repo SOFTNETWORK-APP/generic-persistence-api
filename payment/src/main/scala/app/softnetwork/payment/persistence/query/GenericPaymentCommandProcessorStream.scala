@@ -111,6 +111,17 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
             logger.error(s"$platformEventProcessorId - command $command returns unexpectedly ${other.getClass}")
             Done
         }
+      case evt: RegisterRecurringPaymentCommandEvent =>
+        import evt._
+        val command = RegisterRecurringPayment(debitedAccount, firstDebitedAmount, firstFeesAmount, currency, `type`, startDate, endDate, frequency, fixedNextAmount, nextDebitedAmount, nextFeesAmount)
+        !? (command) map {
+          case _: RecurringPaymentRegistered =>
+            if(forTests) system.eventStream.tell(Publish(event))
+            Done
+          case other =>
+            logger.error(s"$platformEventProcessorId - command $command returns unexpectedly ${other.getClass}")
+            Done
+        }
       case other =>
         logger.warn(s"$platformEventProcessorId does not support event [${other.getClass}]")
         Future.successful(Done)
