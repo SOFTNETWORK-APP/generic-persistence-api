@@ -621,6 +621,10 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "execute direct debit automatically for next recurring payment" in{
+      !? (CancelMandate(computeExternalUuidWithProfile(vendorUuid, Some("vendor")))) await {
+        case MandateNotCanceled =>
+        case other => fail(other.toString)
+      }
       probe.expectMessageType[ProbeSchedule4PaymentTriggered]
       !? (LoadRecurringPayment(computeExternalUuidWithProfile(vendorUuid, Some("vendor")),
         recurringPaymentRegistrationId
@@ -745,6 +749,18 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "disable card" in {
+      !? (DisableCard(computeExternalUuidWithProfile(customerUuid, Some("customer")), cardId)) await {
+        case CardNotDisabled => // card associated with recurring payment not ended
+        case other => fail(other.toString)
+      }
+      !? (UpdateRecurringCardPaymentRegistration(
+        computeExternalUuidWithProfile(customerUuid, Some("customer")),
+        recurringPaymentRegistrationId,
+        status = Some(RecurringPayment.RecurringCardPaymentStatus.ENDED))
+      ) await {
+        case _: RecurringCardPaymentRegistrationUpdated =>
+        case other => fail(other.toString)
+      }
       !? (DisableCard(computeExternalUuidWithProfile(customerUuid, Some("customer")), cardId)) await {
         case CardDisabled =>
           !? (LoadCards(computeExternalUuidWithProfile(customerUuid, Some("customer")))) await {

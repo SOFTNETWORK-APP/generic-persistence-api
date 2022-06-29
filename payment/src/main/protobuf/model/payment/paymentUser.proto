@@ -188,4 +188,5 @@ message RecurringPayment {
     optional int32 cumulatedDebitedAmount = 19;
     optional int32 cumulatedFeesAmount = 20;
     optional bool migration = 21;
+    optional string cardId = 22;
 }

@@ -1057,7 +1057,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
     */
   override def registerRecurringCardPayment(userId: String, walletId: String, cardId: String, recurringPayment: RecurringPayment): Option[RecurringPayment.RecurringCardPaymentResult] = {
     if(recurringPayment.`type`.isCard){
-      import recurringPayment._
+      import recurringPayment.{cardId => _, _}
       val createRecurringPayment = new CreateRecurringPayment
       createRecurringPayment.setAuthorId(userId)
       createRecurringPayment.setCreditedUserId(userId)

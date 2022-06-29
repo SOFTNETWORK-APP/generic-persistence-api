@@ -121,7 +121,7 @@ trait GenericPaymentService extends SessionService
               parameter("cardId") { cardId =>
                 run(DisableCard(externalUuidWithProfile(session), cardId)) completeWith {
                   case _: CardDisabled.type => complete(HttpResponse(StatusCodes.OK))
-                  case r: CardNotDisabled.type => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+                  case r: CardNotDisabled.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                   case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case _ => complete(HttpResponse(StatusCodes.BadRequest))

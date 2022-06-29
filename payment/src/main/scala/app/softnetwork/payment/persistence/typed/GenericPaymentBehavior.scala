@@ -1837,18 +1837,23 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case Some(paymentAccount) =>
             paymentAccount.cards.find(_.id == cmd.cardId) match {
               case Some(card) if card.getActive =>
-                // TODO check for recurring payments associated with this card
-                disableCard(cmd.cardId) match {
+                paymentAccount.recurryingPayments.find(r => r.`type`.isCard && r.getCardId == cmd.cardId &&
+                  r.nextPaymentDate.isDefined) match {
                   case Some(_) =>
-                    val lastUpdated = now()
-                    Effect.persist(
-                      PaymentAccountUpsertedEvent.defaultInstance.withDocument(
-                        paymentAccount
-                          .withCards(paymentAccount.cards.filterNot(_.id == cmd.cardId) :+ card.withActive(false))
-                          .withLastUpdated(lastUpdated)
-                      ).withLastUpdated(lastUpdated)
-                    ).thenRun(_ => CardDisabled ~> replyTo)
-                  case _ => Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
+                    Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
+                  case _ =>
+                    disableCard(cmd.cardId) match {
+                      case Some(_) =>
+                        val lastUpdated = now()
+                        Effect.persist(
+                          PaymentAccountUpsertedEvent.defaultInstance.withDocument(
+                            paymentAccount
+                              .withCards(paymentAccount.cards.filterNot(_.id == cmd.cardId) :+ card.withActive(false))
+                              .withLastUpdated(lastUpdated)
+                          ).withLastUpdated(lastUpdated)
+                        ).thenRun(_ => CardDisabled ~> replyTo)
+                      case _ => Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
+                    }
                 }
               case _ => Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
             }
@@ -1875,6 +1880,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                 .withFirstFeesAmount(cmd.firstFeesAmount)
                                 .withCurrency(cmd.currency)
                                 .withType(cmd.`type`)
+                                .withCardId(cardId)
                                 .copy(
                                   startDate = cmd.startDate,
                                   endDate = cmd.endDate,

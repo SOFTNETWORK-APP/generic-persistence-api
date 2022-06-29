@@ -454,6 +454,11 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     }
 
     "execute direct debit automatically for next recurring payment" in{
+      withCookies(
+        Delete(s"/$RootPath/$PaymentPath/$MandateRoute")
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
       probe.expectMessageType[ProbeSchedule4PaymentTriggered]
       withCookies(
         Get(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute/$recurringPaymentRegistrationId")
@@ -555,6 +560,19 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
 
     "disable card" in {
       createSession(customerUuid, Some("customer"))
+      withCookies(
+        Delete(s"/$RootPath/$PaymentPath/$CardRoute?cardId=$cardId")
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.BadRequest
+      }
+      withCookies(
+        Put(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute", UpdateRecurringCardPaymentRegistration("",
+          recurringPaymentRegistrationId,
+          status = Some(RecurringPayment.RecurringCardPaymentStatus.ENDED)
+        ))
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+      }
       withCookies(
         Delete(s"/$RootPath/$PaymentPath/$CardRoute?cardId=$cardId")
       ) ~> routes ~> check {
