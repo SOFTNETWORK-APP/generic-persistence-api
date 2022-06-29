@@ -33,6 +33,8 @@ object MangoPay extends StrictLogging{
 
     lazy val payInFor3DS = s"$secureModeReturnUrl/$PayInRoute"
 
+    lazy val recurringPaymentFor3DS = s"$secureModeReturnUrl/$RecurringPaymentRoute"
+
     lazy val hooksBaseUrl = s"""$BaseUrl/$hooksPath/$HooksRoute"""
 
     lazy val mandateReturnUrl = s"""$BaseUrl/$mandatePath/$MandateRoute"""

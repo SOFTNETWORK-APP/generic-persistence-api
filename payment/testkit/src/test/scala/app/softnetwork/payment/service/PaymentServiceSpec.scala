@@ -9,7 +9,10 @@ import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner.BirthPlace
 import app.softnetwork.payment.model._
+import app.softnetwork.payment.persistence.query.ProbeSchedule4PaymentTriggered
 import app.softnetwork.payment.scalatest.PaymentRouteTestKit
+import app.softnetwork.time.{now => _, _}
+import app.softnetwork.persistence.now
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import java.net.URLEncoder
@@ -76,6 +79,8 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
   var uboDeclarationId: String = _
 
   var cardId: String = _
+
+  var recurringPaymentRegistrationId: String = _
 
   import app.softnetwork.serialization._
 
@@ -372,7 +377,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
     "pay in / out with 3ds" in {
       createSession(customerUuid, Some("customer"))
       withCookies(
-        Post(s"/$RootPath/$PaymentPath/$PayInRoute?creditedAccount=${URLEncoder.encode(computeExternalUuidWithProfile(sellerUuid, Some("seller")), "UTF-8")}",
+        Post(s"/$RootPath/$PaymentPath/$PayInRoute/${URLEncoder.encode(computeExternalUuidWithProfile(sellerUuid, Some("seller")), "UTF-8")}",
           Payment(
             orderUuid,
             5100,
@@ -414,7 +419,122 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       }
     }
 
+    val probe = createTestProbe[ProbeSchedule4PaymentTriggered]()
+    subscribeProbe(probe)
+
+    "register recurring direct debit payment" in {
+      withCookies(
+        Post(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute", RegisterRecurringPayment("",
+          `type` = RecurringPayment.RecurringPaymentType.DIRECT_DEBIT,
+          frequency = Some(RecurringPayment.RecurringPaymentFrequency.DAILY),
+          endDate = Some(now()),
+          fixedNextAmount = Some(true),
+          nextDebitedAmount = Some(1000),
+          nextFeesAmount = Some(100)
+        ))
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        recurringPaymentRegistrationId = responseAs[RecurringPaymentRegistered].recurringPaymentRegistrationId
+        withCookies(
+          Get(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute/$recurringPaymentRegistrationId")
+        ) ~> routes ~> check {
+          status shouldEqual StatusCodes.OK
+          val recurringPayment = responseAs[RecurringPaymentView]
+          assert(recurringPayment.`type`.isDirectDebit)
+          assert(recurringPayment.frequency.exists(_.isDaily))
+          assert(recurringPayment.firstDebitedAmount == 0)
+          assert(recurringPayment.firstFeesAmount == 0)
+          assert(recurringPayment.fixedNextAmount.exists(_.self))
+          assert(recurringPayment.nextDebitedAmount.contains(1000))
+          assert(recurringPayment.nextFeesAmount.contains(100))
+          assert(recurringPayment.numberOfRecurringPayments.getOrElse(0) == 0)
+          assert(recurringPayment.nextRecurringPaymentDate.exists(_.isEqual(now())))
+        }
+      }
+    }
+
+    "execute direct debit automatically for next recurring payment" in{
+      probe.expectMessageType[ProbeSchedule4PaymentTriggered]
+      withCookies(
+        Get(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute/$recurringPaymentRegistrationId")
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        val recurringPayment = responseAs[RecurringPaymentView]
+          assert(recurringPayment.cumulatedDebitedAmount.contains(1000))
+          assert(recurringPayment.cumulatedFeesAmount.contains(100))
+          assert(recurringPayment.lastRecurringPaymentDate.exists(_.isEqual(now())))
+          assert(recurringPayment.lastRecurringPaymentTransactionId.isDefined)
+          assert(recurringPayment.numberOfRecurringPayments.contains(1))
+          assert(recurringPayment.nextRecurringPaymentDate.isEmpty)
+      }
+    }
+
+    "register recurring card payment" in {
+      createSession(customerUuid, Some("customer"))
+      withCookies(
+        Post(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute", RegisterRecurringPayment("",
+          `type` = RecurringPayment.RecurringPaymentType.CARD,
+          frequency = Some(RecurringPayment.RecurringPaymentFrequency.DAILY),
+          endDate = Some(now().plusDays(1)),
+          fixedNextAmount = Some(true),
+          nextDebitedAmount = Some(1000),
+          nextFeesAmount = Some(100)
+        ))
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        recurringPaymentRegistrationId = responseAs[RecurringPaymentRegistered].recurringPaymentRegistrationId
+        withCookies(
+          Get(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute/$recurringPaymentRegistrationId")
+        ) ~> routes ~> check {
+          status shouldEqual StatusCodes.OK
+          val recurringPayment = responseAs[RecurringPaymentView]
+          assert(recurringPayment.`type`.isCard)
+          assert(recurringPayment.frequency.exists(_.isDaily))
+          assert(recurringPayment.cardStatus.exists(_.isCreated))
+          assert(recurringPayment.firstDebitedAmount == 0)
+          assert(recurringPayment.firstFeesAmount == 0)
+          assert(recurringPayment.fixedNextAmount.exists(_.self))
+          assert(recurringPayment.nextDebitedAmount.contains(1000))
+          assert(recurringPayment.nextFeesAmount.contains(100))
+          assert(recurringPayment.numberOfRecurringPayments.getOrElse(0) == 0)
+          assert(recurringPayment.nextRecurringPaymentDate.exists(_.isEqual(now())))
+        }
+      }
+    }
+
+    "execute first recurring card payment" in {
+      withCookies(
+        Post(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute/${URLEncoder.encode(recurringPaymentRegistrationId, "UTF-8")}",
+          Payment(
+            "",
+            0
+          )
+        )
+      ) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        withCookies(
+          Get(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute/$recurringPaymentRegistrationId")
+        ) ~> routes ~> check {
+          status shouldEqual StatusCodes.OK
+          val recurringPayment = responseAs[RecurringPaymentView]
+          assert(recurringPayment.`type`.isCard)
+          assert(recurringPayment.frequency.exists(_.isDaily))
+          assert(recurringPayment.cardStatus.exists(_.isInProgress))
+          assert(recurringPayment.firstDebitedAmount == 0)
+          assert(recurringPayment.firstFeesAmount == 0)
+          assert(recurringPayment.fixedNextAmount.exists(_.self))
+          assert(recurringPayment.nextDebitedAmount.contains(1000))
+          assert(recurringPayment.nextFeesAmount.contains(100))
+          assert(recurringPayment.numberOfRecurringPayments.getOrElse(0) == 1)
+          assert(recurringPayment.cumulatedDebitedAmount.contains(0))
+          assert(recurringPayment.cumulatedFeesAmount.contains(0))
+          assert(recurringPayment.nextRecurringPaymentDate.exists(_.isEqual(now().plusDays(1))))
+        }
+      }
+    }
+
     "cancel mandate" in {
+      createSession(sellerUuid, Some("seller"))
       withCookies(
         Delete(s"/$RootPath/$PaymentPath/$MandateRoute")
       ) ~> routes ~> check {

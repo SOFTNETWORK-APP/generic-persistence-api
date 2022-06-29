@@ -5,6 +5,7 @@ import "google/protobuf/timestamp.proto";
 import "model/payment/card.proto";
 import "model/payment/document.proto";
 import "model/payment/paymentUser.proto";
+import "message/schedule.proto";
 
 package app.softnetwork.payment.message.PaymentEvents;
 
@@ -18,10 +19,12 @@ option (scalapb.options) = {
     import: "app.softnetwork.payment.model._"
     import: "app.softnetwork.payment.persistence.typed._"
     import: "app.softnetwork.payment.serialization._"
+    import: "org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand"
     preamble: "trait PaymentEvent extends Event"
     preamble: "trait PaymentAccountEvent extends PaymentEvent"
     preamble: "trait PaymentCommandEvent extends PaymentEvent"
     preamble: "trait WrapPaymentCommandEvent extends PaymentCommandEvent {def event: PaymentCommandEvent}"
+    preamble: "trait PaymentToSchedulerEvent extends SchedulerEventWithCommand with PaymentEvent"
     preserve_unknown_fields: false
 };
 
@@ -205,4 +208,40 @@ message CreateOrUpdatePaymentAccountCommandEvent{
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "PaymentCommandEvent";
     required app.softnetwork.payment.model.PaymentAccount paymentAccount = 1;
+}
+
+message ScheduleForPaymentAdded {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentToSchedulerEvent";
+    required org.softnetwork.akka.message.scheduler.AddSchedule command = 1;
+}
+
+message ScheduleForPaymentRemoved {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentToSchedulerEvent";
+    required org.softnetwork.akka.message.scheduler.RemoveSchedule command = 1;
+}
+
+message RegisterRecurringPaymentCommandEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string debitedAccount = 1;
+    required int32 firstDebitedAmount = 2;
+    required int32 firstFeesAmount = 3;
+    required string currency = 4 [default = "EUR"];
+    required app.softnetwork.payment.model.RecurringPayment.RecurringPaymentType type = 5 [default = CARD];
+    optional google.protobuf.Timestamp startDate = 6 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp endDate = 7 [(scalapb.field).type = "java.util.Date"];
+    optional app.softnetwork.payment.model.RecurringPayment.RecurringPaymentFrequency frequency = 8;
+    optional bool fixedNextAmount = 9;
+    optional int32 nextDebitedAmount = 10;
+    optional int32 nextFeesAmount = 11;
+}
+
+message RecurringPaymentRegisteredEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    option (scalapb.message).extends = "BroadcastEvent";
+    required string externalUuid = 1;
+    required app.softnetwork.payment.model.RecurringPayment recurringPayment = 2;
 }

@@ -2,7 +2,10 @@ package app.softnetwork.payment.message
 
 import app.softnetwork.payment.annotation.InternalApi
 import app.softnetwork.payment.model._
-import app.softnetwork.persistence.message.{Command, CommandResult, ErrorMessage}
+import app.softnetwork.persistence.message.{Command, CommandResult, EntityCommand, ErrorMessage}
+import org.softnetwork.akka.model.Schedule
+
+import java.util.Date
 
 object PaymentMessages {
   trait PaymentCommand extends Command
@@ -137,7 +140,7 @@ object PaymentMessages {
     * 3ds command
     *
     * @param orderUuid     - order unique id
-    * @param transactionId - payin transaction id
+    * @param transactionId - payIn transaction id
     * @param registerCard  -  the card should be registered or not
     */
   @InternalApi
@@ -180,6 +183,103 @@ object PaymentMessages {
                          currency: String = "EUR",
                          statementDescriptor: String) extends PaymentCommandWithKey {
     val key: String = creditedAccount
+  }
+
+  /**
+    *
+    * @param debitedAccount - account to debit
+    * @param firstDebitedAmount - first debited amount
+    * @param firstFeesAmount - first fees amount
+    * @param currency - currency
+    * @param `type` - recurring payment type
+    * @param startDate - recurring payment start date
+    * @param endDate - recurring payment end date
+    * @param frequency - recurring payment frequency
+    * @param fixedNextAmount - whether next payments are fixed or not
+    * @param nextDebitedAmount - next debited amount
+    * @param nextFeesAmount - next fees amount
+    */
+  case class RegisterRecurringPayment(debitedAccount: String,
+                                      firstDebitedAmount: Int = 0,
+                                      firstFeesAmount: Int = 0,
+                                      currency: String = "EUR",
+                                      `type`: RecurringPayment.RecurringPaymentType = RecurringPayment.RecurringPaymentType.CARD,
+                                      startDate: Option[Date] = None,
+                                      endDate: Option[Date] = None,
+                                      frequency: Option[RecurringPayment.RecurringPaymentFrequency] = None,
+                                      fixedNextAmount: Option[Boolean] = None,
+                                      nextDebitedAmount: Option[Int] = None,
+                                      nextFeesAmount: Option[Int] = None)  extends PaymentCommandWithKey {
+    val key: String = debitedAccount
+  }
+
+  /**
+    *
+    * @param recurringPayInRegistrationId - recurring payIn registration id
+    * @param cardId - card id
+    * @param status - recurring payIn registration status
+    */
+  case class UpdateRecurringCardPaymentRegistration(debitedAccount: String,
+                                                    recurringPayInRegistrationId: String,
+                                                    cardId: Option[String] = None,
+                                                    status: Option[RecurringPayment.RecurringCardPaymentStatus] = None)
+    extends PaymentCommandWithKey {
+    val key: String = debitedAccount
+  }
+
+  /**
+    *
+    * @param recurringPaymentRegistrationId - recurring payment registration id
+    */
+  case class LoadRecurringPayment(debitedAccount: String, recurringPaymentRegistrationId: String)
+    extends PaymentCommandWithKey {
+    val key: String = debitedAccount
+  }
+
+  /**
+    *
+    * @param recurringPayInRegistrationId - recurring payIn registration id
+    * @param debitedAccount - debited account
+    * @param ipAddress - ip address
+    * @param browserInfo - browser info
+    * @param statementDescriptor - statement descriptor
+    */
+  case class PayInFirstRecurring(recurringPayInRegistrationId: String,
+                                 debitedAccount: String,
+                                 ipAddress: Option[String] = None,
+                                 browserInfo: Option[BrowserInfo] = None,
+                                 statementDescriptor: Option[String] = None)  extends PaymentCommandWithKey {
+    val key: String = debitedAccount
+  }
+
+  /**
+    *
+    * @param recurringPayInRegistrationId - recurring payIn registration id
+    * @param transactionId = transaction payIn id
+    */
+  @InternalApi
+  private[payment] case class PayInFirstRecurringFor3DS(recurringPayInRegistrationId: String, transactionId: String)
+    extends PaymentCommandWithKey {
+    lazy val key: String = transactionId
+  }
+
+  /**
+    *
+    * @param recurringPaymentRegistrationId - recurring payment registration id
+    * @param debitedAccount - debited account
+    * @param nextDebitedAmount - next debited amount
+    * @param nextFeesAmount - next fees amount
+    */
+  case class PayNextRecurring(recurringPaymentRegistrationId: String,
+                              debitedAccount: String,
+                              nextDebitedAmount: Option[Int] = None,
+                              nextFeesAmount: Option[Int] = None,
+                              statementDescriptor: Option[String] = None)  extends PaymentCommandWithKey {
+    val key: String = debitedAccount
+  }
+
+  case class TriggerSchedule4Payment(schedule: Schedule) extends PaymentCommand with EntityCommand{
+    override def id: String = schedule.entityId
   }
 
   /** Commands related to the payment account */
@@ -349,6 +449,18 @@ object PaymentMessages {
 
   case class PaymentRedirection(redirectUrl: String) extends PaidInResult
 
+  case class RecurringPaymentRegistered(recurringPaymentRegistrationId: String) extends PaymentResult
+
+  case class RecurringCardPaymentRegistrationUpdated(result: RecurringPayment.RecurringCardPaymentResult) extends PaymentResult
+
+  case class RecurringPaymentLoaded(recurringPayment: RecurringPayment) extends PaymentResult
+
+  case class FirstRecurringPaidIn(transactionId: String) extends PaidInResult
+
+  case class NextRecurringPaid(transactionId: String) extends PaidInResult
+
+  case object Schedule4PaymentTriggered extends PaymentResult
+
   case class PaymentAccountLoaded(paymentAccount: PaymentAccount) extends PaymentResult
 
   case object BankAccountCreatedOrUpdated extends PaymentResult
@@ -476,4 +588,23 @@ object PaymentMessages {
   case object CardsNotLoaded extends PaymentError("CardsNotLoaded")
 
   case object CardNotDisabled extends PaymentError("CardNotDisabled")
+
+  case object UserNotFound extends PaymentError("UserNotFound")
+
+  case object WalletNotFound extends PaymentError("WalletNotFound")
+
+  case object CardNotFound extends PaymentError("CardNotFound")
+
+  case object RecurringPaymentNotRegistered extends PaymentError("RecurringPaymentNotRegistered")
+
+  case object MandateRequired extends PaymentError("MandateRequired")
+
+  case object RecurringPaymentNotFound extends PaymentError("RecurringPaymentNotFound")
+
+  case object RecurringCardPaymentRegistrationNotUpdated extends PaymentError("RecurringCardPaymentRegistrationNotUpdated")
+
+  case class FirstRecurringCardPaymentFailed(reason: String) extends PaymentError(s"FirstRecurringPaymentFailed: $reason")
+
+  case class NextRecurringPaymentFailed(reason: String) extends PaymentError(s"NextRecurringPaymentFailed: $reason")
+
 }

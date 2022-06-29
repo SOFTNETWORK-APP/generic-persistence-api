@@ -6,6 +6,7 @@ import akka.persistence.typed.PersistenceId
 import app.softnetwork.payment.handlers.{GenericPaymentHandler, MangoPayPaymentHandler, MockPaymentHandler}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
+import app.softnetwork.payment.config.Settings
 import app.softnetwork.persistence.query.{EventProcessorStream, JournalProvider}
 
 import scala.concurrent.{Future, Promise}
@@ -13,6 +14,8 @@ import scala.util.{Failure, Success}
 
 trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentCommandEvent]{
   _: JournalProvider with GenericPaymentHandler =>
+
+  override lazy val tag: String = Settings.ExternalToPaymentAccountTag
 
   /**
     *

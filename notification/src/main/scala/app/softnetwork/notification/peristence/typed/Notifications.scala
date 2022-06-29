@@ -65,8 +65,8 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
                               replyTo: Option[ActorRef[NotificationCommandResult]],
                               timers: TimerScheduler[NotificationCommand])(
     implicit context: ActorContext[NotificationCommand]): Effect[NotificationEvent, Option[T]] = {
-    implicit val log = context.log
-    implicit val system = context.system
+    implicit val log: Logger = context.log
+    implicit val system: ActorSystem[Nothing] = context.system
 
     command match {
 
@@ -93,7 +93,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
           case _ => Effect.unhandled
         }
 
-      case cmd: RemoveNotification =>
+      case _: RemoveNotification =>
         Effect.persist(
           List(
             NotificationRemovedEvent(
@@ -120,7 +120,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
                 event,
                 scheduledNotificationEvent(entityId, notification)
               )
-            ).thenRun(state => {
+            ).thenRun(_ => {
                 status match {
                   case Rejected    => NotificationRejected(entityId)
                   case Undelivered => NotificationUndelivered(entityId)
@@ -133,7 +133,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
           case _ => Effect.none
         }
 
-      case cmd: ResendNotification => state match {
+      case _: ResendNotification => state match {
         case Some(s) =>
           import s._
           import NotificationStatus._
@@ -169,7 +169,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
                       event,
                       scheduledNotificationEvent(entityId, notification)
                     )
-                  ).thenRun(state => {
+                  ).thenRun(_ => {
                       status match {
                         case Rejected    => NotificationRejected(entityId)
                         case Undelivered => NotificationUndelivered(entityId)
@@ -184,7 +184,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
         case _ => Effect.none.thenRun(_ => NotificationNotFound ~> replyTo)
       }
 
-      case cmd: GetNotificationStatus =>
+      case _: GetNotificationStatus =>
         state match {
           case Some(s) =>
             import s._
@@ -336,7 +336,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
   ): Effect[NotificationEvent, Option[T]] = {
     import notification._
     val ack: NotificationAck = ackUuid match {
-      case Some(s) =>
+      case Some(_) =>
         import NotificationStatus._
         status match {
           case Pending =>
@@ -363,7 +363,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
     }) match {
       case Some(event) =>
         Effect.persist(event)
-          .thenRun(state => {
+          .thenRun(_ => {
             import NotificationStatus._
             ack.status match {
               case Rejected    => NotificationRejected(_uuid)

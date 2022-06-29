@@ -7,13 +7,15 @@ import com.mangopay.core.{Address => MangoPayAddress, _}
 import com.mangopay.core.enumerations.{TransactionStatus => MangoPayTransactionStatus, _}
 import com.mangopay.entities.{BankAccount => MangoPayBankAccount, Card => _, KycDocument => _, Transaction => _, UboDeclaration => _, _}
 import com.mangopay.entities.subentities._
-import app.softnetwork.payment.model._
+import app.softnetwork.payment.model.{RecurringPayment, _}
 import app.softnetwork.payment.config.Settings
 import Settings.MangoPayConfig._
+import app.softnetwork.payment.model.RecurringPayment.RecurringCardPaymentState
 
 import scala.util.{Failure, Success, Try}
 import app.softnetwork.persistence._
 import app.softnetwork.serialization._
+import app.softnetwork.time.DateExtensions
 
 import scala.language.implicitConversions
 
@@ -46,9 +48,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
             val user = new UserNatural
             user.setFirstName(firstName)
             user.setLastName(lastName)
-            val c = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-            c.setTime(s)
-            user.setBirthday(c.getTimeInMillis / 1000)
+            user.setBirthday(s.toEpochSecond)
             user.setEmail(email)
             user.setTag(externalUuid)
             user.setNationality(CountryIso.valueOf(nationality))
@@ -366,7 +366,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
     * @param transactionId - transaction id
     * @return pay in transaction
     */
-  override def loadPayIn(orderUuid: String, transactionId: String): Option[Transaction] =
+  override def loadPayIn(orderUuid: String, transactionId: String, recurringPayInRegistrationId: Option[String]): Option[Transaction] =
     PayIns.get(transactionId) match {
       case Some(result) =>
         val `type` =
@@ -427,7 +427,8 @@ trait MockMangoPayProvider extends MangoPayProvider {
             creditedUserId = Option(result.getCreditedUserId),
             creditedWalletId = Option(result.getCreditedWalletId),
             mandateId = mandateId,
-            preAuthorizationId = preAuthorizationId
+            preAuthorizationId = preAuthorizationId,
+            recurringPayInRegistrationId = recurringPayInRegistrationId
           )
         )
       case _ => None
@@ -711,7 +712,7 @@ trait MockMangoPayProvider extends MangoPayProvider {
         val paymentDetails = new PayInPaymentDetailsCard
         paymentDetails.setCardId(cardId)
         paymentDetails.setCardType(CardType.CB_VISA_MASTERCARD)
-        paymentDetails.setStatementDescriptor("SOFTNETWORK")
+        paymentDetails.setStatementDescriptor(statementDescriptor)
         payIn.setPaymentDetails(paymentDetails)
         payIn.setExecutionType(PayInExecutionType.DIRECT)
         val executionDetails = new PayInExecutionDetailsDirect
@@ -1045,6 +1046,322 @@ trait MockMangoPayProvider extends MangoPayProvider {
       case _ => None
     }
    }
+
+  /**
+    *
+    * @param userId           - Provider user id
+    * @param walletId         - Provider wallet id
+    * @param cardId           - Provider card id
+    * @param recurringPayment - recurring payment to register
+    * @return recurring card payment registration result
+    */
+  override def registerRecurringCardPayment(userId: String, walletId: String, cardId: String, recurringPayment: RecurringPayment): Option[RecurringPayment.RecurringCardPaymentResult] = {
+    if(recurringPayment.`type`.isCard){
+      import recurringPayment._
+      val createRecurringPayment = new CreateRecurringPayment
+      createRecurringPayment.setAuthorId(userId)
+      createRecurringPayment.setCreditedUserId(userId)
+      createRecurringPayment.setCreditedWalletId(walletId)
+      createRecurringPayment.setCardId(cardId)
+      val firstTransactionDebitedFunds = new Money
+      firstTransactionDebitedFunds.setAmount(firstDebitedAmount)
+      firstTransactionDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+      createRecurringPayment.setFirstTransactionDebitedFunds(firstTransactionDebitedFunds)
+      val firstTransactionFees = new Money
+      firstTransactionFees.setAmount(firstFeesAmount)
+      firstTransactionFees.setCurrency(CurrencyIso.valueOf(currency))
+      createRecurringPayment.setFirstTransactionFees(firstTransactionFees)
+      recurringPayment.endDate match {
+        case Some(endDate) =>
+          createRecurringPayment.setEndDate(endDate.toEpochSecond)
+        case _ =>
+      }
+      (recurringPayment.frequency match {
+        case Some(frequency) =>
+          frequency match {
+            case RecurringPayment.RecurringPaymentFrequency.DAILY => Some("Daily")
+            case RecurringPayment.RecurringPaymentFrequency.WEEKLY => Some("Weekly")
+            case RecurringPayment.RecurringPaymentFrequency.MONTHLY => Some("Monthly")
+            case RecurringPayment.RecurringPaymentFrequency.BIMONTHLY => Some("Bimonthly")
+            case RecurringPayment.RecurringPaymentFrequency.QUARTERLY => Some("Quarterly")
+            case RecurringPayment.RecurringPaymentFrequency.BIANNUAL => Some("Semiannual")
+            case RecurringPayment.RecurringPaymentFrequency.ANNUAL => Some("Annual")
+            case _ => None
+          }
+        case _ => None
+      }) match {
+        case Some(frequency) => createRecurringPayment.setFrequency(frequency)
+        case _ =>
+      }
+      recurringPayment.fixedNextAmount match {
+        case Some(fixedNextAmount) => createRecurringPayment.setFixedNextAmount(fixedNextAmount)
+        case _ =>
+      }
+      recurringPayment.nextDebitedAmount match {
+        case Some(nextDebitedAmount) =>
+          val nextTransactionDebitedFunds = new Money()
+          nextTransactionDebitedFunds.setAmount(nextDebitedAmount)
+          nextTransactionDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+          createRecurringPayment.setNextTransactionDebitedFunds(nextTransactionDebitedFunds)
+        case _ =>
+      }
+      recurringPayment.nextFeesAmount match {
+        case Some(nextFeesAmount) =>
+          val nextTransactionFees = new Money()
+          nextTransactionFees.setAmount(nextFeesAmount)
+          nextTransactionFees.setCurrency(CurrencyIso.valueOf(currency))
+          createRecurringPayment.setNextTransactionFees(nextTransactionFees)
+        case _ =>
+      }
+      recurringPayment.migration match {
+        case Some(migration) => createRecurringPayment.setMigration(migration)
+        case _ =>
+      }
+
+      val registration =
+        RecurringCardPaymentRegistration(
+          generateUUID(),
+          "created",
+          RecurringCardPaymentState.defaultInstance,
+          createRecurringPayment
+        )
+
+      RecurringCardPaymentRegistrations = RecurringCardPaymentRegistrations.updated(
+        registration.id,
+        registration
+      )
+
+      Some(
+        RecurringPayment.RecurringCardPaymentResult.defaultInstance
+          .withId(registration.id)
+          .withStatus(registration.status)
+      )
+    }
+    else{
+      None
+    }
+  }
+
+  /**
+    *
+    * @param recurringPayInRegistrationId - recurring payIn registration id
+    * @param cardId                       - Provider card id
+    * @param status                       - optional recurring payment status
+    * @return recurring card payment registration updated result
+    */
+  override def updateRecurringCardPaymentRegistration(recurringPayInRegistrationId: String, cardId: Option[String], status: Option[RecurringPayment.RecurringCardPaymentStatus]): Option[RecurringPayment.RecurringCardPaymentResult] = {
+    if(cardId.isDefined || status.isDefined){
+      RecurringCardPaymentRegistrations.get(recurringPayInRegistrationId) match {
+        case Some(recurringCardPaymentRegistration) =>
+          val updatedRecurringCardPaymentRegistration =
+            recurringCardPaymentRegistration.copy(
+              status = status.map(_.name).getOrElse(recurringCardPaymentRegistration.status),
+            )
+          updatedRecurringCardPaymentRegistration.registration.setCardId(
+            cardId.getOrElse(recurringCardPaymentRegistration.registration.getCardId)
+          )
+          RecurringCardPaymentRegistrations = RecurringCardPaymentRegistrations.updated(
+            recurringPayInRegistrationId,
+            updatedRecurringCardPaymentRegistration
+          )
+          Some(
+            RecurringPayment.RecurringCardPaymentResult.defaultInstance
+              .withId(recurringPayInRegistrationId)
+              .withStatus(updatedRecurringCardPaymentRegistration.status)
+              .withCurrentstate(updatedRecurringCardPaymentRegistration.currentState)
+          )
+        case _ => None
+      }
+    }
+    else{
+      None
+    }
+  }
+
+  /**
+    *
+    * @param recurringPayInRegistrationId - recurring payIn registration id
+    * @return recurring card payment registration result
+    */
+  override def loadRecurringCardPayment(recurringPayInRegistrationId: String): Option[RecurringPayment.RecurringCardPaymentResult] = {
+    RecurringCardPaymentRegistrations.get(recurringPayInRegistrationId) match {
+      case Some(recurringCardPaymentRegistration) =>
+        Some(
+          RecurringPayment.RecurringCardPaymentResult.defaultInstance
+            .withId(recurringPayInRegistrationId)
+            .withStatus(recurringCardPaymentRegistration.status)
+            .withCurrentstate(recurringCardPaymentRegistration.currentState)
+        )
+      case _ => None
+    }
+  }
+
+  /**
+    *
+    * @param recurringPaymentTransaction - recurring payment transaction
+    * @return resulted payIn transaction
+    */
+  override def createRecurringCardPayment(recurringPaymentTransaction: RecurringPaymentTransaction): Option[Transaction] = {
+    RecurringCardPaymentRegistrations.get(recurringPaymentTransaction.recurringPayInRegistrationId) match {
+      case Some(recurringPaymentRegistration) =>
+        recurringPaymentTransaction.extension[Option[FirstRecurringPaymentTransaction]](
+          FirstRecurringPaymentTransaction.first
+        ) match {
+          case Some(firstRecurringPaymentTransaction) =>
+            import recurringPaymentTransaction._
+            val recurringPayInCIT: RecurringPayInCIT = new RecurringPayInCIT
+            recurringPayInCIT.setRecurringPayInRegistrationId(recurringPayInRegistrationId)
+            recurringPayInCIT.setIpAddress(firstRecurringPaymentTransaction.ipAddress)
+            val debitedFunds = new Money
+            debitedFunds.setAmount(debitedAmount)
+            debitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+            recurringPayInCIT.setDebitedFunds(debitedFunds)
+            val fees = new Money
+            fees.setAmount(feesAmount)
+            fees.setCurrency(CurrencyIso.valueOf(currency))
+            recurringPayInCIT.setFees(fees)
+            recurringPayInCIT.setTag(externalUuid)
+            recurringPayInCIT.setStatementDescriptor(statementDescriptor)
+            recurringPayInCIT.setSecureModeReturnURL(s"$recurringPaymentFor3DS/$recurringPayInRegistrationId")
+
+            import recurringPaymentRegistration._
+
+            val payIn = new PayIn()
+            payIn.setTag(externalUuid)
+            payIn.setCreditedWalletId(registration.getCreditedWalletId)
+            payIn.setAuthorId(registration.getAuthorId)
+            payIn.setDebitedFunds(recurringPayInCIT.getDebitedFunds)
+            payIn.setFees(recurringPayInCIT.getFees)
+            payIn.setPaymentType(PayInPaymentType.CARD)
+            val paymentDetails = new PayInPaymentDetailsCard
+            paymentDetails.setCardId(registration.getCardId)
+            paymentDetails.setCardType(CardType.CB_VISA_MASTERCARD)
+            paymentDetails.setStatementDescriptor(recurringPayInCIT.getStatementDescriptor)
+            payIn.setPaymentDetails(paymentDetails)
+            payIn.setExecutionType(PayInExecutionType.DIRECT)
+            val executionDetails = new PayInExecutionDetailsDirect
+            executionDetails.setCardId(registration.getCardId)
+            // Secured Mode is activated from €100.
+            executionDetails.setSecureMode(SecureMode.DEFAULT)
+            executionDetails.setSecureModeReturnUrl(recurringPayInCIT.getSecureModeReturnURL)
+            payIn.setExecutionDetails(executionDetails)
+
+            payIn.setId(generateUUID()/*orderUuid.substring(0, orderUuid.length - 1) + "p"*/)
+            payIn.setStatus(MangoPayTransactionStatus.CREATED)
+            payIn.setResultCode(OK)
+            payIn.setResultMessage(CREATED)
+            executionDetails.setSecureModeRedirectUrl(
+              s"${executionDetails.getSecureModeReturnUrl}&transactionId=${payIn.getId}"
+            )
+
+            val previousState = recurringPaymentRegistration.currentState
+            RecurringCardPaymentRegistrations = RecurringCardPaymentRegistrations.updated(recurringPayInRegistrationId,
+              recurringPaymentRegistration.copy(
+                status = "pending",
+                currentState = RecurringCardPaymentState(
+                  previousState.numberOfRecurringPayments + 1,
+                  previousState.cumulatedDebitedAmount + debitedAmount,
+                  previousState.cumulatedFeesAmount + feesAmount,
+                  payIn.getId
+                )
+              )
+            )
+            PayIns = PayIns.updated(payIn.getId, payIn)
+
+            Some(
+              Transaction().copy(
+                id = payIn.getId,
+                nature = Transaction.TransactionNature.REGULAR,
+                `type` = Transaction.TransactionType.PAYIN,
+                status = payIn.getStatus,
+                amount = debitedAmount,
+                cardId = Option(registration.getCardId),
+                fees = feesAmount,
+                resultCode = payIn.getResultCode,
+                resultMessage = payIn.getResultMessage,
+                redirectUrl = if(debitedAmount > 5000) Option(executionDetails.getSecureModeRedirectUrl) else None,
+                authorId = Some(registration.getAuthorId),
+                creditedWalletId = Some(registration.getCreditedWalletId),
+                recurringPayInRegistrationId = recurringPayInRegistrationId
+              )
+            )
+          case _ =>
+            import recurringPaymentTransaction._
+            val recurringPayInMIT: RecurringPayInMIT = new RecurringPayInMIT
+            recurringPayInMIT.setRecurringPayInRegistrationId(recurringPayInRegistrationId)
+            recurringPayInMIT.setStatementDescriptor(statementDescriptor)
+            val debitedFunds = new Money
+            debitedFunds.setAmount(debitedAmount)
+            debitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+            recurringPayInMIT.setDebitedFunds(debitedFunds)
+            val fees = new Money
+            fees.setAmount(feesAmount)
+            fees.setCurrency(CurrencyIso.valueOf(currency))
+            recurringPayInMIT.setFees(fees)
+            recurringPayInMIT.setTag(externalUuid)
+
+            import recurringPaymentRegistration._
+
+            val payIn = new PayIn()
+            payIn.setTag(externalUuid)
+            payIn.setCreditedWalletId(registration.getCreditedWalletId)
+            payIn.setAuthorId(registration.getAuthorId)
+            payIn.setDebitedFunds(recurringPayInMIT.getDebitedFunds)
+            payIn.setFees(recurringPayInMIT.getFees)
+            payIn.setPaymentType(PayInPaymentType.CARD)
+            val paymentDetails = new PayInPaymentDetailsCard
+            paymentDetails.setCardId(registration.getCardId)
+            paymentDetails.setCardType(CardType.CB_VISA_MASTERCARD)
+            paymentDetails.setStatementDescriptor(recurringPayInMIT.getStatementDescriptor)
+            payIn.setPaymentDetails(paymentDetails)
+            payIn.setExecutionType(PayInExecutionType.DIRECT)
+            val executionDetails = new PayInExecutionDetailsDirect
+            executionDetails.setCardId(registration.getCardId)
+            payIn.setExecutionDetails(executionDetails)
+
+            payIn.setId(generateUUID()/*orderUuid.substring(0, orderUuid.length - 1) + "p"*/)
+            payIn.setStatus(MangoPayTransactionStatus.CREATED)
+            payIn.setResultCode(OK)
+            payIn.setResultMessage(CREATED)
+            executionDetails.setSecureModeRedirectUrl(
+              s"${executionDetails.getSecureModeReturnUrl}&transactionId=${payIn.getId}"
+            )
+
+            val previousState = recurringPaymentRegistration.currentState
+            RecurringCardPaymentRegistrations = RecurringCardPaymentRegistrations.updated(recurringPayInRegistrationId,
+              recurringPaymentRegistration.copy(
+                status = "pending",
+                currentState = RecurringCardPaymentState(
+                  previousState.numberOfRecurringPayments + 1,
+                  previousState.cumulatedDebitedAmount + debitedAmount,
+                  previousState.cumulatedFeesAmount + feesAmount,
+                  payIn.getId
+                )
+              )
+            )
+            PayIns = PayIns.updated(payIn.getId, payIn)
+
+            Some(
+              Transaction().copy(
+                id = payIn.getId,
+                nature = Transaction.TransactionNature.REGULAR,
+                `type` = Transaction.TransactionType.PAYIN,
+                status = payIn.getStatus,
+                amount = debitedAmount,
+                cardId = Option(registration.getCardId),
+                fees = feesAmount,
+                resultCode = payIn.getResultCode,
+                resultMessage = payIn.getResultMessage,
+                redirectUrl = None,
+                authorId = Some(registration.getAuthorId),
+                creditedWalletId = Some(registration.getCreditedWalletId),
+                recurringPayInRegistrationId = recurringPayInRegistrationId
+              )
+            )
+        }
+      case _ => None
+    }
+  }
 }
 
 object MockMangoPayProvider {
@@ -1076,6 +1393,13 @@ object MockMangoPayProvider {
 
   var UboDeclarations: Map[String, UboDeclaration] = Map.empty
 
+  var RecurringCardPaymentRegistrations: Map[String, RecurringCardPaymentRegistration] = Map.empty
+
   var ClientFees: Double = 0D
 
 }
+
+case class RecurringCardPaymentRegistration(id: String,
+                                            status: String,
+                                            currentState: RecurringCardPaymentState,
+                                            registration: CreateRecurringPayment)

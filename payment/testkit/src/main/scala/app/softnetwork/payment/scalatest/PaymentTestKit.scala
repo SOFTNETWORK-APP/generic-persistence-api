@@ -6,14 +6,19 @@ import akka.http.scaladsl.model.{ContentTypes, Multipart, StatusCodes}
 import akka.http.scaladsl.server.Route
 import app.softnetwork.api.server.config.Settings.RootPath
 import app.softnetwork.payment.config.Settings._
+import app.softnetwork.payment.handlers.MockPaymentHandler
 import app.softnetwork.payment.model.{BankAccountView, Card, KycDocument, KycDocumentValidationReport, PaymentAccountView, UboDeclarationView}
 import app.softnetwork.payment.persistence.data.paymentKvDao
+import app.softnetwork.payment.persistence.query.{GenericPaymentCommandProcessorStream, Scheduler2PaymentProcessorStream}
 import app.softnetwork.payment.persistence.typed.MockPaymentBehavior
 import app.softnetwork.payment.serialization.paymentFormats
 import app.softnetwork.payment.service.MockPaymentService
-import app.softnetwork.persistence.query.EventProcessorStream
+import app.softnetwork.persistence.query.{EventProcessorStream, InMemoryJournalProvider}
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
 import app.softnetwork.persistence.typed.{EntityBehavior, Singleton}
+import app.softnetwork.scheduler.handlers.SchedulerHandler
+import app.softnetwork.scheduler.persistence.query.Entity2SchedulerProcessorStream
+import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
 import app.softnetwork.session.persistence.typed.SessionRefreshTokenBehavior
 import app.softnetwork.session.scalatest.{SessionServiceRoute, SessionTestKit}
 import org.json4s.Formats
@@ -29,6 +34,7 @@ trait PaymentTestKit extends InMemoryPersistenceTestKit {_: Suite =>
     */
   override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => Seq(
     MockPaymentBehavior,
+    SchedulerBehavior,
     SessionRefreshTokenBehavior
   )
 
@@ -42,7 +48,21 @@ trait PaymentTestKit extends InMemoryPersistenceTestKit {_: Suite =>
     * initialize all event processor streams
     *
     */
-  override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = _ => Seq.empty
+  override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys => Seq(
+    new GenericPaymentCommandProcessorStream with MockPaymentHandler with InMemoryJournalProvider {
+      override val forTests: Boolean = true
+      override implicit def system: ActorSystem[_] = sys
+    },
+    new Scheduler2PaymentProcessorStream with MockPaymentHandler with InMemoryJournalProvider {
+      override val tag: String = s"${MockPaymentBehavior.persistenceId}-scheduler"
+      override protected val forTests: Boolean = true
+      override implicit def system: ActorSystem[_] = sys
+    },
+    new Entity2SchedulerProcessorStream with SchedulerHandler with InMemoryJournalProvider {
+      override protected val forTests: Boolean = true
+      override implicit def system: ActorSystem[_] = sys
+    }
+  )
 
 }
 

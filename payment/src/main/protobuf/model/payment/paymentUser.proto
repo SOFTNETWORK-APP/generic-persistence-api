@@ -34,6 +34,10 @@ message BankAccount {
         // the mandate is expired and is not longer available for payments
         MANDATE_EXPIRED = 4;
     }
+    enum MandateScheme {
+        MANDATE_BACS = 1;
+        MANDATE_SEPA = 2;
+    }
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "BankAccountDecorator";
     option (scalapb.message).companion_extends = "BankAccountCompanion";
@@ -50,6 +54,7 @@ message BankAccount {
     required string externalUuid = 11;
     optional string mandateId = 12;
     optional MandateStatus mandateStatus = 13;
+    optional MandateScheme mandateScheme = 14 [default = MANDATE_SEPA];
     extensions 100 to max;
 }
 
@@ -114,6 +119,7 @@ message PaymentAccount {
     repeated KycDocument documents = 8;
     required PaymentAccountStatus paymentAccountStatus = 9 [default = DOCUMENTS_KO];
     repeated Transaction transactions = 10;
+    repeated RecurringPayment recurryingPayments = 11;
     extensions 100 to max;
 }
 
@@ -123,4 +129,63 @@ message MandateResult{
     required string redirectUrl = 3;
     optional string resultCode = 4;
     optional string resultMessage = 5;
+}
+
+message RecurringPayment {
+    enum RecurringPaymentFrequency {
+        DAILY = 1;
+        WEEKLY = 2;
+        TWICE_A_MONTH = 3;
+        MONTHLY = 4;
+        BIMONTHLY = 5;
+        QUARTERLY = 6;
+        BIANNUAL = 7;
+        ANNUAL = 8;
+    }
+    enum RecurringPaymentType {
+        CARD = 1;
+        DIRECT_DEBIT = 2;
+    }
+    enum RecurringCardPaymentStatus {
+        CREATED = 1;
+        AUTHENTICATION_NEEDED = 2;
+        IN_PROGRESS = 3;
+        ENDED = 4;
+    }
+    message RecurringCardPaymentState {
+        option (scalapb.message).extends = "ProtobufDomainObject";
+        required int32 numberOfRecurringPayments = 1;
+        required int32 cumulatedDebitedAmount = 2;
+        required int32 cumulatedFeesAmount = 3;
+        required string lastPayInTransactionId = 4;
+    }
+    message RecurringCardPaymentResult {
+        option (scalapb.message).extends = "ProtobufDomainObject";
+        required string id = 1;
+        required RecurringCardPaymentStatus status = 2;
+        optional RecurringCardPaymentState currentstate = 3;
+    }
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "RecurringPaymentDecorator";
+    optional string id = 1;
+    required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
+    required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
+    required int32 firstDebitedAmount = 4;
+    required int32 firstFeesAmount = 5;
+    required string currency = 6;
+    required RecurringPaymentType type = 7 [default = CARD];
+    optional RecurringCardPaymentStatus cardStatus = 8;
+    optional google.protobuf.Timestamp startDate = 9 [(scalapb.field).type = "java.util.Date"];
+    optional google.protobuf.Timestamp endDate = 10 [(scalapb.field).type = "java.util.Date"];
+    optional RecurringPaymentFrequency frequency = 11;
+    optional google.protobuf.Timestamp nextRecurringPaymentDate = 12 [(scalapb.field).type = "java.util.Date"];
+    optional bool fixedNextAmount = 13;
+    optional int32 nextDebitedAmount = 14;
+    optional int32 nextFeesAmount = 15;
+    optional string lastRecurringPaymentTransactionId = 16;
+    optional google.protobuf.Timestamp lastRecurringPaymentDate = 17 [(scalapb.field).type = "java.util.Date"];
+    optional int32 numberOfRecurringPayments = 18;
+    optional int32 cumulatedDebitedAmount = 19;
+    optional int32 cumulatedFeesAmount = 20;
+    optional bool migration = 21;
 }

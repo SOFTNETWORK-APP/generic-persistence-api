@@ -50,6 +50,9 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
 
   lazy val documentOutdated: Boolean = documents.exists(_.status.isKycDocumentOutOfDate)
 
+  lazy val mandateExists: Boolean = bankAccount.flatMap(_.mandateId).isDefined &&
+    bankAccount.flatMap(_.mandateStatus).exists(s => s.isMandateCreated || s.isMandateActivated || s.isMandateSubmitted)
+
   lazy val mandateActivated: Boolean = bankAccount.flatMap(_.mandateId).isDefined &&
     bankAccount.flatMap(_.mandateStatus).exists(s => s.isMandateActivated || s.isMandateSubmitted)
 

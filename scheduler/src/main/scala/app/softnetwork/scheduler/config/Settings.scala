@@ -20,6 +20,8 @@ object Settings  extends StrictLogging {
 
 }
 
-case class SchedulerConfig(resetCronTabs: ResetCronTabs)
+case class SchedulerConfig(resetCronTabs: ResetCronTabs, eventStreams: SchedulerEventStreams)
 
 case class ResetCronTabs(initialDelay: Int, delay: Int)
+
+case class SchedulerEventStreams(entityToSchedulerTag: String)

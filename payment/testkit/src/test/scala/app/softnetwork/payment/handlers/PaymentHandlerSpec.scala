@@ -6,7 +6,10 @@ import app.softnetwork.payment.model.PaymentAccount.User
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner.BirthPlace
 import app.softnetwork.payment.model._
+import app.softnetwork.payment.persistence.query.ProbeSchedule4PaymentTriggered
 import app.softnetwork.payment.scalatest.PaymentTestKit
+import app.softnetwork.time.{now => _, _}
+import app.softnetwork.persistence.now
 import org.scalatest.wordspec.AnyWordSpecLike
 
 class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with PaymentTestKit {
@@ -24,6 +27,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
   var cardPreRegistration: CardPreRegistration = _
 
   var preAuthorizationId: String = _
+
+  var recurringPaymentRegistrationId: String = _
 
   /** natural user */
   val firstName = "firstName"
@@ -575,6 +580,113 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               val bankAccount = result.paymentAccount.getBankAccount
               assert(bankAccount.getMandateId == mandateId)
               assert(bankAccount.getMandateStatus == BankAccount.MandateStatus.MANDATE_ACTIVATED)
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    val probe = createTestProbe[ProbeSchedule4PaymentTriggered]()
+    subscribeProbe(probe)
+
+    "register recurring direct debit payment" in {
+      !? (RegisterRecurringPayment(computeExternalUuidWithProfile(vendorUuid, Some("vendor")),
+        `type` = RecurringPayment.RecurringPaymentType.DIRECT_DEBIT,
+        frequency = Some(RecurringPayment.RecurringPaymentFrequency.DAILY),
+        endDate = Some(now()),
+        fixedNextAmount = Some(true),
+        nextDebitedAmount = Some(1000),
+        nextFeesAmount = Some(100)
+      )) await {
+        case result: RecurringPaymentRegistered =>
+          recurringPaymentRegistrationId = result.recurringPaymentRegistrationId
+          !? (LoadRecurringPayment(computeExternalUuidWithProfile(vendorUuid, Some("vendor")),
+            recurringPaymentRegistrationId
+          )) await {
+            case result: RecurringPaymentLoaded =>
+              val recurringPayment = result.recurringPayment
+              assert(recurringPayment.`type`.isDirectDebit)
+              assert(recurringPayment.getFrequency.isDaily)
+              assert(recurringPayment.firstDebitedAmount == 0)
+              assert(recurringPayment.firstFeesAmount == 0)
+              assert(recurringPayment.getFixedNextAmount)
+              assert(recurringPayment.getNextDebitedAmount == 1000)
+              assert(recurringPayment.getNextFeesAmount == 100)
+              assert(recurringPayment.getNumberOfRecurringPayments == 0)
+              assert(recurringPayment.getNextRecurringPaymentDate.isEqual(now()))
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    "execute direct debit automatically for next recurring payment" in{
+      probe.expectMessageType[ProbeSchedule4PaymentTriggered]
+      !? (LoadRecurringPayment(computeExternalUuidWithProfile(vendorUuid, Some("vendor")),
+        recurringPaymentRegistrationId
+      )) await {
+        case result: RecurringPaymentLoaded =>
+          val recurringPayment = result.recurringPayment
+          assert(recurringPayment.getCumulatedDebitedAmount == 1000)
+          assert(recurringPayment.getCumulatedFeesAmount == 100)
+          assert(recurringPayment.getLastRecurringPaymentDate.isEqual(now()))
+          assert(recurringPayment.lastRecurringPaymentTransactionId.isDefined)
+          assert(recurringPayment.getNumberOfRecurringPayments == 1)
+          assert(recurringPayment.nextRecurringPaymentDate.isEmpty)
+        case other => fail(other.toString)
+      }
+    }
+
+    "register recurring card payment" in {
+      !? (RegisterRecurringPayment(computeExternalUuidWithProfile(customerUuid, Some("customer")),
+        `type` = RecurringPayment.RecurringPaymentType.CARD,
+        frequency = Some(RecurringPayment.RecurringPaymentFrequency.DAILY),
+        endDate = Some(now().plusDays(1)),
+        fixedNextAmount = Some(true),
+        nextDebitedAmount = Some(1000),
+        nextFeesAmount = Some(100)
+      )) await {
+        case result: RecurringPaymentRegistered =>
+          recurringPaymentRegistrationId = result.recurringPaymentRegistrationId
+          !? (LoadRecurringPayment(computeExternalUuidWithProfile(customerUuid, Some("customer")),
+            recurringPaymentRegistrationId
+          )) await {
+            case result: RecurringPaymentLoaded =>
+              val recurringPayment = result.recurringPayment
+              assert(recurringPayment.`type`.isCard)
+              assert(recurringPayment.getFrequency.isDaily)
+              assert(recurringPayment.firstDebitedAmount == 0)
+              assert(recurringPayment.firstFeesAmount == 0)
+              assert(recurringPayment.getFixedNextAmount)
+              assert(recurringPayment.getNextDebitedAmount == 1000)
+              assert(recurringPayment.getNextFeesAmount == 100)
+              assert(recurringPayment.getNumberOfRecurringPayments == 0)
+              assert(recurringPayment.getCardStatus.isCreated)
+              assert(recurringPayment.getNextRecurringPaymentDate.isEqual(now()))
+            case other => fail(other.toString)
+          }
+        case other => fail(other.toString)
+      }
+    }
+
+    "execute first recurring card payment" in {
+      !? (PayInFirstRecurring(recurringPaymentRegistrationId, computeExternalUuidWithProfile(customerUuid, Some("customer")))) await {
+        case _: FirstRecurringPaidIn =>
+          !? (LoadRecurringPayment(computeExternalUuidWithProfile(customerUuid, Some("customer")),
+            recurringPaymentRegistrationId
+          )) await {
+            case result: RecurringPaymentLoaded =>
+              val recurringPayment = result.recurringPayment
+              assert(recurringPayment.`type`.isCard)
+              assert(recurringPayment.getFrequency.isDaily)
+              assert(recurringPayment.firstDebitedAmount == 0)
+              assert(recurringPayment.firstFeesAmount == 0)
+              assert(recurringPayment.getFixedNextAmount)
+              assert(recurringPayment.getNextDebitedAmount == 1000)
+              assert(recurringPayment.getNextFeesAmount == 100)
+              assert(recurringPayment.getNumberOfRecurringPayments == 1)
+              assert(recurringPayment.getCardStatus.isInProgress)
+              assert(recurringPayment.getNextRecurringPaymentDate.isEqual(now().plusDays(1)))
             case other => fail(other.toString)
           }
         case other => fail(other.toString)

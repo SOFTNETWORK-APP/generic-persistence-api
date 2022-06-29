@@ -11,9 +11,9 @@ import scala.language.implicitConversions
   */
 package object serialization {
 
-  implicit val serialization = jackson.Serialization
+  implicit val serialization: Serialization.type = jackson.Serialization
 
-  val commonFormats =
+  val commonFormats: Formats =
     Serialization.formats(NoTypeHints) ++
       JodaTimeSerializers.all ++
       JavaTypesSerializers.all ++
@@ -36,7 +36,7 @@ package object serialization {
   }
 
   def asJson(entity: AnyRef)(implicit formats: Formats = commonFormats): String = {
-    implicit def excludedFields = defaultExcludedFields:+ "data"
+    implicit def excludedFields: List[String] = defaultExcludedFields:+ "data"
     def asMap: Map[String, Any] = caseClass2Map(entity)
     val data: String = asMap // implicit conversion Map[String, Any] => String
     data

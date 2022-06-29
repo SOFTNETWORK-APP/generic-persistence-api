@@ -2,10 +2,10 @@ package app.softnetwork
 
 import app.softnetwork.config.Settings
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Promise, ExecutionContext, Future}
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 package object concurrent {
 
@@ -19,7 +19,7 @@ package object concurrent {
       * maximum wait time, which may be negative (no waiting is done),
       * [[scala.concurrent.duration.Duration.Inf Duration.Inf]] for unbounded waiting, or a finite positive duration
       */
-    def defaultTimeout = Settings.DefaultTimeout
+    def defaultTimeout: FiniteDuration = Settings.DefaultTimeout
 
     implicit class AwaitCompletion[T](future: Future[T])(implicit atMost: Duration = defaultTimeout){
       /**

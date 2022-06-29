@@ -8,13 +8,16 @@ import app.softnetwork.api.server.{ApiRoutes, DefaultComplete}
 import app.softnetwork.api.server.launch.Application
 import app.softnetwork.payment.handlers.MangoPayPaymentHandler
 import app.softnetwork.payment.persistence.data.paymentKvDao
-import app.softnetwork.payment.persistence.query.GenericPaymentCommandProcessorStream
+import app.softnetwork.payment.persistence.query.{GenericPaymentCommandProcessorStream, Scheduler2PaymentProcessorStream}
 import app.softnetwork.payment.persistence.typed.MangoPayPaymentBehavior
 import app.softnetwork.payment.service.MangoPayPaymentService
 import app.softnetwork.persistence.jdbc.launch.PostgresGuardian
 import app.softnetwork.persistence.jdbc.query.PostgresJournalProvider
 import app.softnetwork.persistence.query.EventProcessorStream
 import app.softnetwork.persistence.typed.{EntityBehavior, Singleton}
+import app.softnetwork.scheduler.handlers.SchedulerHandler
+import app.softnetwork.scheduler.persistence.query.Entity2SchedulerProcessorStream
+import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
 import app.softnetwork.session.persistence.typed.SessionRefreshTokenBehavior
 import app.softnetwork.session.service.SessionService
 import com.softwaremill.session.CsrfDirectives.{randomTokenCsrfProtection, setNewCsrfToken}
@@ -33,6 +36,7 @@ object MangoPayApplication extends Application with ApiRoutes with PostgresGuard
     */
   override def behaviors: ActorSystem[_] =>  Seq[EntityBehavior[_, _, _, _]] = _ => Seq(
     MangoPayPaymentBehavior,
+    SchedulerBehavior,
     SessionRefreshTokenBehavior
   )
 
@@ -48,7 +52,13 @@ object MangoPayApplication extends Application with ApiRoutes with PostgresGuard
     */
   override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys => Seq(
     new GenericPaymentCommandProcessorStream with MangoPayPaymentHandler with PostgresJournalProvider {
-      override val tag = "external-to-payment-account"
+      override implicit def system: ActorSystem[_] = sys
+    },
+    new Scheduler2PaymentProcessorStream with MangoPayPaymentHandler with PostgresJournalProvider {
+      override val tag: String = s"${MangoPayPaymentBehavior.persistenceId}-scheduler"
+      override implicit def system: ActorSystem[_] = sys
+    },
+    new Entity2SchedulerProcessorStream() with SchedulerHandler with PostgresJournalProvider {
       override implicit def system: ActorSystem[_] = sys
     }
   )

@@ -16,8 +16,14 @@ import app.softnetwork.payment.spi._
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.message.{BroadcastEvent, CrudEvent}
 import app.softnetwork.persistence.typed._
+import app.softnetwork.scheduler.config.Settings
 import app.softnetwork.serialization.asJson
+import app.softnetwork.time.{now => _, _}
+
 import org.slf4j.Logger
+import org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand
+import org.softnetwork.akka.message.scheduler.{AddSchedule, RemoveSchedule}
+import org.softnetwork.akka.model.Schedule
 
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
@@ -31,6 +37,8 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
   override protected val manifestWrapper: ManifestW = ManifestW()
 
   lazy val keyValueDao: GenericKeyValueDao = KeyValueDao //FIXME app.softnetwork.payment.persistence.data.paymentKvDao
+
+  val nextRecurringPayment: String = "NextRecurringPayment"
 
   def paymentDao: GenericPaymentDao
 
@@ -51,6 +59,10 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
     event match {
       case _: BroadcastEvent => Set(s"${persistenceId.toLowerCase}-to-external")
       case _: CrudEvent => Set(s"${persistenceId.toLowerCase}-to-elastic")
+      case _: SchedulerEventWithCommand => Set(
+        s"$persistenceId-to-scheduler",
+        Settings.SchedulerConfig.eventStreams.entityToSchedulerTag
+      )
       case _ => Set(persistenceId)
     }
 
@@ -172,7 +184,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                             .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.COMPTE_OK)
                             .copy(user = PaymentAccount.User.NaturalUser(
                               user.withUserId(userId).withWalletId(walletId))
-                            )
+                            ).withLastUpdated(lastUpdated)
                         )
                         .withLastUpdated(lastUpdated)
                     preRegisterCard(Some(userId), currency, user.externalUuid) match {
@@ -234,7 +246,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                         .withDocument(
                           paymentAccount.copy(
                             user = PaymentAccount.User.NaturalUser(user.withUserId(userId))
-                          )
+                          ).withLastUpdated(lastUpdated)
                         )
                         .withLastUpdated(lastUpdated)
                     ).thenRun(_ => CardNotPreRegistered ~> replyTo)
@@ -242,7 +254,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
               case _ =>
                 Effect.persist(
                   PaymentAccountUpsertedEvent.defaultInstance
-                    .withDocument(paymentAccount.withNaturalUser(user))
+                    .withDocument(paymentAccount.withNaturalUser(user).withLastUpdated(lastUpdated))
                     .withLastUpdated(lastUpdated)
                 ).thenRun(_ => CardNotPreRegistered ~> replyTo)
             }
@@ -419,7 +431,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            loadPayIn(orderUuid, transactionId) match {
+            loadPayIn(orderUuid, transactionId, None) match {
               case Some(transaction) =>
                 handlePayIn(entityId, orderUuid, replyTo, paymentAccount, registerCard, transaction)
               case _ => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
@@ -432,7 +444,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         state match {
           case Some(paymentAccount) =>
             (paymentAccount.transactions.find(_.id == payInTransactionId) match {
-              case None => loadPayIn(orderUuid, payInTransactionId)
+              case None => loadPayIn(orderUuid, payInTransactionId, None)
               case some => some
             }) match {
               case None => Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
@@ -463,7 +475,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       val updatedPaymentAccount = paymentAccount.withTransactions(
                         paymentAccount.transactions.filterNot(_.id == transaction.id)
                           :+ transaction
-                      )
+                      ).withLastUpdated(lastUpdated)
                       val upsertedEvent =
                         PaymentAccountUpsertedEvent.defaultInstance
                           .withDocument(updatedPaymentAccount)
@@ -556,7 +568,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                             val updatedPaymentAccount = paymentAccount.withTransactions(
                               paymentAccount.transactions.filterNot(_.id == transaction.id)
                                 :+ transaction
-                            )
+                            ).withLastUpdated(lastUpdated)
                             if(transaction.status.isTransactionFailedForTechnicalReason){
                               log.error("Order-{} could not be paid out: {} -> {}", orderUuid, transaction.id, asJson(transaction))
                               Effect.persist(
@@ -668,7 +680,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 val updatedPaymentAccount = paymentAccount.withTransactions(
                   paymentAccount.transactions.filterNot(_.id == transaction.id)
                     :+ transaction
-                )
+                ).withLastUpdated(lastUpdated)
                 if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated){
                   val payOutTransactionId =
                     if(payOutRequired){
@@ -747,46 +759,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       Effect.none.thenRun(_ => MandateNotCreated ~> replyTo)
                     }
                     else{
-                      mandate(creditedAccount, creditedUserId, bankAccountId) match {
-                        case Some(mandateResult) =>
-                          if(mandateResult.status.isMandateFailed){
-                            Effect.none.thenRun(_ =>
-                              MandateCreationFailed(
-                                mandateResult.resultCode.getOrElse(""),
-                                mandateResult.resultMessage.getOrElse("")
-                              ) ~> replyTo
-                            )
-                          }
-                          else {
-                            keyValueDao.addKeyValue(mandateResult.id, entityId)
-                            val lastUpdated = now()
-                            val updatePaymentAccount = paymentAccount.copy(
-                              bankAccount = paymentAccount.bankAccount.map(
-                                _.withMandateId(mandateResult.id).withMandateStatus(mandateResult.status)
-                              )
-                            )
-                            Effect.persist(
-                              broadcastEvent(
-                                MandateUpdatedEvent.defaultInstance
-                                  .withExternalUuid(creditedAccount)
-                                  .withLastUpdated(lastUpdated)
-                                  .withMandateId(mandateResult.id)
-                                  .withMandateStatus(mandateResult.status)
-                                  .withBankAccountId(bankAccountId)
-                              ) :+
-                                PaymentAccountUpsertedEvent.defaultInstance
-                                  .withLastUpdated(lastUpdated)
-                                  .withDocument(updatePaymentAccount)
-                            ).thenRun(_ =>
-                              (mandateResult.status match {
-                                case BankAccount.MandateStatus.MANDATE_CREATED =>
-                                  MandateConfirmationRequired(mandateResult.redirectUrl)
-                                case _ => MandateCreated
-                              }) ~> replyTo
-                            )
-                          }
-                        case _ => Effect.none.thenRun(_ => MandateNotCreated ~> replyTo)
-                      }
+                      addMandate(entityId, replyTo, creditedAccount, paymentAccount, creditedUserId, bankAccountId)
                     }
                   case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
                 }
@@ -799,43 +772,49 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            paymentAccount.bankAccount match {
-              case Some(bankAccount) =>
-                bankAccount.mandateId match {
-                  case Some(mandateId) =>
-                    cancelMandate(mandateId) match {
-                      case Some(_) =>
-                        keyValueDao.removeKeyValue(mandateId)
-                        val lastUpdated = now()
-                        val updatePaymentAccount = paymentAccount.copy(
-                          bankAccount = paymentAccount.bankAccount.map(
-                            _.copy(
-                              mandateId = None,
-                              mandateStatus = None
-                            )
-                          )
-                        )
-                        Effect.persist(
-                          broadcastEvent(
-                            MandateUpdatedEvent.defaultInstance
-                              .withExternalUuid(creditedAccount)
-                              .withLastUpdated(lastUpdated)
-                              .withBankAccountId(bankAccount.getId)
-                              .copy(
+            if(paymentAccount.mandateExists &&
+              paymentAccount.recurryingPayments.exists(r => r.`type`.isDirectDebit && r.nextPaymentDate.isDefined)){
+              Effect.none.thenRun(_ => MandateNotCanceled ~> replyTo)
+            }
+            else{
+              paymentAccount.bankAccount match {
+                case Some(bankAccount) =>
+                  bankAccount.mandateId match {
+                    case Some(mandateId) =>
+                      cancelMandate(mandateId) match {
+                        case Some(_) =>
+                          keyValueDao.removeKeyValue(mandateId)
+                          val lastUpdated = now()
+                          val updatePaymentAccount = paymentAccount.copy(
+                            bankAccount = paymentAccount.bankAccount.map(
+                              _.copy(
                                 mandateId = None,
                                 mandateStatus = None
                               )
-                          ) :+
-                            PaymentAccountUpsertedEvent.defaultInstance
-                              .withLastUpdated(lastUpdated)
-                              .withDocument(updatePaymentAccount)
-                        ).thenRun(_ => MandateCanceled ~> replyTo)
+                            )
+                          ).withLastUpdated(lastUpdated)
+                          Effect.persist(
+                            broadcastEvent(
+                              MandateUpdatedEvent.defaultInstance
+                                .withExternalUuid(creditedAccount)
+                                .withLastUpdated(lastUpdated)
+                                .withBankAccountId(bankAccount.getId)
+                                .copy(
+                                  mandateId = None,
+                                  mandateStatus = None
+                                )
+                            ) :+
+                              PaymentAccountUpsertedEvent.defaultInstance
+                                .withLastUpdated(lastUpdated)
+                                .withDocument(updatePaymentAccount)
+                          ).thenRun(_ => MandateCanceled ~> replyTo)
 
-                      case _ => Effect.none.thenRun(_ => MandateNotCanceled ~> replyTo)
-                    }
-                  case _ => Effect.none.thenRun(_ => MandateNotFound ~> replyTo)
-                }
-              case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
+                        case _ => Effect.none.thenRun(_ => MandateNotCanceled ~> replyTo)
+                      }
+                    case _ => Effect.none.thenRun(_ => MandateNotFound ~> replyTo)
+                  }
+                case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
+              }
             }
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
@@ -862,7 +841,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           bankAccount = paymentAccount.bankAccount.map(
                             _.withMandateId(mandateId).withMandateStatus(internalStatus)
                           )
-                        )
+                        ).withLastUpdated(lastUpdated)
                         Effect.persist(
                           broadcastEvent(
                             MandateUpdatedEvent.defaultInstance
@@ -915,7 +894,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                               val updatedPaymentAccount = paymentAccount.withTransactions(
                                 paymentAccount.transactions.filterNot(_.id == transaction.id)
                                   :+ transaction
-                              )
+                              ).withLastUpdated(lastUpdated)
                               if(transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated){
                                 Effect.persist(
                                   broadcastEvent(
@@ -956,6 +935,160 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                   case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
                 }
               case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+            }
+          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+        }
+
+      case cmd: PayInFirstRecurring =>
+        state match {
+          case Some(paymentAccount) =>
+            paymentAccount.recurryingPayments.find(_.getId == cmd.recurringPayInRegistrationId) match {
+              case Some(recurringPayment) =>
+                createRecurringCardPayment(
+                  RecurringPaymentTransaction.defaultInstance
+                    .withExternalUuid(paymentAccount.externalUuid)
+                    .withRecurringPayInRegistrationId(cmd.recurringPayInRegistrationId)
+                    .withDebitedAmount(recurringPayment.firstDebitedAmount)
+                    .withFeesAmount(recurringPayment.firstFeesAmount)
+                    .withCurrency(recurringPayment.currency)
+                    .withStatementDescriptor(cmd.statementDescriptor.getOrElse(""))
+                    .withExtension(FirstRecurringPaymentTransaction.first)(
+                      Some(
+                        FirstRecurringPaymentTransaction.defaultInstance.copy(
+                          ipAddress = cmd.ipAddress,
+                          browserInfo = cmd.browserInfo
+                        )
+                      )
+                    )
+                ) match {
+                  case Some(transaction) =>
+                    handleRecurringPayment(entityId, replyTo, paymentAccount, recurringPayment, transaction)
+                  case _ => Effect.none.thenRun(_ => FirstRecurringCardPaymentFailed("no transaction") ~> replyTo)
+                }
+              case _ => Effect.none.thenRun(_ => RecurringPaymentNotFound ~> replyTo)
+            }
+          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+        }
+
+      case cmd: PayInFirstRecurringFor3DS =>
+        state match {
+          case Some(paymentAccount) =>
+            import cmd._
+            paymentAccount.recurryingPayments.find(_.getId == recurringPayInRegistrationId) match {
+              case Some(recurringPayment) =>
+                loadPayIn("", transactionId, Some(recurringPayInRegistrationId)) match {
+                  case Some(transaction) =>
+                    handleRecurringPayment(entityId, replyTo, paymentAccount, recurringPayment, transaction)
+                  case _ => Effect.none.thenRun(_ => FirstRecurringCardPaymentFailed("no transaction") ~> replyTo)
+                }
+              case _ => Effect.none.thenRun(_ => RecurringPaymentNotFound ~> replyTo)
+            }
+          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+        }
+
+      case cmd: TriggerSchedule4Payment =>
+        import cmd.schedule._
+        if(key.startsWith(nextRecurringPayment)){
+          state match {
+            case Some(paymentAccount) =>
+              val recurringPaymentRegistrationId = key.split("#").last
+              Effect.none.thenRun(_ => {
+                context.self ! PayNextRecurring(recurringPaymentRegistrationId, paymentAccount.externalUuid)
+                Schedule4PaymentTriggered ~> replyTo
+              })
+            case _ =>
+              Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+          }
+        }
+        else{
+          Effect.none.thenRun(_ => Schedule4PaymentTriggered ~> replyTo)
+        }
+
+      case cmd: PayNextRecurring =>
+        state match {
+          case Some(paymentAccount) =>
+            import cmd._
+            paymentAccount.recurryingPayments.find(_.getId == recurringPaymentRegistrationId) match {
+              case Some(recurringPayment) =>
+                val debitedAmount = nextDebitedAmount.getOrElse(
+                  recurringPayment.nextDebitedAmount.getOrElse(
+                    recurringPayment.firstDebitedAmount
+                  )
+                )
+                val feesAmount = nextFeesAmount.getOrElse(
+                  recurringPayment.nextFeesAmount.getOrElse(
+                    recurringPayment.firstFeesAmount
+                  )
+                )
+                val currency = recurringPayment.currency
+                recurringPayment.`type` match {
+                  case RecurringPayment.RecurringPaymentType.CARD =>
+                    recurringPayment.cardStatus match {
+                      case Some(status) if status.isInProgress => // PayIn
+                        createRecurringCardPayment(
+                          RecurringPaymentTransaction.defaultInstance
+                            .withExternalUuid(paymentAccount.externalUuid)
+                            .withDebitedAmount(debitedAmount)
+                            .withFeesAmount(feesAmount)
+                            .withCurrency(currency)
+                            .withStatementDescriptor(statementDescriptor.getOrElse("")) // TODO
+                        ) match {
+                          case Some(transaction) =>
+                            handleRecurringPayment(entityId, replyTo, paymentAccount, recurringPayment, transaction)
+                          case _ =>
+                            val reason = "no transaction"
+                            handleNextRecurringPaymentFailure(entityId, replyTo, paymentAccount, recurringPayment, debitedAmount, feesAmount, currency, reason)
+                        }
+                      case _ =>
+                        val reason = "Illegal recurring payment card status"
+                        handleNextRecurringPaymentFailure(entityId, replyTo, paymentAccount, recurringPayment, debitedAmount, feesAmount, currency, reason)
+                    }
+                  case _ => // DirectDebit
+                    paymentAccount.userId match {
+                      case Some(creditedUserId) =>
+                        paymentAccount.walletId match {
+                          case Some(creditedWalletId) =>
+                            paymentAccount.bankAccount.flatMap(_.mandateId) match {
+                              case Some(mandateId) =>
+                                if (paymentAccount.mandateActivated) {
+                                  directDebit(
+                                    Some(
+                                      DirectDebitTransaction.defaultInstance
+                                        .withAuthorId(creditedUserId)
+                                        .withCreditedUserId(creditedUserId)
+                                        .withCreditedWalletId(creditedWalletId)
+                                        .withDebitedAmount(debitedAmount)
+                                        .withFeesAmount(feesAmount)
+                                        .withCurrency(currency)
+                                        .withMandateId(mandateId)
+                                        .withStatementDescriptor(statementDescriptor.getOrElse(""))
+                                    )
+                                  ) match {
+                                    case Some(transaction) =>
+                                      handleRecurringPayment(entityId, replyTo, paymentAccount, recurringPayment, transaction)
+                                    case _ =>
+                                      val reason = "no transaction"
+                                      handleNextRecurringPaymentFailure(entityId, replyTo, paymentAccount, recurringPayment, debitedAmount, feesAmount, currency, reason)
+                                  }
+                                }
+                                else {
+                                  val reason = IllegalMandateStatus.message
+                                  handleNextRecurringPaymentFailure(entityId, replyTo, paymentAccount, recurringPayment, debitedAmount, feesAmount, currency, reason)
+                                }
+                              case _ =>
+                                val reason = MandateNotFound.message
+                                handleNextRecurringPaymentFailure(entityId, replyTo, paymentAccount, recurringPayment, debitedAmount, feesAmount, currency, reason)
+                            }
+                          case _ =>
+                            val reason = PaymentAccountNotFound.message
+                            handleNextRecurringPaymentFailure(entityId, replyTo, paymentAccount, recurringPayment, debitedAmount, feesAmount, currency, reason)
+                        }
+                      case _ =>
+                        val reason = PaymentAccountNotFound.message
+                        handleNextRecurringPaymentFailure(entityId, replyTo, paymentAccount, recurringPayment, debitedAmount, feesAmount, currency, reason)
+                    }
+                }
+              case _ => Effect.none.thenRun(_ => RecurringPaymentNotFound ~> replyTo)
             }
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
@@ -1036,6 +1169,8 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                     }
                 }
 
+              val lastUpdated = now()
+
               var updatedPaymentAccount =
                 paymentAccount
                   .withUser(updatedUser)
@@ -1045,6 +1180,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       mandateStatus = paymentAccount.bankAccount.flatMap(_.mandateStatus)
                     )
                   )
+                  .withLastUpdated(lastUpdated)
 
               updatedPaymentAccount.user.legalUser match {
                 case Some(legalUser) if legalUser.wrongSiret =>
@@ -1145,8 +1281,6 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                               updatedPaymentAccount = updatedPaymentAccount.resetBankAccountId(Some(bankAccountId))
 
                               var events: List[PaymentEvent] = List.empty
-
-                              val lastUpdated = now()
 
                               // BankAccountUpdatedEvent
                               events = events ++
@@ -1317,7 +1451,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           .withExternalUuid(paymentAccount.externalUuid)
                           .withLastUpdated(lastUpdated).withDocument(updatedDocument)
                       ) :+ PaymentAccountUpsertedEvent.defaultInstance
-                        .withDocument(paymentAccount.withDocuments(newDocuments))
+                        .withDocument(paymentAccount.withDocuments(newDocuments).withLastUpdated(lastUpdated))
                         .withLastUpdated(lastUpdated)
                     ).thenRun(_ => KycDocumentAdded(documentId) ~> replyTo)
 
@@ -1425,7 +1559,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                               .withUboDeclaration(
                                 declaration.withUbos(declaration.ubos.filterNot(_.id == ubo.id) :+ ubo)
                               )
-                          )
+                          ).withLastUpdated(lastUpdated)
                         )
                         .withLastUpdated(lastUpdated)
                     ).thenRun(_ => UboCreatedOrUpdated(ubo) ~> replyTo)
@@ -1460,6 +1594,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                         PaymentAccountUpsertedEvent.defaultInstance
                           .withDocument(
                             paymentAccount.withLegalUser(paymentAccount.getLegalUser.withUboDeclaration(updatedUbo))
+                              .withLastUpdated(lastUpdated)
                           )
                           .withLastUpdated(lastUpdated)
                     ).thenRun(_ => UboDeclarationAskedForValidation ~> replyTo)
@@ -1500,6 +1635,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                     val lastUpdated = now()
                     var updatedPaymentAccount = paymentAccount
                       .withLegalUser(paymentAccount.getLegalUser.withUboDeclaration(declaration.withStatus(internalStatus)))
+                      .withLastUpdated(lastUpdated)
                     events = events ++
                       broadcastEvent(
                         UboDeclarationUpdatedEvent.defaultInstance
@@ -1565,6 +1701,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
 
             var updatedPaymentAccount = paymentAccount
               .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.COMPTE_OK)
+              .withLastUpdated(lastUpdated)
             updatedPaymentAccount.getLegalUser.uboDeclaration match {
               case Some(uboDeclaration) =>
                 val declaration =
@@ -1621,64 +1758,70 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
       case _: DeleteBankAccount =>
         state match {
           case Some(paymentAccount) =>
-            paymentAccount.bankAccount match {
-              case Some(bankAccount) =>
-                bankAccount.id match {
-                  case Some(bankAccountId) =>
-                    keyValueDao.removeKeyValue(bankAccountId)
-                  case _ =>
-                }
-                val lastUpdated = now()
-                var updatedPaymentAccount = paymentAccount.copy(bankAccount = None)
-                var events: List[PaymentEvent] = {
-                  broadcastEvent(
-                    BankAccountDeletedEvent.defaultInstance
-                      .withExternalUuid(paymentAccount.externalUuid)
-                      .withLastUpdated(lastUpdated)
-                  )
-                }
-                updatedPaymentAccount.getLegalUser.uboDeclaration match {
-                  case Some(declaration) =>
-                    keyValueDao.removeKeyValue(declaration.id)
-                    updatedPaymentAccount = updatedPaymentAccount
-                      .withLegalUser(updatedPaymentAccount.getLegalUser.copy(uboDeclaration = None))
-                    events = events ++
-                      broadcastEvent(
-                        UboDeclarationUpdatedEvent.defaultInstance
-                          .withExternalUuid(paymentAccount.externalUuid)
-                          .withLastUpdated(lastUpdated)
-                          .clearUboDeclaration
-                      )
-                  case _ =>
-                }
-
-                updatedPaymentAccount = updatedPaymentAccount.withDocuments(
-                  updatedPaymentAccount.documents.map(_.copy(
-                    id = None,
-                    lastUpdated = Some(lastUpdated),
-                    status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED)
-                  )
-                ).withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.DOCUMENTS_KO)
-                events = events ++
-                  broadcastEvent(
-                    DocumentsUpdatedEvent.defaultInstance
-                      .withExternalUuid(paymentAccount.externalUuid)
-                      .withLastUpdated(lastUpdated)
-                      .withDocuments(updatedPaymentAccount.documents)
-                  ) ++
-                  broadcastEvent(
-                    PaymentAccountStatusUpdatedEvent.defaultInstance
-                      .withExternalUuid(paymentAccount.externalUuid)
-                      .withLastUpdated(lastUpdated)
-                      .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.DOCUMENTS_KO)
-                  )
-
-                Effect.persist(events :+
-                  PaymentAccountUpsertedEvent.defaultInstance
-                    .withDocument(updatedPaymentAccount)
+            if(paymentAccount.mandateActivated /*&& paymentAccount.recurryingPayments.exists(_.`type`.isDirectDebit)*/){
+              Effect.none.thenRun(_ => BankAccountNotDeleted ~> replyTo)
+            }
+            else{
+              paymentAccount.bankAccount match {
+                case Some(bankAccount) =>
+                  bankAccount.id match {
+                    case Some(bankAccountId) =>
+                      keyValueDao.removeKeyValue(bankAccountId)
+                    case _ =>
+                  }
+                  val lastUpdated = now()
+                  var updatedPaymentAccount = paymentAccount.copy(bankAccount = None)
                     .withLastUpdated(lastUpdated)
-                ).thenRun(_ => BankAccountDeleted ~> replyTo)
-              case _ => Effect.none.thenRun(_ => BankAccountNotDeleted ~> replyTo)
+                  var events: List[PaymentEvent] = {
+                    broadcastEvent(
+                      BankAccountDeletedEvent.defaultInstance
+                        .withExternalUuid(paymentAccount.externalUuid)
+                        .withLastUpdated(lastUpdated)
+                    )
+                  }
+                  updatedPaymentAccount.getLegalUser.uboDeclaration match {
+                    case Some(declaration) =>
+                      keyValueDao.removeKeyValue(declaration.id)
+                      updatedPaymentAccount = updatedPaymentAccount
+                        .withLegalUser(updatedPaymentAccount.getLegalUser.copy(uboDeclaration = None))
+                      events = events ++
+                        broadcastEvent(
+                          UboDeclarationUpdatedEvent.defaultInstance
+                            .withExternalUuid(paymentAccount.externalUuid)
+                            .withLastUpdated(lastUpdated)
+                            .clearUboDeclaration
+                        )
+                    case _ =>
+                  }
+
+                  updatedPaymentAccount = updatedPaymentAccount.withDocuments(
+                    updatedPaymentAccount.documents.map(_.copy(
+                      id = None,
+                      lastUpdated = Some(lastUpdated),
+                      status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED)
+                    )
+                  ).withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.DOCUMENTS_KO)
+                  events = events ++
+                    broadcastEvent(
+                      DocumentsUpdatedEvent.defaultInstance
+                        .withExternalUuid(paymentAccount.externalUuid)
+                        .withLastUpdated(lastUpdated)
+                        .withDocuments(updatedPaymentAccount.documents)
+                    ) ++
+                    broadcastEvent(
+                      PaymentAccountStatusUpdatedEvent.defaultInstance
+                        .withExternalUuid(paymentAccount.externalUuid)
+                        .withLastUpdated(lastUpdated)
+                        .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.DOCUMENTS_KO)
+                    )
+
+                  Effect.persist(events :+
+                    PaymentAccountUpsertedEvent.defaultInstance
+                      .withDocument(updatedPaymentAccount)
+                      .withLastUpdated(lastUpdated)
+                  ).thenRun(_ => BankAccountDeleted ~> replyTo)
+                case _ => Effect.none.thenRun(_ => BankAccountNotDeleted ~> replyTo)
+              }
             }
           case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
         }
@@ -1694,6 +1837,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case Some(paymentAccount) =>
             paymentAccount.cards.find(_.id == cmd.cardId) match {
               case Some(card) if card.getActive =>
+                // TODO check for recurring payments associated with this card
                 disableCard(cmd.cardId) match {
                   case Some(_) =>
                     val lastUpdated = now()
@@ -1711,7 +1855,277 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case _ => Effect.none.thenRun(_ => CardNotDisabled ~> replyTo)
         }
 
+      case cmd: RegisterRecurringPayment =>
+        state match {
+          case Some(paymentAccount) =>
+            cmd.`type` match {
+              case RecurringPayment.RecurringPaymentType.CARD => // PayIns
+                paymentAccount.userId match {
+                  case Some(userId) =>
+                    paymentAccount.walletId match {
+                      case Some(walletId) =>
+                        paymentAccount.cards.filterNot(_.expired).find(_.getActive).map(_.id) match {
+                          case Some(cardId) =>
+                            val createdDate = now()
+                            var recurringPayment =
+                              RecurringPayment.defaultInstance
+                                .withCreatedDate(createdDate)
+                                .withLastUpdated(createdDate)
+                                .withFirstDebitedAmount(cmd.firstDebitedAmount)
+                                .withFirstFeesAmount(cmd.firstFeesAmount)
+                                .withCurrency(cmd.currency)
+                                .withType(cmd.`type`)
+                                .copy(
+                                  startDate = cmd.startDate,
+                                  endDate = cmd.endDate,
+                                  frequency = cmd.frequency,
+                                  fixedNextAmount = cmd.fixedNextAmount,
+                                  nextDebitedAmount = cmd.nextDebitedAmount,
+                                  nextFeesAmount = cmd.nextFeesAmount
+                                )
+                            registerRecurringCardPayment(userId, walletId, cardId, recurringPayment) match {
+                              case Some(result) =>
+                                keyValueDao.addKeyValue(result.id, entityId)
+                                recurringPayment =
+                                  recurringPayment.withId(result.id).withCardStatus(result.status).copy(
+                                    nextRecurringPaymentDate = recurringPayment.nextPaymentDate.map(_.toDate)
+                                  )
+                                Effect.persist(
+                                  broadcastEvent(
+                                    RecurringPaymentRegisteredEvent.defaultInstance
+                                      .withExternalUuid(paymentAccount.externalUuid)
+                                      .withRecurringPayment(recurringPayment)
+                                  ) :+
+                                    PaymentAccountUpsertedEvent.defaultInstance.withDocument(
+                                      paymentAccount
+                                        .withRecurryingPayments(paymentAccount.recurryingPayments :+ recurringPayment)
+                                        .withLastUpdated(createdDate)
+                                    ).withLastUpdated(createdDate)
+                                ).thenRun(_ => RecurringPaymentRegistered(result.id) ~> replyTo)
+                              case _ => Effect.none.thenRun(_ => RecurringPaymentNotRegistered ~> replyTo)
+                            }
+                          case _ => Effect.none.thenRun(_ => CardNotFound ~> replyTo)
+                        }
+                      case _ => Effect.none.thenRun(_ => WalletNotFound ~> replyTo)
+                    }
+                  case _ => Effect.none.thenRun(_ => UserNotFound ~> replyTo)
+                }
+              case _ => // DirectDebits
+                if(!paymentAccount.mandateExists){
+                  Effect.none.thenRun(_ => MandateRequired ~> replyTo)
+//                  paymentAccount.userId match {
+//                    case Some(userId) =>
+//                      paymentAccount.bankAccount.flatMap(_.id) match {
+//                        case Some(bankAccountId) =>
+//                          addMandate(entityId, replyTo, cmd.debitedAccount, paymentAccount, userId, bankAccountId)
+//                        case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
+//                      }
+//                    case _ => Effect.none.thenRun(_ => UserNotFound ~> replyTo)
+//                  }
+                }
+                else{
+                  val today = now()
+                  var recurringPayment =
+                    RecurringPayment.defaultInstance
+                      .withId(generateUUID())
+                      .withCreatedDate(today)
+                      .withLastUpdated(today)
+                      .withFirstDebitedAmount(cmd.firstDebitedAmount)
+                      .withFirstFeesAmount(cmd.firstFeesAmount)
+                      .withCurrency(cmd.currency)
+                      .withType(cmd.`type`)
+                      .copy(
+                        startDate = cmd.startDate,
+                        endDate = cmd.endDate,
+                        frequency = cmd.frequency,
+                        fixedNextAmount = cmd.fixedNextAmount,
+                        nextDebitedAmount = cmd.nextDebitedAmount,
+                        nextFeesAmount = cmd.nextFeesAmount
+                      )
+                      import app.softnetwork.time._
+                      val nextDirectDebit: List[ScheduleForPaymentAdded] =
+                        recurringPayment.nextPaymentDate.map(_.toDate) match {
+                          case Some(value) =>
+                            recurringPayment = recurringPayment.withNextRecurringPaymentDate(value)
+                            List(
+                              ScheduleForPaymentAdded(
+                                AddSchedule(
+                                  Schedule(
+                                    persistenceId,
+                                    entityId,
+                                    s"$nextRecurringPayment#${recurringPayment.getId}",
+                                    1,
+                                    Some(false),
+                                    Some(value)
+                                  )
+                                )
+                              )
+                            )
+                          case _ => List.empty
+                        }
+                  keyValueDao.addKeyValue(recurringPayment.getId, entityId)
+                  Effect.persist(
+                    broadcastEvent(
+                      RecurringPaymentRegisteredEvent.defaultInstance
+                        .withExternalUuid(paymentAccount.externalUuid)
+                        .withRecurringPayment(recurringPayment)
+                    ) ++ nextDirectDebit :+
+                      PaymentAccountUpsertedEvent.defaultInstance.withDocument(
+                        paymentAccount
+                          .withRecurryingPayments(paymentAccount.recurryingPayments :+ recurringPayment)
+                          .withLastUpdated(today)
+                      ).withLastUpdated(today)
+                  ).thenRun(_ => RecurringPaymentRegistered(recurringPayment.getId) ~> replyTo)
+                }
+            }
+          case _ =>  Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+        }
+
+      case cmd: UpdateRecurringCardPaymentRegistration =>
+        state match {
+          case Some(paymentAccount) =>
+            paymentAccount.recurryingPayments.find(_.getId == cmd.recurringPayInRegistrationId) match {
+              case Some(recurringPayment) if recurringPayment.`type`.isCard =>
+                val cardId: Option[String] =
+                  cmd.cardId match {
+                    case Some(cardId) =>
+                      paymentAccount.cards.filterNot(_.expired).find(card => card.id == cardId && card.getActive) match {
+                        case Some(_) => Some(cardId)
+                        case _ => None
+                      }
+                    case _ => None
+                  }
+                updateRecurringCardPaymentRegistration(cmd.recurringPayInRegistrationId, cardId, cmd.status) match {
+                  case Some(result) =>
+                    val lastUpdated = now()
+                    val updatedPaymentAccount =
+                      paymentAccount.withRecurryingPayments(
+                        paymentAccount.recurryingPayments.filterNot(_.getId == cmd.recurringPayInRegistrationId) :+
+                          recurringPayment.withCardStatus(result.status)
+                      ).withLastUpdated(lastUpdated)
+                    Effect.persist(
+                      broadcastEvent(
+                        RecurringPaymentRegisteredEvent.defaultInstance
+                          .withExternalUuid(paymentAccount.externalUuid)
+                          .withRecurringPayment(recurringPayment)
+                      ) ++ {
+                        if(result.status.isEnded){ // cancel scheduled payIn for recurring card payment
+                          List(
+                            ScheduleForPaymentRemoved(
+                              RemoveSchedule(persistenceId, entityId, s"$nextRecurringPayment#${cmd.recurringPayInRegistrationId}")
+                            )
+                          )
+                        }
+                        else{
+                          List.empty
+                        }
+                      } :+
+                        PaymentAccountUpsertedEvent.defaultInstance
+                          .withDocument(updatedPaymentAccount)
+                          .withLastUpdated(lastUpdated)
+                    ).thenRun(_ => RecurringCardPaymentRegistrationUpdated(result) ~> replyTo)
+                  case _ => Effect.none.thenRun(_ => RecurringCardPaymentRegistrationNotUpdated ~> replyTo)
+                }
+              case _ => Effect.none.thenRun(_ => RecurringCardPaymentRegistrationNotUpdated ~> replyTo)
+            }
+          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+        }
+
+      case cmd: LoadRecurringPayment =>
+        state match {
+          case Some(paymentAccount) =>
+            paymentAccount.recurryingPayments.find(_.getId == cmd.recurringPaymentRegistrationId) match {
+              case Some(recurringPayment) => Effect.none.thenRun(_ => RecurringPaymentLoaded(recurringPayment) ~> replyTo)
+              case _ => Effect.none.thenRun(_ => RecurringPaymentNotFound ~> replyTo)
+            }
+          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+        }
+
       case _ => super.handleCommand(entityId, state, command, replyTo, timers)
+    }
+  }
+
+  private def handleNextRecurringPaymentFailure(entityId: String, replyTo: Option[ActorRef[PaymentResult]], paymentAccount: PaymentAccount, recurringPayment: RecurringPayment, debitedAmount: Int, feesAmount: Int, currency: String, reason: String)(
+    implicit context: ActorContext[_]): Effect[PaymentEvent, Option[PaymentAccount]] = {
+    Effect.persist(
+      broadcastEvent(
+        NextRecurringPaymentFailedEvent.defaultInstance
+          .withDebitedAccount(paymentAccount.externalUuid)
+          .withResultMessage(reason)
+          .withDebitedAmount(debitedAmount)
+          .withFeesAmount(feesAmount)
+          .withCurrency(currency)
+          .withRecurringPaymentRegistrationId(recurringPayment.getId)
+          .withType(recurringPayment.`type`)
+          .withFrequency(recurringPayment.getFrequency)
+          .withNumberOfRecurringPayments(recurringPayment.getNumberOfRecurringPayments)
+          .copy(lastRecurringPaymentDate = recurringPayment.lastRecurringPaymentDate)
+      ) :+ {
+        recurringPayment.nextRecurringPaymentDate match {
+          case Some(value) =>
+            ScheduleForPaymentAdded(
+              AddSchedule(
+                Schedule(
+                  persistenceId,
+                  entityId,
+                  s"$nextRecurringPayment#${recurringPayment.getId}",
+                  1,
+                  Some(false),
+                  Some(value)
+                )
+              )
+            )
+          case _ =>
+            ScheduleForPaymentRemoved(
+              RemoveSchedule(persistenceId, entityId, s"$nextRecurringPayment#${recurringPayment.getId}")
+            )
+        }
+      }
+    ).thenRun(_ => NextRecurringPaymentFailed(reason) ~> replyTo)
+  }
+
+  private def addMandate(entityId: String, replyTo: Option[ActorRef[PaymentResult]], creditedAccount: String, paymentAccount: PaymentAccount, creditedUserId: String, bankAccountId: String)(
+    implicit context: ActorContext[_]): Effect[PaymentEvent, Option[PaymentAccount]] = {
+    implicit val system: ActorSystem[_] = context.system
+    mandate(creditedAccount, creditedUserId, bankAccountId) match {
+      case Some(mandateResult) =>
+        if (mandateResult.status.isMandateFailed) {
+          Effect.none.thenRun(_ =>
+            MandateCreationFailed(
+              mandateResult.resultCode.getOrElse(""),
+              mandateResult.resultMessage.getOrElse("")
+            ) ~> replyTo
+          )
+        }
+        else {
+          keyValueDao.addKeyValue(mandateResult.id, entityId)
+          val lastUpdated = now()
+          val updatePaymentAccount = paymentAccount.copy(
+            bankAccount = paymentAccount.bankAccount.map(
+              _.withMandateId(mandateResult.id).withMandateStatus(mandateResult.status)
+            )
+          ).withLastUpdated(lastUpdated)
+          Effect.persist(
+            broadcastEvent(
+              MandateUpdatedEvent.defaultInstance
+                .withExternalUuid(creditedAccount)
+                .withLastUpdated(lastUpdated)
+                .withMandateId(mandateResult.id)
+                .withMandateStatus(mandateResult.status)
+                .withBankAccountId(bankAccountId)
+            ) :+
+              PaymentAccountUpsertedEvent.defaultInstance
+                .withLastUpdated(lastUpdated)
+                .withDocument(updatePaymentAccount)
+          ).thenRun(_ =>
+            (mandateResult.status match {
+              case BankAccount.MandateStatus.MANDATE_CREATED =>
+                MandateConfirmationRequired(mandateResult.redirectUrl)
+              case _ => MandateCreated
+            }) ~> replyTo
+          )
+        }
+      case _ => Effect.none.thenRun(_ => MandateNotCreated ~> replyTo)
     }
   }
 
@@ -1740,7 +2154,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 None
               case _ =>
                 keyValueDao.addKeyValue(uuid, entityId)
-                Some(pa.withUuid(entityId))
+                Some(pa.withUuid(entityId).withCreatedDate(now()))
             }
           case Failure(f) =>
             log.error(f.getMessage, f)
@@ -1754,6 +2168,165 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         else{
           keyValueDao.addKeyValue(uuid, entityId)
           Some(paymentAccount)
+        }
+    }
+  }
+
+  private[this] def handleRecurringPayment(entityId: String,
+                                               replyTo: Option[ActorRef[PaymentResult]],
+                                               paymentAccount: PaymentAccount,
+                                               recurringPayment: RecurringPayment,
+                                               transaction: Transaction)(implicit system: ActorSystem[_], log: Logger
+  ): Effect[PaymentEvent, Option[PaymentAccount]] = {
+    keyValueDao.addKeyValue(transaction.id, entityId) // add transaction id as a key for this payment account
+    val lastUpdated = now()
+    var updatedPaymentAccount =
+      paymentAccount.withTransactions(
+        paymentAccount.transactions
+          .filterNot(_.id == transaction.id) :+ transaction
+      ).withLastUpdated(lastUpdated)
+    transaction.status match {
+      case Transaction.TransactionStatus.TRANSACTION_CREATED if transaction.redirectUrl.isDefined => // 3ds
+        Effect.persist(
+          PaymentAccountUpsertedEvent.defaultInstance
+            .withDocument(updatedPaymentAccount)
+            .withLastUpdated(lastUpdated)
+        ).thenRun(_ => PaymentRedirection(transaction.redirectUrl.get) ~> replyTo)
+      case _ =>
+        if (transaction.status.isTransactionSucceeded || transaction.status.isTransactionCreated) {
+          log.debug("RecurringPayment-{} succeeded: {} -> {}", recurringPayment.getId, transaction.id, asJson(transaction))
+          var updatedRecurringPayment =
+            recurringPayment
+              .withNumberOfRecurringPayments(recurringPayment.getNumberOfRecurringPayments + 1)
+              .withLastRecurringPaymentDate(transaction.lastUpdated)
+              .withLastRecurringPaymentTransactionId(transaction.id)
+              .withCumulatedDebitedAmount(recurringPayment.getCumulatedDebitedAmount + transaction.amount)
+              .withCumulatedFeesAmount(recurringPayment.getCumulatedFeesAmount + transaction.fees)
+              .withCardStatus(RecurringPayment.RecurringCardPaymentStatus.IN_PROGRESS)
+          updatedRecurringPayment = updatedRecurringPayment.copy(
+            nextRecurringPaymentDate = updatedRecurringPayment.nextPaymentDate.map(_.toDate)
+          )
+          updatedPaymentAccount = updatedPaymentAccount.withRecurryingPayments(
+            updatedPaymentAccount.recurryingPayments.filterNot(_.getId == recurringPayment.getId) :+ updatedRecurringPayment
+          )
+          val first = updatedRecurringPayment.getNumberOfRecurringPayments == 1 && recurringPayment.`type`.isCard
+          Effect.persist(
+            broadcastEvent(
+              if(first){
+                FirstRecurringPaidInEvent.defaultInstance
+                  .withDebitedAccount(paymentAccount.externalUuid)
+                  .withDebitedAmount(transaction.amount)
+                  .withFeesAmount(transaction.fees)
+                  .withCurrency(transaction.currency)
+                  .withTransactionId(transaction.id)
+                  .withFrequency(recurringPayment.getFrequency)
+                  .withRecurringPaymentRegistrationId(recurringPayment.getId)
+                  .withLastUpdated(lastUpdated)
+                  .copy(nextRecurringPaymentDate = updatedRecurringPayment.nextRecurringPaymentDate)
+              }
+              else{
+                NextRecurringPaidEvent.defaultInstance
+                  .withDebitedAccount(paymentAccount.externalUuid)
+                  .withDebitedAmount(transaction.amount)
+                  .withFeesAmount(transaction.fees)
+                  .withCurrency(transaction.currency)
+                  .withTransactionId(transaction.id)
+                  .withFrequency(recurringPayment.getFrequency)
+                  .withRecurringPaymentRegistrationId(recurringPayment.getId)
+                  .withType(recurringPayment.`type`)
+                  .withNumberOfRecurringPayments(updatedRecurringPayment.getNumberOfRecurringPayments)
+                  .withCumulatedDebitedAmount(updatedRecurringPayment.getCumulatedDebitedAmount)
+                  .withCumulatedFeesAmount(updatedRecurringPayment.getCumulatedFeesAmount)
+                  .withLastUpdated(lastUpdated)
+                  .copy(nextRecurringPaymentDate = updatedRecurringPayment.nextRecurringPaymentDate)
+              }
+            ) :+ {
+              updatedRecurringPayment.nextRecurringPaymentDate match {
+                case Some(value) =>
+                  ScheduleForPaymentAdded(
+                    AddSchedule(
+                      Schedule(
+                        persistenceId,
+                        entityId,
+                        s"$nextRecurringPayment#${recurringPayment.getId}",
+                        1,
+                        Some(false),
+                        Some(value)
+                      )
+                    )
+                  )
+                case _ =>
+                  ScheduleForPaymentRemoved(
+                    RemoveSchedule(persistenceId, entityId, s"$nextRecurringPayment#${recurringPayment.getId}")
+                  )
+              }
+            } :+
+              PaymentAccountUpsertedEvent.defaultInstance
+                .withDocument(updatedPaymentAccount)
+                .withLastUpdated(lastUpdated)
+          ).thenRun(_ => (if(first) FirstRecurringPaidIn(transaction.id) else NextRecurringPaid(transaction.id)) ~> replyTo)
+        }
+        else{
+          log.error("RecurringPayment-{} failed: {} -> {}", recurringPayment.getId, transaction.id, asJson(transaction))
+          val first = recurringPayment.getNumberOfRecurringPayments == 0 && recurringPayment.`type`.isCard
+          Effect.persist(
+            broadcastEvent(
+              if(first){
+                FirstRecurringCardPaymentFailedEvent.defaultInstance
+                  .withDebitedAccount(paymentAccount.externalUuid)
+                  .withResultMessage(transaction.getReasonMessage)
+                  .withDebitedAmount(transaction.amount)
+                  .withFeesAmount(transaction.fees)
+                  .withCurrency(transaction.currency)
+                  .withTransaction(transaction)
+                  .withRecurringPaymentRegistrationId(recurringPayment.getId)
+                  .withFrequency(recurringPayment.getFrequency)
+              }
+              else{
+                NextRecurringPaymentFailedEvent.defaultInstance
+                  .withDebitedAccount(paymentAccount.externalUuid)
+                  .withResultMessage(transaction.getReasonMessage)
+                  .withDebitedAmount(transaction.amount)
+                  .withFeesAmount(transaction.fees)
+                  .withCurrency(transaction.currency)
+                  .withTransaction(transaction)
+                  .withRecurringPaymentRegistrationId(recurringPayment.getId)
+                  .withType(recurringPayment.`type`)
+                  .withFrequency(recurringPayment.getFrequency)
+                  .withNumberOfRecurringPayments(recurringPayment.getNumberOfRecurringPayments)
+                  .copy(lastRecurringPaymentDate = recurringPayment.lastRecurringPaymentDate)
+              }
+            ) :+ {
+              recurringPayment.nextRecurringPaymentDate match {
+                case Some(value) =>
+                  ScheduleForPaymentAdded(
+                    AddSchedule(
+                      Schedule(
+                        persistenceId,
+                        entityId,
+                        s"$nextRecurringPayment#${recurringPayment.getId}",
+                        1,
+                        Some(false),
+                        Some(value)
+                      )
+                    )
+                  )
+                case _ =>
+                  ScheduleForPaymentRemoved(
+                    RemoveSchedule(persistenceId, entityId, s"$nextRecurringPayment#${recurringPayment.getId}")
+                  )
+              }
+            } :+
+              PaymentAccountUpsertedEvent.defaultInstance
+                .withDocument(updatedPaymentAccount)
+                .withLastUpdated(lastUpdated)
+          ).thenRun(_ => (
+            if(first)
+              FirstRecurringCardPaymentFailed(transaction.getReasonMessage)
+            else
+              NextRecurringPaymentFailed(transaction.getReasonMessage)
+            ) ~> replyTo
+          )
         }
     }
   }
@@ -1772,7 +2345,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
       paymentAccount.withTransactions(
         paymentAccount.transactions
           .filterNot(_.id == transaction.id) :+ transaction
-      )
+      ).withLastUpdated(lastUpdated)
     transaction.status match {
       case Transaction.TransactionStatus.TRANSACTION_CREATED if transaction.redirectUrl.isDefined => // 3ds
         Effect.persist(
@@ -1859,7 +2432,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
       paymentAccount.withTransactions(
         paymentAccount.transactions
           .filterNot(_.id == transaction.id) :+ transaction
-      )
+      ).withLastUpdated(lastUpdated)
     transaction.status match {
       case Transaction.TransactionStatus.TRANSACTION_CREATED if transaction.redirectUrl.isDefined => // 3ds
         Effect.persist(
@@ -1978,7 +2551,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
     val newDocuments =
       paymentAccount.documents.filterNot(_.id.getOrElse("") == documentId) :+ updatedDocument
 
-    var updatedPaymentAccount = paymentAccount.withDocuments(newDocuments)
+    var updatedPaymentAccount = paymentAccount.withDocuments(newDocuments).withLastUpdated(lastUpdated)
 
     events = events ++
       broadcastEvent(

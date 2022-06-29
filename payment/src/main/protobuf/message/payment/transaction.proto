@@ -2,6 +2,7 @@ syntax = "proto2";
 
 import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
+import "model/payment/paymentUser.proto";
 import "model/payment/transaction.proto";
 
 package app.softnetwork.payment.message.TransactionEvents;
@@ -21,6 +22,7 @@ option (scalapb.options) = {
     preamble: "trait DebitedAccountEvent extends TransactionEvent with BroadcastEvent {def debitedAccount: String; val externalUuid: String = debitedAccount;}"
     preamble: "trait CreditedAccountEvent extends TransactionEvent with BroadcastEvent {def creditedAccount: String; val externalUuid: String = creditedAccount;}"
     preamble: "trait TransactionFailedEvent extends TransactionEvent with BroadcastEvent {def orderUuid: String; val externalUuid: String = orderUuid;}"
+    preamble: "trait RecurringPaymentEvent extends DebitedAccountEvent {def debitedAmount: Int; def feesAmount: Int; def currency: String; def recurringPaymentRegistrationId: String; def frequency: RecurringPayment.RecurringPaymentFrequency}"
 };
 
 message CardPreAuthorizedEvent {
@@ -148,4 +150,65 @@ message DirectDebitFailedEvent {
     required string creditedAccount = 1;
     required string resultMessage = 2;
     optional app.softnetwork.payment.model.Transaction transaction = 3;
+}
+
+message FirstRecurringPaidInEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "RecurringPaymentEvent";
+    required google.protobuf.Timestamp lastUpdated = 1 [(scalapb.field).type = "java.util.Date"];
+    required string debitedAccount = 2;
+    required int32 debitedAmount = 3;
+    required int32 feesAmount = 4;
+    required string currency = 5 [default = "EUR"];
+    required string transactionId = 6;
+    required string recurringPaymentRegistrationId = 7;
+    required app.softnetwork.payment.model.RecurringPayment.RecurringPaymentFrequency frequency = 8;
+    optional google.protobuf.Timestamp nextRecurringPaymentDate = 9 [(scalapb.field).type = "java.util.Date"];
+}
+
+message FirstRecurringCardPaymentFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "RecurringPaymentEvent";
+    required string debitedAccount = 1;
+    required string resultMessage = 2;
+    required int32 debitedAmount = 3;
+    required int32 feesAmount = 4;
+    required string currency = 5 [default = "EUR"];
+    optional app.softnetwork.payment.model.Transaction transaction = 6;
+    required string recurringPaymentRegistrationId = 7;
+    required app.softnetwork.payment.model.RecurringPayment.RecurringPaymentFrequency frequency = 8;
+}
+
+message NextRecurringPaidEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "RecurringPaymentEvent";
+    required google.protobuf.Timestamp lastUpdated = 1 [(scalapb.field).type = "java.util.Date"];
+    required string debitedAccount = 2;
+    required int32 debitedAmount = 3;
+    required int32 feesAmount = 4;
+    required string currency = 5 [default = "EUR"];
+    required string transactionId = 6;
+    required string recurringPaymentRegistrationId = 7;
+    required app.softnetwork.payment.model.RecurringPayment.RecurringPaymentType type = 8;
+    required app.softnetwork.payment.model.RecurringPayment.RecurringPaymentFrequency frequency = 9;
+    required int32 numberOfRecurringPayments = 10;
+    optional google.protobuf.Timestamp nextRecurringPaymentDate = 11 [(scalapb.field).type = "java.util.Date"];
+    required int32 cumulatedDebitedAmount = 12;
+    required int32 cumulatedFeesAmount = 13;
+}
+
+message NextRecurringPaymentFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "RecurringPaymentEvent";
+    required string debitedAccount = 1;
+    required string resultMessage = 2;
+    required int32 debitedAmount = 3;
+    required int32 feesAmount = 4;
+    required string currency = 5 [default = "EUR"];
+    optional app.softnetwork.payment.model.Transaction transaction = 6;
+    required string recurringPaymentRegistrationId = 7;
+    required app.softnetwork.payment.model.RecurringPayment.RecurringPaymentType type = 8;
+    required app.softnetwork.payment.model.RecurringPayment.RecurringPaymentFrequency frequency = 9;
+    required int32 numberOfRecurringPayments = 10;
+    optional google.protobuf.Timestamp lastRecurringPaymentDate = 11 [(scalapb.field).type = "java.util.Date"];
 }

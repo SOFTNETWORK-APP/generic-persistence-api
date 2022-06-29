@@ -18,16 +18,19 @@ package object serialization {
 
   val paymentFormats: Formats = commonFormats ++
       Seq(
-        GeneratedEnumSerializer(KycDocument.KycDocumentStatus.enumCompanion),
-        GeneratedEnumSerializer(KycDocument.KycDocumentType.enumCompanion),
-        GeneratedEnumSerializer(UboDeclaration.UboDeclarationStatus.enumCompanion),
-        GeneratedEnumSerializer(Transaction.PaymentType.enumCompanion),
-        GeneratedEnumSerializer(LegalUser.LegalUserType.enumCompanion),
-        GeneratedEnumSerializer(PaymentAccount.PaymentAccountStatus.enumCompanion),
-        GeneratedEnumSerializer(BankAccount.MandateStatus.enumCompanion),
-        GeneratedEnumSerializer(Transaction.TransactionNature.enumCompanion),
-        GeneratedEnumSerializer(Transaction.TransactionStatus.enumCompanion),
-        GeneratedEnumSerializer(Transaction.TransactionType.enumCompanion)
+          GeneratedEnumSerializer(KycDocument.KycDocumentStatus.enumCompanion),
+          GeneratedEnumSerializer(KycDocument.KycDocumentType.enumCompanion),
+          GeneratedEnumSerializer(UboDeclaration.UboDeclarationStatus.enumCompanion),
+          GeneratedEnumSerializer(Transaction.PaymentType.enumCompanion),
+          GeneratedEnumSerializer(LegalUser.LegalUserType.enumCompanion),
+          GeneratedEnumSerializer(PaymentAccount.PaymentAccountStatus.enumCompanion),
+          GeneratedEnumSerializer(BankAccount.MandateStatus.enumCompanion),
+          GeneratedEnumSerializer(Transaction.TransactionNature.enumCompanion),
+          GeneratedEnumSerializer(Transaction.TransactionStatus.enumCompanion),
+          GeneratedEnumSerializer(Transaction.TransactionType.enumCompanion),
+          GeneratedEnumSerializer(RecurringPayment.RecurringPaymentType.enumCompanion),
+          GeneratedEnumSerializer(RecurringPayment.RecurringPaymentFrequency.enumCompanion),
+          GeneratedEnumSerializer(RecurringPayment.RecurringCardPaymentStatus.enumCompanion)
       )
 
 }

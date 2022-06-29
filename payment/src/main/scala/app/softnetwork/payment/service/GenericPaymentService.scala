@@ -57,10 +57,12 @@ trait GenericPaymentService extends SessionService
         card ~
         payInFor3ds ~
         preAuthorizeCardFor3ds ~
+        payInFirstRecurringFor3ds ~
         bank ~
         declaration ~
         kyc ~
         mandate ~
+        recurringPayment ~
         payment
     }
   }
@@ -232,7 +234,7 @@ trait GenericPaymentService extends SessionService
                               complete(HttpResponse(StatusCodes.BadRequest))
                           }
                         } ~ pathPrefix(PayInRoute) {
-                          parameters("creditedAccount") { creditedAccount: String =>
+                          pathPrefix(Segment) {creditedAccount =>
                             run(
                               PayIn(
                                 orderUuid,
@@ -250,6 +252,39 @@ trait GenericPaymentService extends SessionService
                               )
                             ) completeWith {
                               case r: PaidIn =>
+                                complete(
+                                  HttpResponse(
+                                    StatusCodes.OK,
+                                    entity = r
+                                  )
+                                )
+                              case r: PaymentRedirection =>
+                                complete(
+                                  HttpResponse(
+                                    StatusCodes.OK,
+                                    entity = r
+                                  )
+                                )
+                              case r: PayInFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+                              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+                              case other =>
+                                logger.error(other.toString)
+                                complete(HttpResponse(StatusCodes.BadRequest))
+                            }
+                          }
+                        } ~ pathPrefix(RecurringPaymentRoute) {
+                          pathPrefix(Segment) {recurringPaymentRegistrationId =>
+                            run(
+                              PayInFirstRecurring(
+                                recurringPaymentRegistrationId,
+                                externalUuidWithProfile(session),
+                                if (browserInfo.isDefined) Some(ipAddress) else None,
+                                browserInfo,
+                                statementDescriptor
+                              )
+                            ) completeWith {
+                              case r: FirstRecurringPaidIn =>
                                 complete(
                                   HttpResponse(
                                     StatusCodes.OK,
@@ -328,6 +363,34 @@ trait GenericPaymentService extends SessionService
               )
             )
           case r: CardPreAuthorizationFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+          case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+          case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+          case _ => complete(HttpResponse(StatusCodes.BadRequest))
+        }
+      }
+    }
+  }
+
+  lazy val payInFirstRecurringFor3ds: Route = pathPrefix(SecureModeRoute/RecurringPaymentRoute){
+    pathPrefix(Segment) {recurringPayInRegistrationId =>
+      parameter("transactionId") { transactionId =>
+        run(PayInFirstRecurringFor3DS(recurringPayInRegistrationId, transactionId)) completeWith {
+          case r: PaidIn =>
+            complete(
+              HttpResponse(
+                StatusCodes.OK,
+                entity = r
+              )
+            )
+          case r: PaymentRedirection =>
+            complete(
+              HttpResponse(
+                StatusCodes.OK,
+                entity = r
+              )
+            )
+          case r: PayInFailed => complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
+          case r: TransactionNotFound.type => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
           case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
           case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
           case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -670,6 +733,63 @@ trait GenericPaymentService extends SessionService
           }
         }
     }
+
+  lazy val recurringPayment: Route = pathPrefix(RecurringPaymentRoute) {
+    // check anti CSRF token
+    randomTokenCsrfProtection(checkHeader) {
+      // check if a session exists
+      _requiredSession(ec) { session =>
+        get{
+          pathPrefix(Segment) {recurringPaymentRegistrationId =>
+            run(
+              LoadRecurringPayment(externalUuidWithProfile(session), recurringPaymentRegistrationId)
+            ) completeWith {
+              case r: RecurringPaymentLoaded => complete(HttpResponse(StatusCodes.OK, entity = r.recurringPayment.view))
+              case r: RecurringPaymentNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+              case _ => complete(HttpResponse(StatusCodes.BadRequest))
+            }
+          }
+        } ~ post {
+          entity(as[RegisterRecurringPayment]) { cmd =>
+            run(cmd.copy(debitedAccount = externalUuidWithProfile(session))) completeWith {
+              case r: RecurringPaymentRegistered => complete(HttpResponse(StatusCodes.OK, entity = r))
+              case r: MandateConfirmationRequired => complete(HttpResponse(StatusCodes.OK, entity = r))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+              case _ => complete(HttpResponse(StatusCodes.BadRequest))
+            }
+          }
+        } ~ put {
+          entity(as[UpdateRecurringCardPaymentRegistration]) { cmd =>
+            run(cmd.copy(debitedAccount = externalUuidWithProfile(session))) completeWith {
+              case r: RecurringCardPaymentRegistrationUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.result))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+              case _ => complete(HttpResponse(StatusCodes.BadRequest))
+            }
+          }
+        } ~ delete {
+          pathPrefix(Segment) {recurringPaymentRegistrationId =>
+            run(
+              UpdateRecurringCardPaymentRegistration(
+                externalUuidWithProfile(session),
+                recurringPaymentRegistrationId,
+                None,
+                Some(RecurringPayment.RecurringCardPaymentStatus.ENDED)
+              )
+            ) completeWith {
+              case r: RecurringCardPaymentRegistrationUpdated => complete(HttpResponse(StatusCodes.OK, entity = r.result))
+              case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+              case r: ErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
+              case _ => complete(HttpResponse(StatusCodes.BadRequest))
+            }
+          }
+        }
+      }
+    }
+  }
 
   protected[payment] def externalUuidWithProfile(session: Session): String =
     computeExternalUuidWithProfile(session.id, session.profile)

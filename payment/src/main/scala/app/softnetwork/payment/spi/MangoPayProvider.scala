@@ -7,14 +7,16 @@ import com.mangopay.core.{Address => MangoPayAddress, _}
 import com.mangopay.core.enumerations.{TransactionNature => MangoPayTransactionNature, TransactionStatus => MangoPayTransactionStatus, TransactionType => MangoPayTransactionType, _}
 import com.mangopay.entities.{BankAccount => MangoPayBankAccount, Birthplace => MangoPayBirthplace, Card => _, KycDocument => _, Transaction => _, UboDeclaration => _, _}
 import com.mangopay.entities.subentities.{BrowserInfo => MangoPayBrowserInfo, _}
-import app.softnetwork.payment.model._
+import app.softnetwork.payment.model.{RecurringPayment, _}
 import app.softnetwork.payment.config.{MangoPay, Settings}
 import Settings.MangoPayConfig._
 
 import scala.util.{Failure, Success, Try}
 import app.softnetwork.persistence._
 import app.softnetwork.serialization._
+import app.softnetwork.time.{DateExtensions, epochSecondToDate, epochSecondToLocalDate}
 
+import java.time.format.DateTimeFormatter
 import scala.language.implicitConversions
 
 /**
@@ -25,21 +27,8 @@ trait MangoPayProvider extends PaymentProvider {
   import scala.language.implicitConversions
   import scala.collection.JavaConverters._
 
-  implicit def secondsToDate(dateInSeconds: Long): Date = {
-    val c = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-    c.setTimeInMillis(dateInSeconds * 1000)
-    c.getTime
-  }
-
-  protected final def computeBirthday(birthdayInSeconds: Long, pattern: String = "dd/MM/yyyy"): Option[String] = {
-    val sdf = new SimpleDateFormat(pattern)
-    sdf.setTimeZone(TimeZone.getTimeZone("UTC"))
-    Try(sdf.format(birthdayInSeconds)) match {
-      case Success(s) => Some(s)
-      case Failure(f) =>
-        mlog.error(f.getMessage, f)
-        None
-    }
+  implicit def computeBirthday(epochSecond: Long): String = {
+    epochSecondToLocalDate(epochSecond).format(DateTimeFormatter.ofPattern("dd/MM:yyyy"))
   }
 
   implicit def mangoPayTransactionStatusToTransactionStatus(status: MangoPayTransactionStatus): Transaction.TransactionStatus =
@@ -68,7 +57,7 @@ trait MangoPayProvider extends PaymentProvider {
       case _ => KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED
     }
 
-  implicit def mangopayMandateStatusToMandateStatus(status: MandateStatus): BankAccount.MandateStatus =
+  implicit def mangoPayMandateStatusToMandateStatus(status: MandateStatus): BankAccount.MandateStatus =
     status match {
       case MandateStatus.ACTIVE => BankAccount.MandateStatus.MANDATE_ACTIVATED
       case MandateStatus.CREATED => BankAccount.MandateStatus.MANDATE_CREATED
@@ -108,7 +97,7 @@ trait MangoPayProvider extends PaymentProvider {
     }
   }
 
-  implicit def mangopayUboDeclarationStatus2DeclarationStatus(status: UboDeclarationStatus): UboDeclaration.UboDeclarationStatus = {
+  implicit def mangoPayUboDeclarationStatus2DeclarationStatus(status: UboDeclarationStatus): UboDeclaration.UboDeclarationStatus = {
     status match {
       case UboDeclarationStatus.CREATED => UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_CREATED
       case UboDeclarationStatus.REFUSED => UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_REFUSED
@@ -117,6 +106,30 @@ trait MangoPayProvider extends PaymentProvider {
       case UboDeclarationStatus.INCOMPLETE => UboDeclaration.UboDeclarationStatus.UBO_DECLARATION_INCOMPLETE
       case _ => UboDeclaration.UboDeclarationStatus.Unrecognized(-1)
     }
+  }
+
+  implicit def mangoPayRecurringPaymentStatus2RecurringCardPaymentStatus(status: String): RecurringPayment.RecurringCardPaymentStatus = {
+    status.toUpperCase match {
+      case RecurringPayment.RecurringCardPaymentStatus.CREATED.name =>
+        RecurringPayment.RecurringCardPaymentStatus.CREATED
+      case RecurringPayment.RecurringCardPaymentStatus.AUTHENTICATION_NEEDED.name =>
+        RecurringPayment.RecurringCardPaymentStatus.AUTHENTICATION_NEEDED
+      case RecurringPayment.RecurringCardPaymentStatus.IN_PROGRESS.name =>
+        RecurringPayment.RecurringCardPaymentStatus.IN_PROGRESS
+      case RecurringPayment.RecurringCardPaymentStatus.ENDED.name =>
+        RecurringPayment.RecurringCardPaymentStatus.ENDED
+      case _ => RecurringPayment.RecurringCardPaymentStatus.Unrecognized(-1)
+    }
+  }
+
+  implicit def mangoPayCurrentState2RecurringCardPaymentState(currentState: CurrentState): RecurringPayment.RecurringCardPaymentState = {
+    RecurringPayment.RecurringCardPaymentState.defaultInstance
+      .withNumberOfRecurringPayments(currentState.getPayinsLinked)
+      .withCumulatedDebitedAmount(currentState.getCumulatedDebitedAmount.getAmount)
+      .withCumulatedFeesAmount(currentState.getCumulatedFeesAmount.getAmount)
+      .copy(
+        lastPayInTransactionId = Option(currentState.getLastPayinId)
+      )
   }
 
   def createHooks(): Unit = MangoPay.createHooks()
@@ -140,9 +153,7 @@ trait MangoPayProvider extends PaymentProvider {
             user.setId(userId)
             user.setFirstName(firstName)
             user.setLastName(lastName)
-            val c = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-            c.setTime(s)
-            user.setBirthday(c.getTimeInMillis / 1000)
+            user.setBirthday(s.toEpochSecond)
             user.setEmail(email)
             user.setTag(externalUuid)
             user.setNationality(CountryIso.valueOf(nationality))
@@ -1135,7 +1146,7 @@ trait MangoPayProvider extends PaymentProvider {
     * @param transactionId - transaction id
     * @return pay in transaction
     */
-  def loadPayIn(orderUuid: String, transactionId: String): Option[Transaction] = {
+  def loadPayIn(orderUuid: String, transactionId: String, recurringPayInRegistrationId: Option[String]): Option[Transaction] = {
     Try(MangoPay().getPayInApi.get(transactionId)) match {
       case Success(result) =>
         val `type` =
@@ -1157,6 +1168,13 @@ trait MangoPayProvider extends PaymentProvider {
             Option(result.getPaymentDetails.asInstanceOf[PayInPaymentDetailsDirectDebit].getMandateId)
           }
           else{
+            None
+          }
+        val preAuthorizationId =
+          if (result.getPaymentType == PayInPaymentType.PREAUTHORIZED) {
+            Option(result.getExecutionDetails.asInstanceOf[PayInPaymentDetailsPreAuthorized].getPreauthorizationId)
+          }
+          else {
             None
           }
         val redirectUrl =
@@ -1184,7 +1202,9 @@ trait MangoPayProvider extends PaymentProvider {
             authorId = result.getAuthorId,
             creditedUserId = Option(result.getCreditedUserId),
             creditedWalletId = Option(result.getCreditedWalletId),
-            mandateId = mandateId
+            mandateId = mandateId,
+            preAuthorizationId = preAuthorizationId,
+            recurringPayInRegistrationId = recurringPayInRegistrationId
           )
         )
       case Failure(_)     =>
@@ -1311,7 +1331,7 @@ trait MangoPayProvider extends PaymentProvider {
     */
   def addDocument(userId: String, externalUuid: String, pages: Seq[Array[Byte]], documentType: KycDocument.KycDocumentType): Option[String] = {
     // create document
-    Try(MangoPay().getUserApi.createKycDocument(userId, documentType)) match {
+    Try(MangoPay().getUserApi.createKycDocument(userId, documentType, externalUuid)) match {
       case Success(s) =>
         mlog.info(s"""Create $documentType for $externalUuid""")
         // ask for document creation
@@ -1594,7 +1614,7 @@ trait MangoPayProvider extends PaymentProvider {
     val filters = new FilterTransactions()
     filters.setNature(MangoPayTransactionNature.REGULAR)
     filters.setType(MangoPayTransactionType.PAYIN)
-    filters.setAfterDate(transactionDate.getTime / 1000)
+    filters.setAfterDate(transactionDate.toEpochSecond)
     Try(MangoPay().getWalletApi.getTransactions(
       walletId,
       new Pagination(1, 100),
@@ -1689,11 +1709,7 @@ trait MangoPayProvider extends PaymentProvider {
         ubo.setFirstName(firstName)
         ubo.setLastName(lastName)
         ubo.setNationality(CountryIso.valueOf(nationality))
-
-        val c = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-        c.setTime(s)
-        ubo.setBirthday(c.getTimeInMillis / 1000)
-
+        ubo.setBirthday(s.toEpochSecond)
         val a = new MangoPayAddress
         a.setAddressLine1(address)
         a.setCity(city)
@@ -1752,7 +1768,7 @@ trait MangoPayProvider extends PaymentProvider {
                   .withId(ubo.getId)
                   .withFirstName(ubo.getFirstName)
                   .withLastName(ubo.getLastName)
-                  .withBirthday(computeBirthday(ubo.getBirthday).getOrElse(""))
+                  .withBirthday(computeBirthday(ubo.getBirthday))
                   .withNationality(ubo.getNationality.name())
                   .withAddress(ubo.getAddress.getAddressLine1)
                   .withCity(ubo.getAddress.getCity)
@@ -1798,4 +1814,278 @@ trait MangoPayProvider extends PaymentProvider {
         None
     }
   }
+
+  /**
+    *
+    * @param userId           - Provider user id
+    * @param walletId         - Provider wallet id
+    * @param cardId           - Provider card id
+    * @param recurringPayment - recurring payment to register
+    * @return recurring card payment registration result
+    */
+  override def registerRecurringCardPayment(userId: String, walletId: String, cardId: String, recurringPayment: RecurringPayment): Option[RecurringPayment.RecurringCardPaymentResult] = {
+    if(recurringPayment.`type`.isCard){
+      import recurringPayment._
+      val createRecurringPayment = new CreateRecurringPayment
+      createRecurringPayment.setAuthorId(userId)
+      createRecurringPayment.setCreditedUserId(userId)
+      createRecurringPayment.setCreditedWalletId(walletId)
+      createRecurringPayment.setCardId(cardId)
+      val firstTransactionDebitedFunds = new Money
+      firstTransactionDebitedFunds.setAmount(firstDebitedAmount)
+      firstTransactionDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+      createRecurringPayment.setFirstTransactionDebitedFunds(firstTransactionDebitedFunds)
+      val firstTransactionFees = new Money
+      firstTransactionFees.setAmount(firstFeesAmount)
+      firstTransactionFees.setCurrency(CurrencyIso.valueOf(currency))
+      createRecurringPayment.setFirstTransactionFees(firstTransactionFees)
+      recurringPayment.endDate match {
+        case Some(endDate) =>
+          createRecurringPayment.setEndDate(endDate.toEpochSecond)
+        case _ =>
+      }
+      (recurringPayment.frequency match {
+        case Some(frequency) =>
+          frequency match {
+            case RecurringPayment.RecurringPaymentFrequency.DAILY => Some("Daily")
+            case RecurringPayment.RecurringPaymentFrequency.WEEKLY => Some("Weekly")
+            case RecurringPayment.RecurringPaymentFrequency.MONTHLY => Some("Monthly")
+            case RecurringPayment.RecurringPaymentFrequency.BIMONTHLY => Some("Bimonthly")
+            case RecurringPayment.RecurringPaymentFrequency.QUARTERLY => Some("Quarterly")
+            case RecurringPayment.RecurringPaymentFrequency.BIANNUAL => Some("Semiannual")
+            case RecurringPayment.RecurringPaymentFrequency.ANNUAL => Some("Annual")
+            case _ => None
+          }
+        case _ => None
+      }) match {
+        case Some(frequency) => createRecurringPayment.setFrequency(frequency)
+        case _ =>
+      }
+      recurringPayment.fixedNextAmount match {
+        case Some(fixedNextAmount) => createRecurringPayment.setFixedNextAmount(fixedNextAmount)
+        case _ =>
+      }
+      recurringPayment.nextDebitedAmount match {
+        case Some(nextDebitedAmount) =>
+          val nextTransactionDebitedFunds = new Money()
+          nextTransactionDebitedFunds.setAmount(nextDebitedAmount)
+          nextTransactionDebitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+          createRecurringPayment.setNextTransactionDebitedFunds(nextTransactionDebitedFunds)
+        case _ =>
+      }
+      recurringPayment.nextFeesAmount match {
+        case Some(nextFeesAmount) =>
+          val nextTransactionFees = new Money()
+          nextTransactionFees.setAmount(nextFeesAmount)
+          nextTransactionFees.setCurrency(CurrencyIso.valueOf(currency))
+          createRecurringPayment.setNextTransactionFees(nextTransactionFees)
+        case _ =>
+      }
+      recurringPayment.migration match {
+        case Some(migration) => createRecurringPayment.setMigration(migration)
+        case _ =>
+      }
+      Try(
+        MangoPay().getPayInApi.createRecurringPayment(generateUUID(), createRecurringPayment)
+      ) match {
+        case Success(s) =>
+          Some(
+            RecurringPayment.RecurringCardPaymentResult.defaultInstance
+              .withId(s.getId)
+              .withStatus(s.getStatus)
+          )
+        case Failure(f) =>
+          mlog.error(f.getMessage, f)
+          None
+      }
+    }
+    else{
+      None
+    }
+  }
+
+
+  /**
+    *
+    * @param recurringPayInRegistrationId - recurring payIn registration id
+    * @param cardId                       - Provider card id
+    * @param status                       - optional recurring payment status
+    * @return recurring card payment registration updated result
+    */
+  override def updateRecurringCardPaymentRegistration(recurringPayInRegistrationId: String, cardId: Option[String], status: Option[RecurringPayment.RecurringCardPaymentStatus]): Option[RecurringPayment.RecurringCardPaymentResult] = {
+    if(cardId.isDefined || status.isDefined){
+      val recurringPaymentUpdate = new RecurringPaymentUpdate
+      cardId match {
+        case Some(s) => recurringPaymentUpdate.setCardId(s)
+        case _ =>
+      }
+      recurringPaymentUpdate.setCardId(cardId)
+      status match {
+        case Some(s) => recurringPaymentUpdate.setStatus(s.name)
+        case _ =>
+      }
+      Try(
+        MangoPay().getPayInApi.updateRecurringPayment(recurringPayInRegistrationId, recurringPaymentUpdate)
+      ) match {
+        case Success(s) =>
+          Some(
+            RecurringPayment.RecurringCardPaymentResult.defaultInstance
+              .withId(recurringPayInRegistrationId)
+              .withStatus(s.getStatus)
+              .withCurrentstate(s.getCurrentState)
+          )
+        case Failure(f) =>
+          mlog.error(f.getMessage, f)
+          None
+      }
+    }
+    else {
+      None
+    }
+  }
+
+  /**
+    *
+    * @param recurringPayInRegistrationId - recurring payIn registration id
+    * @return recurring card payment registration result
+    */
+  override def loadRecurringCardPayment(recurringPayInRegistrationId: String): Option[RecurringPayment.RecurringCardPaymentResult] = {
+    Try(
+      MangoPay().getPayInApi.getRecurringPayment(recurringPayInRegistrationId)
+    ) match {
+      case Success(s) =>
+        Some(
+          RecurringPayment.RecurringCardPaymentResult.defaultInstance
+            .withId(recurringPayInRegistrationId)
+            .withStatus(s.getStatus)
+            .withCurrentstate(s.getCurrentState)
+        )
+      case Failure(f) =>
+        mlog.error(f.getMessage, f)
+        None
+    }
+  }
+
+  /**
+    *
+    * @param recurringPaymentTransaction - recurring payment transaction
+    * @return resulted payIn transaction
+    */
+  override def createRecurringCardPayment(recurringPaymentTransaction: RecurringPaymentTransaction): Option[Transaction] = {
+    recurringPaymentTransaction.extension[Option[FirstRecurringPaymentTransaction]](
+      FirstRecurringPaymentTransaction.first
+    ) match {
+      case Some(firstRecurringPaymentTransaction) =>
+        import recurringPaymentTransaction._
+        val recurringPayInCIT: RecurringPayInCIT = new RecurringPayInCIT
+        recurringPayInCIT.setRecurringPayInRegistrationId(recurringPayInRegistrationId)
+        firstRecurringPaymentTransaction.ipAddress match {
+          case Some(ipAddress) => recurringPayInCIT.setIpAddress(ipAddress)
+          case _ =>
+        }
+        firstRecurringPaymentTransaction.browserInfo match {
+          case Some(browserInfo) =>
+            import browserInfo._
+            val mangoPayBrowserInfo = new MangoPayBrowserInfo()
+            mangoPayBrowserInfo.setAcceptHeader(acceptHeader)
+            mangoPayBrowserInfo.setColorDepth(colorDepth)
+            mangoPayBrowserInfo.setJavaEnabled(javaEnabled)
+            mangoPayBrowserInfo.setJavascriptEnabled(javascriptEnabled)
+            mangoPayBrowserInfo.setLanguage(language)
+            mangoPayBrowserInfo.setScreenHeight(screenHeight)
+            mangoPayBrowserInfo.setScreenWidth(screenWidth)
+            mangoPayBrowserInfo.setTimeZoneOffset(timeZoneOffset)
+            mangoPayBrowserInfo.setUserAgent(userAgent)
+            recurringPayInCIT.setBrowserInfo(mangoPayBrowserInfo)
+          case _ =>
+        }
+        val debitedFunds = new Money
+        debitedFunds.setAmount(debitedAmount)
+        debitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+        recurringPayInCIT.setDebitedFunds(debitedFunds)
+        val fees = new Money
+        fees.setAmount(feesAmount)
+        fees.setCurrency(CurrencyIso.valueOf(currency))
+        recurringPayInCIT.setFees(fees)
+        recurringPayInCIT.setTag(externalUuid)
+        recurringPayInCIT.setStatementDescriptor(statementDescriptor)
+        recurringPayInCIT.setSecureModeReturnURL(s"$recurringPaymentFor3DS/$recurringPayInRegistrationId")
+        Try(MangoPay().getPayInApi.createRecurringPayInCIT(generateUUID(), recurringPayInCIT)) match {
+          case Success(result) =>
+            Some(
+              Transaction().copy(
+                id = result.getId,
+                nature = Transaction.TransactionNature.REGULAR,
+                `type` = Transaction.TransactionType.PAYIN,
+                status = result.getStatus match {
+                  case MangoPayTransactionStatus.FAILED if Option(result.getResultCode).isDefined =>
+                    if(Settings.MangoPayConfig.technicalErrors.contains(result.getResultCode))
+                      Transaction.TransactionStatus.TRANSACTION_FAILED_FOR_TECHNICAL_REASON
+                    else
+                      Transaction.TransactionStatus.TRANSACTION_FAILED
+                  case other => other
+                },
+                amount = debitedAmount,
+                cardId = result.getPaymentDetails.asInstanceOf[PayInPaymentDetailsCard].getCardId,
+                fees = feesAmount,
+                resultCode = Option(result.getResultCode).getOrElse(""),
+                resultMessage = Option(result.getResultMessage).getOrElse(""),
+                redirectUrl = Option(// for 3D Secure
+                  result.getExecutionDetails.asInstanceOf[PayInExecutionDetailsDirect].getSecureModeRedirectUrl
+                ),
+                authorId = result.getAuthorId,
+                creditedWalletId = Option(result.getCreditedWalletId),
+                recurringPayInRegistrationId = recurringPayInRegistrationId
+              )
+            )
+          case Failure(f) =>
+            mlog.error(f.getMessage, f)
+            None
+        }
+      case _ =>
+        import recurringPaymentTransaction._
+        val recurringPayInMIT: RecurringPayInMIT = new RecurringPayInMIT
+        recurringPayInMIT.setRecurringPayInRegistrationId(recurringPayInRegistrationId)
+        recurringPayInMIT.setStatementDescriptor(statementDescriptor)
+        val debitedFunds = new Money
+        debitedFunds.setAmount(debitedAmount)
+        debitedFunds.setCurrency(CurrencyIso.valueOf(currency))
+        recurringPayInMIT.setDebitedFunds(debitedFunds)
+        val fees = new Money
+        fees.setAmount(feesAmount)
+        fees.setCurrency(CurrencyIso.valueOf(currency))
+        recurringPayInMIT.setFees(fees)
+        recurringPayInMIT.setTag(externalUuid)
+        Try(MangoPay().getPayInApi.createRecurringPayInMIT(generateUUID(), recurringPayInMIT)) match {
+          case Success(result) =>
+            Some(
+              Transaction().copy(
+                id = result.getId,
+                nature = Transaction.TransactionNature.REGULAR,
+                `type` = Transaction.TransactionType.PAYIN,
+                status = result.getStatus match {
+                  case MangoPayTransactionStatus.FAILED if Option(result.getResultCode).isDefined =>
+                    if(Settings.MangoPayConfig.technicalErrors.contains(result.getResultCode))
+                      Transaction.TransactionStatus.TRANSACTION_FAILED_FOR_TECHNICAL_REASON
+                    else
+                      Transaction.TransactionStatus.TRANSACTION_FAILED
+                  case other => other
+                },
+                amount = debitedAmount,
+                cardId = result.getPaymentDetails.asInstanceOf[PayInPaymentDetailsCard].getCardId,
+                fees = feesAmount,
+                resultCode = Option(result.getResultCode).getOrElse(""),
+                resultMessage = Option(result.getResultMessage).getOrElse(""),
+                authorId = result.getAuthorId,
+                creditedWalletId = Option(result.getCreditedWalletId),
+                recurringPayInRegistrationId = recurringPayInRegistrationId
+              )
+            )
+          case Failure(f) =>
+            mlog.error(f.getMessage, f)
+            None
+        }
+    }
+  }
+
 }

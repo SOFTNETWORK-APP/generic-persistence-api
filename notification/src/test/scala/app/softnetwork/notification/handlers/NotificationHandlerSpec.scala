@@ -1,5 +1,6 @@
 package app.softnetwork.notification.handlers
 
+import akka.actor.testkit.typed.scaladsl.TestProbe
 import akka.actor.typed.eventstream.EventStream.Subscribe
 import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
@@ -7,7 +8,7 @@ import app.softnetwork.persistence.typed.EntityBehavior
 import app.softnetwork.scheduler.handlers.SchedulerHandler
 import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
 import org.scalatest.wordspec.AnyWordSpecLike
-import app.softnetwork.persistence.query.{InMemoryJournalProvider, EventProcessorStream}
+import app.softnetwork.persistence.query.{EventProcessorStream, InMemoryJournalProvider}
 import app.softnetwork.scheduler.persistence.query.Entity2SchedulerProcessorStream
 import app.softnetwork.notification.config.Settings
 import app.softnetwork.notification.message._
@@ -20,19 +21,19 @@ import app.softnetwork.notification.peristence.typed.MockAllNotificationsBehavio
   */
 class NotificationHandlerSpec extends MockNotificationHandler with AnyWordSpecLike with InMemoryPersistenceTestKit {
 
-  lazy val from = Settings.Config.mail.username
+  lazy val from: String = Settings.Config.mail.username
   val to = Seq("nobody@gmail.com")
   val subject = "Sujet"
   val message = "message"
 
-  private[this] def _mail(uuid: String) =
+  private[this] def _mail(uuid: String): Mail =
     Mail.defaultInstance.withUuid(uuid).withFrom(From(from, None)).withTo(to).withSubject(subject).withMessage(message)
 
   /**
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     MockAllNotificationsBehavior,
     SchedulerBehavior
   )
@@ -41,40 +42,39 @@ class NotificationHandlerSpec extends MockNotificationHandler with AnyWordSpecLi
     * initialize all event processor streams
     *
     */
-  override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = asystem => List(
+  override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys => List(
     new Entity2SchedulerProcessorStream() with SchedulerHandler with InMemoryJournalProvider {
-      override val tag = s"${MockAllNotificationsBehavior.persistenceId}-to-scheduler"
       override val forTests = true
-      override implicit val system: ActorSystem[_] = asystem
+      override implicit val system: ActorSystem[_] = sys
     },
     new Scheduler2NotificationProcessorStream() with MockNotificationHandler with InMemoryJournalProvider {
       override val tag = s"${MockAllNotificationsBehavior.persistenceId}-scheduler"
       override val forTests = true
-      override implicit val system: ActorSystem[_] = asystem
+      override implicit val system: ActorSystem[_] = sys
     }
   )
 
-  implicit lazy val system = typedSystem()
+  implicit lazy val system: ActorSystem[Nothing] = typedSystem()
 
-  val probe = createTestProbe[Schedule4NotificationTriggered.type]()
+  val probe: TestProbe[Schedule4NotificationTriggered.type] = createTestProbe[Schedule4NotificationTriggered.type]()
   system.eventStream.tell(Subscribe(probe.ref))
 
   "NotificationTypedHandler" must {
 
     "add notification" in {
       val uuid = "add"
-      this ? (uuid, new AddNotification(_mail(uuid))) await {
+      this ? (uuid, AddNotification(_mail(uuid))) await {
         case n: NotificationAdded => n.uuid shouldBe uuid
-        case _                    => fail()
+        case _ => fail()
       }
     }
 
     "remove notification" in {
       val uuid = "remove"
-      this ? (uuid, new AddNotification(_mail(uuid))) await {
+      this ? (uuid, AddNotification(_mail(uuid))) await {
         case n: NotificationAdded =>
           n.uuid shouldBe uuid
-          this ? (uuid, new RemoveNotification(uuid)) await {
+          this ? (uuid, RemoveNotification(uuid)) await {
             case _: NotificationRemoved.type => succeed
             case _ => fail()
           }
@@ -84,55 +84,56 @@ class NotificationHandlerSpec extends MockNotificationHandler with AnyWordSpecLi
 
     "send notification" in {
       val uuid = "send"
-      this ? (uuid, new SendNotification(_mail(uuid))) await {
+      this ? (uuid, SendNotification(_mail(uuid))) await {
         case n: NotificationSent => n.uuid shouldBe uuid
-        case _                   => fail()
+        case _ => fail()
       }
     }
 
     "resend notification" in {
       val uuid = "resend"
-      this ? (uuid, new SendNotification(_mail(uuid))) await {
+      this ? (uuid, SendNotification(_mail(uuid))) await {
         case n: NotificationSent =>
           n.uuid shouldBe uuid
-          this ? (uuid, new ResendNotification(uuid)) await {
+          this ? (uuid, ResendNotification(uuid)) await {
             case n: NotificationSent => n.uuid shouldBe uuid
-            case _                   => fail()
+            case _ => fail()
           }
-          this ? ("fake", new ResendNotification(uuid)) await {
+          this ? ("fake", ResendNotification(uuid)) await {
             case NotificationNotFound => succeed
-            case _                    => fail()
+            case _ => fail()
           }
-        case _                    => fail()
+        case _ => fail()
       }
     }
 
     "retrieve notification status" in {
       val uuid = "status"
-      this ? (uuid, new SendNotification(_mail(uuid))) await {
+      this ? (uuid, SendNotification(_mail(uuid))) await {
         case n: NotificationSent =>
           n.uuid shouldBe uuid
-          this ? (uuid, new GetNotificationStatus(uuid)) await {
+          this ? (uuid, GetNotificationStatus(uuid)) await {
             case n: NotificationSent => n.uuid shouldBe uuid
-            case _                   => fail()
+            case _ => fail()
           }
-        case _                    => fail()
+        case _ => fail()
       }
     }
 
     "trigger notification" in {
       val uuid = "trigger"
-      this ? (uuid, new SendNotification(_mail(uuid))) await {
+      this ? (uuid, SendNotification(_mail(uuid))) await {
         case n: NotificationSent =>
           n.uuid shouldBe uuid
-          this ? (uuid, new GetNotificationStatus(uuid)) await {
+          this ? (uuid, GetNotificationStatus(uuid)) await {
             case n: NotificationSent =>
               n.uuid shouldBe uuid
+              succeed
+            case _ =>
               probe.expectMessage(Schedule4NotificationTriggered)
               succeed
-            case _                   => fail()
           }
-        case _                    => fail()
+        case _ => fail()
       }
     }
   }

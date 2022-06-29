@@ -75,6 +75,7 @@ message Transaction {
     optional string mandateId = 21;
     optional string preAuthorizationId = 22;
     required PaymentType paymentType = 23 [default = CARD];
+    optional string recurringPayInRegistrationId = 24;
 }
 
 message BrowserInfo {
@@ -181,4 +182,24 @@ message CardPreRegistration{
     required string preregistrationData = 3;
     required string cardRegistrationURL = 4;
     required bool registerCard = 5;
+}
+
+message RecurringPaymentTransaction{
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    required string recurringPayInRegistrationId = 1;
+    required string statementDescriptor = 2;
+    required int32 debitedAmount = 3;
+    required int32 feesAmount = 4;
+    required string currency = 5;
+    required string externalUuid = 6;
+    extensions 50 to 100;
+}
+
+message FirstRecurringPaymentTransaction {
+    extend RecurringPaymentTransaction {
+        optional FirstRecurringPaymentTransaction first = 50;
+    }
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    optional string ipAddress = 1;
+    optional BrowserInfo browserInfo = 2;
 }

@@ -16,6 +16,7 @@ import scala.concurrent.Future
 
 package query {
 
+  import app.softnetwork.scheduler.config.Settings
   import app.softnetwork.scheduler.handlers.SchedulerDao
 
   /**
@@ -143,6 +144,8 @@ package query {
 
   trait Entity2SchedulerProcessorStream extends EventProcessorStream[SchedulerEventWithCommand] {
     _: JournalProvider with EntityPattern[SchedulerCommand, SchedulerCommandResult] =>
+
+    override lazy val tag: String = Settings.SchedulerConfig.eventStreams.entityToSchedulerTag
 
     protected val forTests = false
 
