@@ -34,20 +34,20 @@ object SQLParser extends RegexParsers {
   def ne: Parser[SQLExpressionOperator] = "<>" ^^ (_ => NE)
 
   def isNull: Parser[SQLExpressionOperator] = "(?i)(is null)".r ^^ (_ => IS_NULL)
-  def isNullExpression: Parser[SQLCriteria] = identifier ~ isNull ^^ {case i ~ is => SQLIsNull(i)}
+  def isNullExpression: Parser[SQLCriteria] = identifier ~ isNull ^^ {case i ~ _ => SQLIsNull(i)}
 
   def isNotNull: Parser[SQLExpressionOperator] = "(?i)(is not null)".r ^^ (_ => IS_NOT_NULL)
-  def isNotNullExpression: Parser[SQLCriteria] = identifier ~ isNotNull ^^ {case i ~ is => SQLIsNotNull(i)}
+  def isNotNullExpression: Parser[SQLCriteria] = identifier ~ isNotNull ^^ {case i ~ _ => SQLIsNotNull(i)}
 
   def equalityExpression: Parser[SQLExpression] = identifier ~ (eq | ne) ~ (boolean | literal |double | int) ^^ {case i ~ o ~ v => SQLExpression(i, o, v)}
   def likeExpression: Parser[SQLExpression] = identifier ~ like ~ literal ^^ {case i ~ o ~ v => SQLExpression(i, o, v)}
   def comparisonExpression: Parser[SQLExpression] = identifier ~ (ge | gt | le | lt ) ~ (double | int | literal) ^^ {case i ~ o ~ v => SQLExpression(i, o, v)}
 
-  def inLiteralExpression: Parser[SQLCriteria] = identifier ~ not.? ~ in ~ start ~ rep1(literal ~ separator.?) ~ end ^^ {case i ~ n ~ o ~ s ~ v ~ e => SQLIn(i, SQLLiteralValues(v map {_._1}), n)}
-  def inNumericalExpression: Parser[SQLCriteria] = identifier ~ not.? ~ in ~ start ~ rep1((double | int) ~ separator.?) ~ end ^^ {case i ~ n ~ o ~ s ~ v ~ e => SQLIn(i, SQLNumericValues(v map {_._1}), n)}
+  def inLiteralExpression: Parser[SQLCriteria] = identifier ~ not.? ~ in ~ start ~ rep1(literal ~ separator.?) ~ end ^^ {case i ~ n ~ _ ~ _ ~ v ~ _ => SQLIn(i, SQLLiteralValues(v map {_._1}), n)}
+  def inNumericalExpression: Parser[SQLCriteria] = identifier ~ not.? ~ in ~ start ~ rep1((double | int) ~ separator.?) ~ end ^^ {case i ~ n ~ _ ~ _ ~ v ~ _ => SQLIn(i, SQLNumericValues(v map {_._1}), n)}
 
   def between: Parser[SQLExpressionOperator] = "(?i)between".r ^^ (_ => BETWEEN)
-  def betweenExpression: Parser[SQLCriteria] = identifier ~ between ~ literal ~ and ~ literal ^^ {case i ~ b ~ from ~ a ~ to => SQLBetween(i, from, to)}
+  def betweenExpression: Parser[SQLCriteria] = identifier ~ between ~ literal ~ and ~ literal ^^ {case i ~ _ ~ from ~ _ ~ to => SQLBetween(i, from, to)}
 
   def distance: Parser[SQLFunction] = "(?i)distance".r ^^ (_ => SQLDistance)
   def distanceExpression: Parser[SQLCriteria] = distance ~ start ~ identifier ~ separator ~ start ~ double ~ separator ~ double ~ end ~ end ~ le ~ literal ^^ {
@@ -67,7 +67,7 @@ object SQLParser extends RegexParsers {
   def parent: Parser[ElasticOperator] = "(?i)parent".r ^^ (_ => PARENT)
 
   def criteria: Parser[SQLCriteria] = start.? ~ (equalityExpression | likeExpression | comparisonExpression | inLiteralExpression | inNumericalExpression | betweenExpression | isNotNullExpression | isNullExpression | distanceExpression)  ~ end.? ^^ {
-    case s ~ c ~ e => c match {
+    case _ ~ c ~ _ => c match {
       case x:SQLExpression   if x.columnName.nested => ElasticNested(x)
       case y: SQLIn[_, _]    if y.columnName.nested => ElasticNested(y)
       case z: SQLBetween     if z.columnName.nested => ElasticNested(z)
@@ -115,16 +115,16 @@ object SQLParser extends RegexParsers {
 
   def predicate: Parser[SQLPredicate] = criteria ~ ( and | or) ~ not.?  ~ criteria ^^ {case l ~ o ~ n ~ r => SQLPredicate(l, o, r, n)}
 
-  def nestedCriteria: Parser[ElasticRelation] = nested ~ start.? ~ criteria ~ end.? ^^ {case n ~ s ~ c ~ e => ElasticNested(unwrappCriteria(c))}
-  def nestedPredicate: Parser[ElasticRelation] = nested ~ start ~ predicate ~ end ^^ {case n ~ s ~ p ~ e => ElasticNested(unwrappPredicate(p))}
+  def nestedCriteria: Parser[ElasticRelation] = nested ~ start.? ~ criteria ~ end.? ^^ {case _ ~ _ ~ c ~ _ => ElasticNested(unwrappCriteria(c))}
+  def nestedPredicate: Parser[ElasticRelation] = nested ~ start ~ predicate ~ end ^^ {case _ ~ _ ~ p ~ _ => ElasticNested(unwrappPredicate(p))}
 
-  def childCriteria: Parser[ElasticRelation] = child ~ start.? ~ criteria ~ end.? ^^ {case i ~ s ~ c ~ e => ElasticChild(unwrappCriteria(c))}
-  def childPredicate: Parser[ElasticRelation] = child ~ start ~ predicate ~ end ^^ {case c ~ s ~ p ~ e => ElasticChild(unwrappPredicate(p))}
+  def childCriteria: Parser[ElasticRelation] = child ~ start.? ~ criteria ~ end.? ^^ {case _ ~ _ ~ c ~ _ => ElasticChild(unwrappCriteria(c))}
+  def childPredicate: Parser[ElasticRelation] = child ~ start ~ predicate ~ end ^^ {case _ ~ _ ~ p ~ _ => ElasticChild(unwrappPredicate(p))}
 
-  def parentCriteria: Parser[ElasticRelation] = parent ~ start.? ~ criteria ~ end.? ^^ {case i ~ s ~ c ~ e => ElasticParent(unwrappCriteria(c))}
-  def parentPredicate: Parser[ElasticRelation] = parent ~ start ~ predicate ~ end ^^ {case c ~ s ~ p ~ e => ElasticParent(unwrappPredicate(p))}
+  def parentCriteria: Parser[ElasticRelation] = parent ~ start.? ~ criteria ~ end.? ^^ {case _ ~ _ ~ c ~ _ => ElasticParent(unwrappCriteria(c))}
+  def parentPredicate: Parser[ElasticRelation] = parent ~ start ~ predicate ~ end ^^ {case _ ~ _ ~ p ~ _ => ElasticParent(unwrappPredicate(p))}
 
-  def alias: Parser[SQLAlias] = "(?i)as".r ~ regexAlias.r ^^ { case a ~ b => SQLAlias(b) }
+  def alias: Parser[SQLAlias] = "(?i)as".r ~ regexAlias.r ^^ { case _ ~ b => SQLAlias(b) }
 
   def count: Parser[SQLFunction] = "(?i)count".r ^^ (_ => SQLCount)
   def min: Parser[SQLFunction] = "(?i)min".r ^^ (_ => SQLMin)
@@ -149,17 +149,17 @@ object SQLParser extends RegexParsers {
     }
   )}
 
-  def countField: Parser[SQLCountField] = count ~ start ~ identifier ~ end ~ alias.? ~ countFilter.? ^^ {case c ~ s ~ i ~ e ~ a ~ f  => new SQLCountField(i, a, f)}
+  def countField: Parser[SQLCountField] = count ~ start ~ identifier ~ end ~ alias.? ~ countFilter.? ^^ {case _ ~ _ ~ i ~ _ ~ a ~ f  => new SQLCountField(i, a, f)}
 
-  def field: Parser[SQLField] = (min | max | avg | sum).? ~ start.? ~ identifier ~ end.? ~ alias.? ^^ {case f ~ s ~ i ~ e ~ a => SQLField(f, i, a)}
+  def field: Parser[SQLField] = (min | max | avg | sum).? ~ start.? ~ identifier ~ end.? ~ alias.? ^^ {case f ~ _ ~ i ~ _ ~ a => SQLField(f, i, a)}
 
-  def selectCount: Parser[SQLSelect] = _select ~ rep1sep(countField, separator) ^^ {case s ~ fields => new SQLSelectCount(fields)}
+  def selectCount: Parser[SQLSelect] = _select ~ rep1sep(countField, separator) ^^ {case _ ~ fields => new SQLSelectCount(fields)}
 
-  def select: Parser[SQLSelect] = _select ~ rep1sep(field, separator) ^^ {case s ~ fields => SQLSelect(fields)}
+  def select: Parser[SQLSelect] = _select ~ rep1sep(field, separator) ^^ {case _ ~ fields => SQLSelect(fields)}
 
   def table: Parser[SQLTable] = identifier ~ alias.? ^^ {case i ~ a => SQLTable(i, a)}
 
-  def from: Parser[SQLFrom] = _from ~ rep1sep(table, separator) ^^ {case f ~ tables => SQLFrom(tables)}
+  def from: Parser[SQLFrom] = _from ~ rep1sep(table, separator) ^^ {case _ ~ tables => SQLFrom(tables)}
 
   def allPredicate: SQLParser.Parser[SQLCriteria] = nestedPredicate | childPredicate | parentPredicate | predicate
 
@@ -168,10 +168,10 @@ object SQLParser extends RegexParsers {
   def whereCriteria: SQLParser.Parser[List[SQLToken]] = rep1(allPredicate | allCriteria | start | or | and | end)
 
   def where: Parser[SQLWhere] = _where ~ whereCriteria ^^ {
-    case w ~ rawTokens => SQLWhere(processTokens(rawTokens, None, None, None))
+    case _ ~ rawTokens => SQLWhere(processTokens(rawTokens, None, None, None))
   }
 
-  def limit: SQLParser.Parser[SQLLimit] = _limit ~ int ^^ {case l ~ i => SQLLimit(i.value)}
+  def limit: SQLParser.Parser[SQLLimit] = _limit ~ int ^^ {case _ ~ i => SQLLimit(i.value)}
 
   def tokens: Parser[_ <: SQLSelectQuery] = {
     phrase((selectCount | select) ~ from ~ where.? ~ limit.?) ^^ {
@@ -185,10 +185,10 @@ object SQLParser extends RegexParsers {
 
   def apply(query: String): Either[SQLParserError, SQLSelectQuery] = {
     parse(tokens, query) match {
-      case NoSuccess(msg, next) =>
+      case NoSuccess(msg, _) =>
         println(msg)
         Left(SQLParserError(msg))
-      case Success(result, next) => Right(result)
+      case Success(result, _) => Right(result)
     }
   }
 
@@ -206,12 +206,12 @@ object SQLParser extends RegexParsers {
       case Some(c: SQLCriteria) if left.isDefined && operator.isDefined && right.isEmpty =>
         processTokens(tokens.tail, left, operator, Some(c))
 
-      case Some(s: StartDelimiter) => processTokens(tokens.tail, left, operator, right)
+      case Some(_: StartDelimiter) => processTokens(tokens.tail, left, operator, right)
 
-      case Some(x: EndDelimiter) if left.isDefined && operator.isDefined && right.isDefined =>
+      case Some(_: EndDelimiter) if left.isDefined && operator.isDefined && right.isDefined =>
         processTokens(tokens.tail, Some(SQLPredicate(left.get, operator.get, right.get)), None, None)
 
-      case Some(x: EndDelimiter) => processTokens(tokens.tail, left, operator, right)
+      case Some(_: EndDelimiter) => processTokens(tokens.tail, left, operator, right)
 
       case Some(o: SQLPredicateOperator) if operator.isEmpty => processTokens(tokens.tail, left, Some(o), right)
 
