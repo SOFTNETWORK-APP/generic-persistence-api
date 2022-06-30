@@ -19,7 +19,7 @@ class AccountKeyBehaviorSpec extends AnyWordSpecLike with  InMemoryPersistenceTe
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     AccountKeyBehavior
   )
 

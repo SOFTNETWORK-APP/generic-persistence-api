@@ -16,7 +16,7 @@ package object message {
 
   @SerialVersionUID(0L)
   case class AddNotification[T<:Notification](notification: T) extends NotificationCommand {
-    override val id = notification.uuid
+    override val id: String = notification.uuid
   }
 
   @SerialVersionUID(0L)
@@ -24,7 +24,7 @@ package object message {
 
   @SerialVersionUID(0L)
   case class SendNotification[T<:Notification](notification: T) extends NotificationCommand {
-    override val id = notification.uuid
+    override val id: String = notification.uuid
   }
 
   @SerialVersionUID(0L)
@@ -34,7 +34,7 @@ package object message {
   case class GetNotificationStatus(id: String) extends NotificationCommand
 
   case class TriggerSchedule4Notification(schedule: Schedule) extends NotificationCommand {
-    override val id = schedule.entityId
+    override val id: String = schedule.entityId
   }
 
   sealed trait NotificationCommandResult extends CommandResult

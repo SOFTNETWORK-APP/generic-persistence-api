@@ -43,15 +43,15 @@ trait JestClientApi extends ElasticClientApi
   with JestBulkApi
 
 trait JestIndicesApi extends IndicesApi with JestClientCompanion {
-  override def createIndex(index: String, settings: String = defaultSettings) =
+  override def createIndex(index: String, settings: String = defaultSettings): Boolean =
     apply().execute(new CreateIndex.Builder(index).settings(settings).build()).isSucceeded
-  override def deleteIndex(index: String) = apply().execute(new DeleteIndex.Builder(index).build()).isSucceeded
-  override def closeIndex(index: String) = apply().execute(new CloseIndex.Builder(index).build()).isSucceeded
-  override def openIndex(index: String) = apply().execute(new OpenIndex.Builder(index).build()).isSucceeded
+  override def deleteIndex(index: String): Boolean = apply().execute(new DeleteIndex.Builder(index).build()).isSucceeded
+  override def closeIndex(index: String): Boolean = apply().execute(new CloseIndex.Builder(index).build()).isSucceeded
+  override def openIndex(index: String): Boolean = apply().execute(new OpenIndex.Builder(index).build()).isSucceeded
 }
 
 trait JestAliasApi extends AliasApi with JestClientCompanion {
-  override def addAlias(index: String, alias: String) = {
+  override def addAlias(index: String, alias: String): Boolean = {
     apply().execute(
       new ModifyAliases.Builder(
         new AddAliasMapping.Builder(index, alias).build()
@@ -61,23 +61,23 @@ trait JestAliasApi extends AliasApi with JestClientCompanion {
 }
 
 trait JestUpdateSettingsApi extends UpdateSettingsApi with JestClientCompanion {_: IndicesApi =>
-  override def updateSettings(index: String, settings: String = defaultSettings) =
+  override def updateSettings(index: String, settings: String = defaultSettings): Boolean =
     closeIndex(index) &&
       apply().execute(new UpdateSettings.Builder(settings).addIndex(index).build()).isSucceeded &&
       openIndex(index)
 }
 
 trait JestMappingApi extends MappingApi with JestClientCompanion {
-  override def setMapping(index: String, `type`: String, mapping: String) =
+  override def setMapping(index: String, `type`: String, mapping: String): Boolean =
     apply().execute(new PutMapping.Builder(index, `type`, mapping).build()).isSucceeded
 }
 
 trait JestRefreshApi extends RefreshApi with JestClientCompanion {
-  override def refresh(index: String) = apply().execute(new Refresh.Builder().addIndex(index).build()).isSucceeded
+  override def refresh(index: String): Boolean = apply().execute(new Refresh.Builder().addIndex(index).build()).isSucceeded
 }
 
 trait JestFlushApi extends FlushApi with JestClientCompanion {
-  override def flush(index: String, force: Boolean = true, wait: Boolean = true) = apply().execute(
+  override def flush(index: String, force: Boolean = true, wait: Boolean = true): Boolean = apply().execute(
     new Flush.Builder().addIndex(index).force(force).waitIfOngoing(wait).build()
   ).isSucceeded
 }
@@ -129,10 +129,10 @@ trait JestCountApi extends CountApi with JestClientCompanion {
           countAsync(
             JSONQuery(_query, Seq(_sources: _*), Seq.empty[String])
           ).onComplete {
-            case Success(result) => promise.success(new CountResponse(_field, result.getOrElse(0D).toInt, None))
+            case Success(result) => promise.success(CountResponse(_field, result.getOrElse(0D).toInt, None))
             case Failure(f) =>
               logger.error(f.getMessage, f.fillInStackTrace())
-              promise.success(new CountResponse(_field, 0, Some(f.getMessage)))
+              promise.success(CountResponse(_field, 0, Some(f.getMessage)))
           }
         case _ =>
           import JestClientApi._
@@ -154,7 +154,7 @@ trait JestCountApi extends CountApi with JestClientCompanion {
               }
 
               promise.success(
-                new CountResponse(
+                CountResponse(
                   _field,
                   if (elasticCount.distinct)
                     root.getCardinalityAggregation(agg).getCardinality.toInt
@@ -166,7 +166,7 @@ trait JestCountApi extends CountApi with JestClientCompanion {
 
             case Failure(f) =>
               logger.error(f.getMessage, f.fillInStackTrace())
-              promise.success(new CountResponse(_field, 0, Some(f.getMessage)))
+              promise.success(CountResponse(_field, 0, Some(f.getMessage)))
           }
       }
       promise.future

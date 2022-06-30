@@ -163,7 +163,7 @@ trait ElasticDocuments {
 
   private[this] var documents: Map[String, Timestamped] = Map()
 
-  def createOrUpdate(entity: Timestamped) = {
+  def createOrUpdate(entity: Timestamped): Unit = {
     documents = documents.updated(entity.uuid, entity)
   }
 

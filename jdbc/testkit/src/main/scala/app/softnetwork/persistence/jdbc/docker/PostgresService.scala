@@ -1,11 +1,10 @@
 package app.softnetwork.persistence.jdbc.docker
 
 import java.sql.DriverManager
-
 import app.softnetwork.docker.DockerService
 import com.whisk.docker._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 trait PostgresService extends DockerService {
@@ -41,7 +40,7 @@ class PostgresReadyChecker(user: String, password: String, port: Option[Int] = N
     extends DockerReadyChecker {
 
   override def apply(container: DockerContainerState)(implicit docker: DockerCommandExecutor,
-                                                      ec: ExecutionContext) =
+                                                      ec: ExecutionContext): Future[Boolean] =
     container
       .getPorts()
       .map(ports =>

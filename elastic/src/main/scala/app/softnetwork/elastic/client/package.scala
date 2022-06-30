@@ -1,13 +1,10 @@
 package app.softnetwork.elastic
 
-import akka.stream.{Attributes, Outlet, Inlet, FlowShape}
-import akka.stream.stage.{GraphStageLogic, GraphStage}
-
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.stream.stage.{GraphStage, GraphStageLogic}
 import app.softnetwork.elastic.client.BulkAction.BulkAction
 import app.softnetwork.serialization._
-
-import com.google.gson.{JsonObject, Gson, JsonElement}
-
+import com.google.gson.{Gson, JsonElement, JsonObject}
 import org.json4s.Formats
 
 import scala.collection.immutable.Seq
@@ -24,9 +21,9 @@ package object client {
 
   object BulkAction extends Enumeration {
     type BulkAction = Value
-    val INDEX = Value(0, "INDEX")
-    val UPDATE = Value(1, "UPDATE")
-    val DELETE = Value(2, "DELETE")
+    val INDEX: client.BulkAction.Value = Value(0, "INDEX")
+    val UPDATE: client.BulkAction.Value = Value(1, "UPDATE")
+    val DELETE: client.BulkAction.Value = Value(2, "DELETE")
   }
 
   case class BulkItem(index: String, action: BulkAction, body: String, id: Option[String], parent: Option[String])
@@ -43,10 +40,10 @@ package object client {
     implicit updateSettingsApi: UpdateSettingsApi, toBulkElasticAction: A => BulkElasticAction)
     extends GraphStage[FlowShape[A, A]] {
 
-    val in = Inlet[A]("Filter.in")
-    val out = Outlet[A]("Filter.out")
+    val in: Inlet[A] = Inlet[A]("Filter.in")
+    val out: Outlet[A] = Outlet[A]("Filter.out")
 
-    val shape = FlowShape.of(in, out)
+    val shape: FlowShape[A, A] = FlowShape.of(in, out)
 
     val indices = mutable.Set.empty[String]
 

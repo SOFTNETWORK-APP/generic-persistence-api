@@ -3,29 +3,24 @@ package app.softnetwork.notification.handlers
 import java.io.{File => JFile}
 import java.time.Duration
 import java.util.Date
-
 import akka.actor.typed.ActorSystem
 import app.softnetwork.concurrent.Completion
-import com.eatthepath.pushy.apns.{PushNotificationResponse, ApnsClientBuilder}
-import com.eatthepath.pushy.apns.util.{SimpleApnsPushNotification, SimpleApnsPayloadBuilder, ApnsPayloadBuilder}
-
+import com.eatthepath.pushy.apns.{ApnsClient, ApnsClientBuilder, PushNotificationResponse}
+import com.eatthepath.pushy.apns.util.{ApnsPayloadBuilder, SimpleApnsPayloadBuilder, SimpleApnsPushNotification}
 import com.google.auth.oauth2.GoogleCredentials
-import com.google.firebase.{FirebaseOptions, FirebaseApp}
+import com.google.firebase.{FirebaseApp, FirebaseOptions}
 import com.google.firebase.messaging._
-
 import com.typesafe.scalalogging.StrictLogging
-
 import app.softnetwork.config.{Settings => CommonSettings}
-
 import app.softnetwork.notification.config.Settings
 import org.softnetwork.notification.model._
 
 import scala.annotation.tailrec
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
 import scala.collection.JavaConverters._
 import scala.compat.java8.FutureConverters._
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success, Try}
 
 /**
   * Created by smanciot on 14/04/2018.
@@ -54,7 +49,7 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
                   )(implicit system: ActorSystem[_]): Seq[NotificationStatusResult] = {
     import APNSPushProvider._
 
-    implicit val ec = system.executionContext
+    implicit val ec: ExecutionContextExecutor = system.executionContext
 
     val nbDevices: Int = devices.length
     if(nbDevices > 0){
@@ -99,7 +94,7 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
     import FCMPushProvider._
     val nbDevices: Int = devices.length
     if(nbDevices > 0){
-      implicit val tokens =
+      implicit val tokens: Seq[String] =
         if(nbDevices > maxDevices)
           devices.take(maxDevices)
         else
@@ -134,13 +129,14 @@ object APNSPushProvider {
 
   lazy val apnsConfig: Settings.ApnsConfig = Settings.Config.push.apns
 
-  lazy val apnsClient =
+  lazy val apnsClient: ApnsClient =
     clientCredentials(
       new ApnsClientBuilder()
         .setApnsServer(
-          apnsConfig.dryRun match {
-            case true => ApnsClientBuilder.DEVELOPMENT_APNS_HOST
-            case _ => ApnsClientBuilder.PRODUCTION_APNS_HOST
+          if (apnsConfig.dryRun) {
+            ApnsClientBuilder.DEVELOPMENT_APNS_HOST
+          } else {
+            ApnsClientBuilder.PRODUCTION_APNS_HOST
           }
         )
     ).setConnectionTimeout(Duration.ofSeconds(CommonSettings.DefaultTimeout.toSeconds)).build()
@@ -188,7 +184,7 @@ object APNSPushProvider {
 
 object FCMPushProvider{
 
-  lazy val firebaseApp = {
+  lazy val firebaseApp: FirebaseApp = {
     val databaseUrl = Settings.Config.push.fcm.databaseUrl
     val options = FirebaseOptions.builder().setCredentials(GoogleCredentials.getApplicationDefault())
     if(databaseUrl.nonEmpty){

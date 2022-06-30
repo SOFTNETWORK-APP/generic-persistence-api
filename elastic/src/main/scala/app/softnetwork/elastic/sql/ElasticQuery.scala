@@ -144,7 +144,7 @@ object ElasticQuery {
               ).string()
             }
 
-          new ElasticCount(
+          ElasticCount(
             aggPath.mkString("."),
             field,
             sourceField,

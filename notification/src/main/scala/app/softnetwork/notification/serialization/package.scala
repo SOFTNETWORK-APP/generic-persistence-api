@@ -2,9 +2,9 @@ package app.softnetwork.notification
 
 import app.softnetwork.protobuf.ScalaPBSerializers
 import ScalaPBSerializers.GeneratedEnumSerializer
-
 import app.softnetwork.serialization._
-import org.softnetwork.notification.model.{MailType, Platform, NotificationStatus, NotificationType}
+import org.json4s.Formats
+import org.softnetwork.notification.model.{MailType, NotificationStatus, NotificationType, Platform}
 
 import scala.language.implicitConversions
 
@@ -13,7 +13,7 @@ import scala.language.implicitConversions
   */
 package object serialization {
 
-  val notificationFormats =
+  val notificationFormats: Formats =
     commonFormats ++
       Seq(
         GeneratedEnumSerializer(NotificationType.enumCompanion),
@@ -22,7 +22,7 @@ package object serialization {
         GeneratedEnumSerializer(MailType.enumCompanion)
       )
 
-  implicit def formats = notificationFormats
+  implicit def formats: Formats = notificationFormats
 
   implicit def toNotificationType(channel: String): Option[NotificationType] = NotificationType.fromName(channel)
 

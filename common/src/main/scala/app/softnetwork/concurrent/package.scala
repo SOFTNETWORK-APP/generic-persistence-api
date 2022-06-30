@@ -46,17 +46,17 @@ package object concurrent {
 
     implicit def toBoolean(t: Try[Boolean]): Boolean = t match {
       case Success(s) => s
-      case Failure(f) => false
+      case Failure(_) => false
     }
 
     implicit def toSeq[T](t: Try[Seq[T]]): Seq[T] = t match {
       case Success(s) => s
-      case Failure(f) => Seq.empty
+      case Failure(_) => Seq.empty
     }
 
     implicit def toOption[T](t: Try[Option[T]]): Option[T] = t match {
       case Success(s) => s
-      case Failure(f) => None
+      case Failure(_) => None
     }
 
   }

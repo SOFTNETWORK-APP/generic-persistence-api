@@ -11,7 +11,7 @@ trait CardDecorator{self: Card =>
     Try(sdf.parse(expirationDate)) match {
       case Success(date) =>
         sdf.parse(sdf.format(new Date())).after(date)
-      case Failure(f)    =>
+      case Failure(_)    =>
         false
     }
   }

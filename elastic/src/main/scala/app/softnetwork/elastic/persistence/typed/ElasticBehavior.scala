@@ -1,30 +1,23 @@
 package app.softnetwork.elastic.persistence.typed
 
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
-import akka.actor.typed.{ActorSystem, ActorRef}
+import akka.actor.typed.{ActorRef, ActorSystem}
 import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.persistence.message._
-
 import app.softnetwork.persistence.typed._
 import app.softnetwork.serialization._
-
 import akka.persistence.typed.scaladsl.Effect
 import com.typesafe.scalalogging.StrictLogging
-
 import app.softnetwork.persistence.typed._
-
 import app.softnetwork.elastic.client.ElasticClientApi
-
 import app.softnetwork.elastic.message._
-
 import app.softnetwork.persistence.model.Timestamped
 import app.softnetwork.elastic.persistence.query.ElasticProvider
-
 import org.softnetwork.elastic.message.{DocumentUpsertedEvent, ElasticEvent}
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.language.implicitConversions
 import scala.language.postfixOps
-
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -62,15 +55,15 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
 
       case cmd: CreateDocument[S] =>
         import cmd._
-        implicit val m = manifestWrapper.wrapped
+        implicit val m: Manifest[S] = manifestWrapper.wrapped
         Effect.persist[ElasticEvent, Option[S]](DocumentCreatedEvent(document))
-          .thenRun(state => DocumentCreated(document.uuid) ~> replyTo)
+          .thenRun(_ => DocumentCreated(document.uuid) ~> replyTo)
 
       case cmd: UpdateDocument[S] =>
         import cmd._
-        implicit val m = manifestWrapper.wrapped
+        implicit val m: Manifest[S] = manifestWrapper.wrapped
         Effect.persist[ElasticEvent, Option[S]](DocumentUpdatedEvent(document, upsert))
-          .thenRun(state => DocumentUpdated(document.uuid) ~> replyTo)
+          .thenRun(_ => DocumentUpdated(document.uuid) ~> replyTo)
 
       case cmd: UpsertDocument =>
         import cmd._
@@ -79,45 +72,45 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
             id,
             data
           )
-        ).thenRun(state => DocumentUpserted(entityId) ~> replyTo)
+        ).thenRun(_ => DocumentUpserted(entityId) ~> replyTo)
 
       case cmd: DeleteDocument =>
         import cmd._
         Effect.persist[ElasticEvent, Option[S]](DocumentDeletedEvent(id))
-          .thenRun(state => DocumentDeleted ~> replyTo).thenStop()
+          .thenRun(_ => DocumentDeleted ~> replyTo).thenStop()
 
-      case cmd: LoadDocument =>
-        implicit val m = manifestWrapper.wrapped
+      case _: LoadDocument =>
+        implicit val m: Manifest[S] = manifestWrapper.wrapped
         state match {
-          case Some(s) => Effect.none.thenRun(state => DocumentLoaded(s) ~> replyTo)
-          case _       => Effect.none.thenRun(state => DocumentNotFound ~> replyTo)
+          case Some(s) => Effect.none.thenRun(_ => DocumentLoaded(s) ~> replyTo)
+          case _       => Effect.none.thenRun(_ => DocumentNotFound ~> replyTo)
         }
 
-      case cmd: LoadDocumentAsync =>
-        implicit val m = manifestWrapper.wrapped
+      case _: LoadDocumentAsync =>
+        implicit val m: Manifest[S] = manifestWrapper.wrapped
         state match {
-          case Some(s) => Effect.none.thenRun(state => DocumentLoaded(s) ~> replyTo)
-          case _       => Effect.none.thenRun(state => DocumentNotFound ~> replyTo)
+          case Some(s) => Effect.none.thenRun(_ => DocumentLoaded(s) ~> replyTo)
+          case _       => Effect.none.thenRun(_ => DocumentNotFound ~> replyTo)
         }
 
       case cmd: LookupDocuments =>
         import cmd._
-        implicit val m = manifestWrapper.wrapped
+        implicit val m: Manifest[S] = manifestWrapper.wrapped
         Try(search[S](sqlQuery)) match {
           case Success(documents) =>
             documents match {
-              case Nil => Effect.none.thenRun(state => NoResultsFound ~> replyTo)
-              case _   => Effect.none.thenRun(state => DocumentsFound[S](documents) ~> replyTo)
+              case Nil => Effect.none.thenRun(_ => NoResultsFound ~> replyTo)
+              case _   => Effect.none.thenRun(_ => DocumentsFound[S](documents) ~> replyTo)
             }
           case Failure(f) =>
             context.log.error(f.getMessage, f)
-            Effect.none.thenRun(state => NoResultsFound ~> replyTo)
+            Effect.none.thenRun(_ => NoResultsFound ~> replyTo)
         }
 
       case cmd: Count =>
         import cmd._
-        implicit val ec = context.system.executionContext
-        Effect.none.thenRun(state =>
+        implicit val ec: ExecutionContextExecutor = context.system.executionContext
+        Effect.none.thenRun(_ =>
           (countAsync(sqlQuery) complete() match {
             case Success(s) => ElasticCountResult(s)
             case Failure(f) =>
@@ -129,7 +122,7 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
       case cmd: BulkUpdateDocuments =>
         import cmd._
         import app.softnetwork.elastic.client._
-        implicit val bulkOptions = BulkOptions(index, `type`)
+        implicit val bulkOptions: BulkOptions = BulkOptions(index, `type`)
         Try(
           bulk[Map[String, Any]](
             documents.iterator,
@@ -139,16 +132,16 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
             delete = Some(false)
           )(bulkOptions, context.system)
         ) match {
-          case Success(_) => Effect.none.thenRun(state => DocumentsBulkUpdated ~> replyTo)
+          case Success(_) => Effect.none.thenRun(_ => DocumentsBulkUpdated ~> replyTo)
           case Failure(f) =>
             logger.error(f.getMessage, f.fillInStackTrace())
-            Effect.none.thenRun(state => BulkUpdateDocumentsFailure ~> replyTo)
+            Effect.none.thenRun(_ => BulkUpdateDocumentsFailure ~> replyTo)
         }
 
       case cmd: BulkDeleteDocuments =>
         import cmd._
         import app.softnetwork.elastic.client._
-        implicit val bulkOptions = BulkOptions(index, `type`)
+        implicit val bulkOptions: BulkOptions = BulkOptions(index, `type`)
         Try(
           bulk[Map[String, Any]](
             documents.iterator,
@@ -158,23 +151,23 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
             delete = Some(true)
           )(bulkOptions, context.system)
         ) match {
-          case Success(_) => Effect.none.thenRun(state => DocumentsBulkDeleted ~> replyTo)
+          case Success(_) => Effect.none.thenRun(_ => DocumentsBulkDeleted ~> replyTo)
           case Failure(f) =>
             logger.error(f.getMessage, f.fillInStackTrace())
-            Effect.none.thenRun(state => BulkDeleteDocumentsFailure ~> replyTo)
+            Effect.none.thenRun(_ => BulkDeleteDocumentsFailure ~> replyTo)
         }
 
       case cmd: RefreshIndex =>
         Try(refresh(cmd.index.getOrElse(index))) match {
-          case Success(_) => Effect.none.thenRun(state => IndexRefreshed ~> replyTo)
+          case Success(_) => Effect.none.thenRun(_ => IndexRefreshed ~> replyTo)
           case Failure(f) =>
             logger.error(f.getMessage, f.fillInStackTrace())
-            Effect.none.thenRun(state => RefreshIndexFailure ~> replyTo)
+            Effect.none.thenRun(_ => RefreshIndexFailure ~> replyTo)
         }
 
       case cmd: FlushIndex =>
         Try(flush(cmd.index.getOrElse(index))) match {
-          case Success(_) => Effect.none.thenRun(state => IndexFlushed ~> replyTo)
+          case Success(_) => Effect.none.thenRun(_ => IndexFlushed ~> replyTo)
           case Failure(f) =>
             logger.error(f.getMessage, f.fillInStackTrace())
             Effect.none.thenRun(_ => FlushIndexFailure ~> replyTo)
@@ -206,7 +199,7 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
     */
   private[this] def handleElasticCrudEvent(state: Option[S], event: CrudEvent)(
     implicit context: ActorContext[_]): Option[S] = {
-    implicit val m = manifestWrapper.wrapped
+    implicit val m: Manifest[S] = manifestWrapper.wrapped
     event match {
       case e: Created[S] =>
         import e._

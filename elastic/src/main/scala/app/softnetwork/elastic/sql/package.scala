@@ -20,7 +20,7 @@ package object sql {
 
   sealed trait SQLToken extends Serializable{
     def sql: String
-    override def toString = sql
+    override def toString: String = sql
   }
 
   abstract class SQLExpr(override val sql: String) extends SQLToken
@@ -39,7 +39,7 @@ package object sql {
     else
       s"${distinct.getOrElse("")} $identifier".trim
   ) with SQLSource {
-    lazy val nested = identifier.contains('.') && !identifier.endsWith(".raw")
+    lazy val nested: Boolean = identifier.contains('.') && !identifier.endsWith(".raw")
   }
 
   abstract class SQLValue[+T](val value: T)(implicit ev$1: T => Ordered[T]) extends SQLToken{
@@ -176,12 +176,12 @@ package object sql {
   }
 
   case class SQLIsNull(columnName: SQLIdentifier) extends SQLCriteria {
-    override val operator = IS_NULL
+    override val operator: SQLOperator = IS_NULL
     override def sql = s"$columnName ${operator.sql}"
   }
 
   case class SQLIsNotNull(columnName: SQLIdentifier) extends SQLCriteria {
-    override val operator = IS_NOT_NULL
+    override val operator: SQLOperator = IS_NOT_NULL
     override def sql = s"$columnName ${operator.sql}"
   }
 
@@ -190,17 +190,17 @@ package object sql {
                                           values: SQLValues[R, T],
                                           not: Option[NOT.type] = None) extends SQLCriteria {
     override def sql = s"$columnName ${not.map(_ => "not ").getOrElse("")}${operator.sql} ${values.sql}"
-    override def operator = IN
+    override def operator: SQLOperator = IN
   }
 
   case class SQLBetween(columnName: SQLIdentifier, from: SQLLiteral, to: SQLLiteral) extends SQLCriteria {
     override def sql = s"$columnName ${operator.sql} ${from.sql} and ${to.sql}"
-    override def operator = BETWEEN
+    override def operator: SQLOperator = BETWEEN
   }
 
   case class ElasticGeoDistance(columnName: SQLIdentifier, distance: SQLLiteral, lat: SQLDouble, lon: SQLDouble) extends SQLCriteria {
     override def sql = s"${operator.sql}($columnName,(${lat.sql},${lon.sql})) <= ${distance.sql}"
-    override def operator = SQLDistance
+    override def operator: SQLOperator = SQLDistance
   }
 
   case class SQLPredicate(
@@ -208,8 +208,8 @@ package object sql {
                            operator: SQLPredicateOperator,
                            rightCriteria: SQLCriteria,
                            not: Option[NOT.type] = None) extends SQLCriteria {
-    val leftParentheses = leftCriteria match {case _: ElasticRelation => false case _ => true}
-    val rightParentheses = rightCriteria match {case _: ElasticRelation => false case _ => true}
+    val leftParentheses: Boolean = leftCriteria match {case _: ElasticRelation => false case _ => true}
+    val rightParentheses: Boolean = rightCriteria match {case _: ElasticRelation => false case _ => true}
     override def sql = s"${if (leftParentheses) s"(${leftCriteria.sql})" else leftCriteria.sql} ${operator.sql}${not.map(_ => " not").getOrElse("")} ${if (rightParentheses) s"(${rightCriteria.sql})" else rightCriteria.sql}"
   }
 
@@ -230,7 +230,7 @@ package object sql {
       case relation: ElasticRelation   => relation.`type`
       case _ => None
     }
-    lazy val `type` = _retrieveType(criteria)
+    lazy val `type`: Option[String] = _retrieveType(criteria)
   }
 
   case class ElasticNested(override val criteria: SQLCriteria) extends ElasticRelation(criteria, NESTED)

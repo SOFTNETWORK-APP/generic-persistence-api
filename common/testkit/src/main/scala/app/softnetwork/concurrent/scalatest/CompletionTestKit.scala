@@ -34,7 +34,7 @@ trait CompletionTestKit extends Completion with Assertions {
 
   override implicit def toSeq[T](t: Try[Seq[T]]): Seq[T] = toT[Seq[T]](t)
 
-  def log = Logger(LoggerFactory.getLogger(getClass.getName))
+  def log: Logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def blockUntil(explain: String, maxTries: Int = 20, sleep: Int = 1000)(predicate: () => Boolean): Unit = {
 

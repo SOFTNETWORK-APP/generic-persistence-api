@@ -18,7 +18,7 @@ class SequenceHandlerSpec extends SequenceHandler with AnyWordSpecLike with InMe
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = _ => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     Sequence
   )
 

@@ -20,9 +20,9 @@ trait DockerService extends TestSuite
   with Eventually
   with CompletionTestKit {
 
-  override val StartContainersTimeout = defaultTimeout
+  override val StartContainersTimeout: FiniteDuration = defaultTimeout
 
-  override val StopContainersTimeout = defaultTimeout
+  override val StopContainersTimeout: FiniteDuration = defaultTimeout
 
   def container: String
 
@@ -30,17 +30,17 @@ trait DockerService extends TestSuite
 
   def name: String = container.split(":").head
 
-  def containerEnv = sys.env.filterKeys(_.startsWith(s"${name.toUpperCase}_"))
+  def containerEnv: Map[String, String] = sys.env.filterKeys(_.startsWith(s"${name.toUpperCase}_"))
 
   import DockerService._
 
-  def exposedPort(port: Int) = Some(
+  def exposedPort(port: Int): Option[Int] = Some(
         containerEnv.getOrElse(s"${name.toUpperCase}_$port", dynamicPort().toString).toInt
       )
 
-  lazy val exposedPorts = containerPorts.map{port => (port, exposedPort(port))}
+  lazy val exposedPorts: Seq[(Int, Option[Int])] = containerPorts.map{ port => (port, exposedPort(port))}
 
-  lazy val dockerContainer = DockerContainer(container, Some(name))
+  lazy val dockerContainer: DockerContainer = DockerContainer(container, Some(name))
     .withPorts(exposedPorts:_*)
     .withEnv(
       containerEnv.map( t => s"${t._1}=${t._2}").toSeq:_*
@@ -51,7 +51,7 @@ trait DockerService extends TestSuite
   override implicit val dockerFactory: DockerFactory = new SpotifyDockerFactory(
     DefaultDockerClient.fromEnv().build())
 
-  protected def waitForContainerUp(maxTries: Int = (defaultTimeout.toMillis/1000).toInt, sleep: Int = 1000) = {
+  protected def waitForContainerUp(maxTries: Int = (defaultTimeout.toMillis/1000).toInt, sleep: Int = 1000): Unit = {
     val predicate: () => Boolean = () => Await.result(
       isContainerReady(_container()),
       sleep.milliseconds

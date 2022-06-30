@@ -2,19 +2,17 @@ package app.softnetwork.persistence.auth
 
 import app.softnetwork.protobuf.ScalaPBSerializers
 import ScalaPBSerializers.GeneratedEnumSerializer
-
 import app.softnetwork.serialization._
-
 import app.softnetwork.notification.serialization._
-
 import app.softnetwork.persistence.auth.model._
+import org.json4s.Formats
 
 /**
   * Created by smanciot on 16/05/2018.
   */
 package object serialization {
 
-  val authFormats =
+  val authFormats: Formats =
     notificationFormats ++
       Seq(
         GeneratedEnumSerializer(AccountStatus.enumCompanion),

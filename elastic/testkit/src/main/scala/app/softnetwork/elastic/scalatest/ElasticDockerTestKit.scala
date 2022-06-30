@@ -2,19 +2,16 @@ package app.softnetwork.elastic.scalatest
 
 import java.net.{ServerSocket, URI}
 import java.util.UUID
-
-import com.sksamuel.elastic4s.http.{ElasticProperties, ElasticClient}
+import com.sksamuel.elastic4s.http.{ElasticClient, ElasticProperties}
 import com.sksamuel.exts.Logging
-
 import com.whisk.docker.DockerReadyChecker.LogLineContains
 import com.whisk.docker.impl.dockerjava.DockerKitDockerJava
 import com.whisk.docker.scalatest.DockerTestKit
 import com.whisk.docker.{DockerContainer, LogLineReceiver}
-
 import app.softnetwork.config.Settings._
-
 import org.scalatest.Suite
 
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 /**
@@ -41,7 +38,7 @@ trait ElasticDockerTestKit extends DockerTestKit with DockerKitDockerJava with L
 
   import ElasticDockerTestKit._
 
-  private def log(s: String) = logger.warn(s)
+  private def log(s: String): Unit = logger.warn(s)
 
   lazy val elasticHost: String = sys.env
     .get("ES_HOST")
@@ -58,9 +55,9 @@ trait ElasticDockerTestKit extends DockerTestKit with DockerKitDockerJava with L
 
   lazy val clusterName: String = s"test-${UUID.randomUUID()}"
 
-  override val StartContainersTimeout = DefaultTimeout
+  override val StartContainersTimeout: FiniteDuration = DefaultTimeout
 
-  override val StopContainersTimeout = DefaultTimeout
+  override val StopContainersTimeout: FiniteDuration = DefaultTimeout
 
   val elasticsearchVersion = "6.7.2"
 

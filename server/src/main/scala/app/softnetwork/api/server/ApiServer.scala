@@ -10,6 +10,7 @@ import app.softnetwork.config.Settings
 import app.softnetwork.persistence.launch.PersistenceGuardian
 import app.softnetwork.persistence.query.SchemaProvider
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
 /**
@@ -31,7 +32,7 @@ trait ApiServer extends PersistenceGuardian {_: ApiRoutes with SchemaProvider =>
 
     val shutdown = CoordinatedShutdown(classicSystem)
 
-    implicit val ec = classicSystem.dispatcher
+    implicit val ec: ExecutionContextExecutor = classicSystem.dispatcher
 
     Http().bindAndHandle(routes(system), Interface, Port).onComplete {
       case Success(binding) =>

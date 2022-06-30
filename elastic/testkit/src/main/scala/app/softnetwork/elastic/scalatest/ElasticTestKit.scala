@@ -113,7 +113,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     client.execute {
       createIndex(index)
     } complete() match {
-      case Success(s) => ()
+      case Success(_) => ()
       case Failure(f) =>
         f match {
           case _: ResourceAlreadyExistsException => // Ok, ignore.

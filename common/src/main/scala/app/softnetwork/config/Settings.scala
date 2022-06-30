@@ -14,7 +14,7 @@ object Settings {
 
   val DefaultTimeout: FiniteDuration = config.getInt("softnetwork.default-timeout").seconds
 
-  val MustacheRootPath =
+  val MustacheRootPath: Option[String] =
     Try(config.getString("softnetwork.mustache.root.path")) match {
       case Success(s) => Some(s)
       case Failure(f) => f match {

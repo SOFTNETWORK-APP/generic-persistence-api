@@ -16,7 +16,7 @@ object JavaTimeSerializers {
 }
 
 case object LocalDateTimeISOSerializer
-  extends CustomSerializer[jt.LocalDateTime](format => {
+  extends CustomSerializer[jt.LocalDateTime](_ => {
 
     val isoFormat                             = jt.format.DateTimeFormatter.ISO_DATE_TIME
     def isValidDateTime(str: String): Boolean = Try(isoFormat.parse(str)).isSuccess
@@ -32,7 +32,7 @@ case object LocalDateTimeISOSerializer
   })
 
 case object LocalDateISOSerializer
-  extends CustomSerializer[jt.LocalDate](format => {
+  extends CustomSerializer[jt.LocalDate](_ => {
 
     val isoFormat                         = jt.format.DateTimeFormatter.ISO_DATE
     def isValidDate(str: String): Boolean = Try(isoFormat.parse(str)).isSuccess
@@ -48,7 +48,7 @@ case object LocalDateISOSerializer
   })
 
 case object ZonedDateTimeISOSerializer
-  extends CustomSerializer[jt.ZonedDateTime](format => {
+  extends CustomSerializer[jt.ZonedDateTime](_ => {
 
     val isoFormat                             = jt.format.DateTimeFormatter.ISO_DATE_TIME
     def isValidDateTime(str: String): Boolean = Try(isoFormat.parse(str)).isSuccess

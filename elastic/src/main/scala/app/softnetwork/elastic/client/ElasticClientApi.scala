@@ -44,7 +44,7 @@ trait ElasticClientApi extends IndicesApi
   with FlushApi
 
 trait IndicesApi {
-  val defaultSettings =
+  val defaultSettings: String =
     """
       |{
       |  "index": {
@@ -280,7 +280,7 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
               delete: Option[Boolean] = None,
               parentIdKey: Option[String] = None)(implicit bulkOptions: BulkOptions, system: ActorSystem): Set[String] = {
 
-    implicit val materializer = Materializer(system)
+    implicit val materializer: Materializer = Materializer(system)
 
     import GraphDSL.Implicits._
 
@@ -334,7 +334,7 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
     indices
   }
 
-  def toBulkItem[D](toDocument: (D) => String,
+  def toBulkItem[D](toDocument: D => String,
                     idKey: Option[String],
                     suffixDateKey: Option[String],
                     suffixDatePattern: Option[String],

@@ -20,7 +20,7 @@ object SQLImplicits {
   }
   implicit def queryToSQLQuery(query: String): Option[SQLSelectQuery] = {
     SQLParser(query) match {
-      case Left(l) => None
+      case Left(_) => None
       case Right(r) => Some(r)
     }
   }

@@ -6,7 +6,7 @@ import app.softnetwork.persistence.auth.model.{ExpirationDate, VerificationCode,
   * Created by smanciot on 09/04/2018.
   */
 trait Generator {
-  val oneDay = 24*60
+  val oneDay: Int = 24*60
   def generateToken(uuid: String, expiryTimeInMinutes: Int = oneDay): VerificationToken
   def generatePinCode(pinSize: Int, expiryTimeInMinutes:Int = 5): VerificationCode
 }

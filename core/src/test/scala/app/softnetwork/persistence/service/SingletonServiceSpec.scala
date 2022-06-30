@@ -27,7 +27,7 @@ class SingletonServiceSpec extends SingletonService[SampleCommand, SampleCommand
 
   implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
-  def test() = run(TestSample) complete() match {
+  def test(): Unit = run(TestSample) complete() match {
     case Success(s) => s match {
       case SampleTested => logger.info("sample tested !")
       case other => fail(other.toString)

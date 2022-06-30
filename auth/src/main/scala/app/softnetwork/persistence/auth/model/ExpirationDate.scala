@@ -24,7 +24,7 @@ trait ExpirationDate {
 
 trait VerificationExpirationDate {
   def expirationDate: Date
-  final def expired = Specification(ExpirationDateRule).isSatisfiedBy(this)
+  final def expired: Boolean = Specification(ExpirationDateRule).isSatisfiedBy(this)
 }
 
 case object ExpirationDateRule extends Rule[VerificationExpirationDate]{

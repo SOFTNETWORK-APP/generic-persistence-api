@@ -427,7 +427,7 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
       bClient.get[Binary](uuid) match {
         case Some(result) =>
           val decoded = decodeBase64(result.content)
-          val out = Paths.get(s"/tmp${path.getFileName}")
+          val out = Paths.get(s"/tmp/${path.getFileName}")
           val fos = Files.newOutputStream(out)
           fos.write(decoded)
           fos.close()

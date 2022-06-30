@@ -52,7 +52,7 @@ object ImageTools {
         encoded
       } match {
         case Success(s) => Some(s)
-        case Failure(f) =>
+        case Failure(_) =>
           bos.close()
           None
       }

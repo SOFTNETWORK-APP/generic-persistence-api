@@ -161,17 +161,17 @@ object SQLParser extends RegexParsers {
 
   def from: Parser[SQLFrom] = _from ~ rep1sep(table, separator) ^^ {case f ~ tables => SQLFrom(tables)}
 
-  def allPredicate = nestedPredicate | childPredicate | parentPredicate | predicate
+  def allPredicate: SQLParser.Parser[SQLCriteria] = nestedPredicate | childPredicate | parentPredicate | predicate
 
-  def allCriteria = nestedCriteria | childCriteria | parentCriteria | criteria
+  def allCriteria: SQLParser.Parser[SQLCriteria] = nestedCriteria | childCriteria | parentCriteria | criteria
 
-  def whereCriteria = rep1(allPredicate | allCriteria | start | or | and | end)
+  def whereCriteria: SQLParser.Parser[List[SQLToken]] = rep1(allPredicate | allCriteria | start | or | and | end)
 
   def where: Parser[SQLWhere] = _where ~ whereCriteria ^^ {
     case w ~ rawTokens => SQLWhere(processTokens(rawTokens, None, None, None))
   }
 
-  def limit = _limit ~ int ^^ {case l ~ i => SQLLimit(i.value)}
+  def limit: SQLParser.Parser[SQLLimit] = _limit ~ int ^^ {case l ~ i => SQLLimit(i.value)}
 
   def tokens: Parser[_ <: SQLSelectQuery] = {
     phrase((selectCount | select) ~ from ~ where.? ~ limit.?) ^^ {
@@ -215,7 +215,7 @@ object SQLParser extends RegexParsers {
 
       case Some(o: SQLPredicateOperator) if operator.isEmpty => processTokens(tokens.tail, left, Some(o), right)
 
-      case Some(o: SQLPredicateOperator) if left.isDefined && operator.isDefined && right.isDefined => processTokens(tokens.tail, Some(new SQLPredicate(left.get, operator.get, right.get)), Some(o), None)
+      case Some(o: SQLPredicateOperator) if left.isDefined && operator.isDefined && right.isDefined => processTokens(tokens.tail, Some(SQLPredicate(left.get, operator.get, right.get)), Some(o), None)
 
       case None if left.isDefined && operator.isDefined && right.isDefined => Some(SQLPredicate(left.get, operator.get, right.get))
 

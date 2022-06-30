@@ -3,7 +3,9 @@ package app.softnetwork.elastic.sql
 import com.sksamuel.elastic4s.ElasticApi._
 import com.sksamuel.elastic4s.searches.ScoreMode
 import com.sksamuel.elastic4s.searches.queries.Query
-import com.sksamuel.elastic4s.searches.queries.term.{TermsQuery, BuildableTermsQuery}
+import com.sksamuel.elastic4s.searches.queries.term.{BuildableTermsQuery, TermsQuery}
+
+import scala.annotation.tailrec
 
 /**
   * Created by smanciot on 27/06/2018.
@@ -25,6 +27,7 @@ object ElasticFilters {
 
     var _innerHits: Set[String] = Set.empty
 
+    @tailrec
     def _innerHit(name: String, inc: Int = 1): String = {
       if(_innerHits.contains(name)){
         val incName = s"$name$inc"
@@ -93,9 +96,9 @@ object ElasticFilters {
           val _values: Seq[Any] = values.innerValues
           val t =
             _values.headOption match {
-              case Some(d: Double) => termsQuery(identifier.identifier, _values.asInstanceOf[Seq[Double]])
-              case Some(i: Integer) => termsQuery(identifier.identifier, _values.asInstanceOf[Seq[Integer]])
-              case Some(l: Long) => termsQuery(identifier.identifier, _values.asInstanceOf[Seq[Long]])
+              case Some(_: Double) => termsQuery(identifier.identifier, _values.asInstanceOf[Seq[Double]])
+              case Some(_: Integer) => termsQuery(identifier.identifier, _values.asInstanceOf[Seq[Integer]])
+              case Some(_: Long) => termsQuery(identifier.identifier, _values.asInstanceOf[Seq[Long]])
               case _ => termsQuery(identifier.identifier, _values.map(_.toString))
             }
           n match {

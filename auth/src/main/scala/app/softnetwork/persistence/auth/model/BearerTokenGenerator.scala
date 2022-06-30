@@ -1,6 +1,7 @@
 package app.softnetwork.persistence.auth.model
 
 import java.security.{MessageDigest, SecureRandom}
+import scala.annotation.tailrec
 
 /*
  * Generates a Bearer Token with a length of
@@ -49,6 +50,7 @@ object BearerTokenGenerator {
   // use tail recursion, functional style to build string.
   private def generateToken(tokenLength: Int)(implicit secureRandom: SecureRandom = new SecureRandom() ) : String = {
     val charLen = TOKEN_CHARS.length()
+    @tailrec
     def generateTokenAccumulator(accumulator: String, number: Int) : String = {
       if (number == 0)
         accumulator

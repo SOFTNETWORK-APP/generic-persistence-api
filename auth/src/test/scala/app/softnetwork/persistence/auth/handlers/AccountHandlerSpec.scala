@@ -4,7 +4,6 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
 import app.softnetwork.persistence.typed.EntityBehavior
 import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
-
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.softnetwork.notification.model.Platform
 import app.softnetwork.persistence.auth.config.Settings
@@ -18,7 +17,7 @@ import app.softnetwork.persistence.auth.persistence.typed.MockBasicAccountBehavi
 class AccountHandlerSpec extends AccountHandler with MockBasicAccountTypeKey with AnyWordSpecLike
   with InMemoryPersistenceTestKit {
 
-  implicit lazy val system = typedSystem()
+  implicit lazy val system: ActorSystem[_] = typedSystem()
 
   import MockGenerator._
 
@@ -50,7 +49,7 @@ class AccountHandlerSpec extends AccountHandler with MockBasicAccountTypeKey wit
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     MockBasicAccountBehavior,
     SchedulerBehavior
   )
@@ -475,7 +474,7 @@ class AccountHandlerSpec extends AccountHandler with MockBasicAccountTypeKey wit
                       account.gsm.isDefined shouldBe false
                       account.username.isDefined shouldBe false
                       this ?? (newLogin, Login(newLogin, newPassword)) await {
-                        case r: LoginSucceededResult => succeed
+                        case _: LoginSucceededResult => succeed
                         case other => fail(other.toString)
                       }
                     case other => fail(other.toString)

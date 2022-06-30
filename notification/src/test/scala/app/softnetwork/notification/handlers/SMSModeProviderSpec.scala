@@ -18,7 +18,7 @@ class SMSModeProviderSpec extends AnyWordSpec with Matchers with MockSMSProvider
 
   val message = "Stéphane,\\\nVous avez gagné 3000 € à la loterie !"
 
-  val sms = SMS.defaultInstance.withUuid("test").withFrom(From("TEST", None)).withTo(Seq(gsm)).withSubject("SUBJECT")
+  val sms: SMS = SMS.defaultInstance.withUuid("test").withFrom(From("TEST", None)).withTo(Seq(gsm)).withSubject("SUBJECT")
     .withMessage(StringEscapeUtils.escapeHtml4(message.replaceAll("\\\n", "<br/>")))
 
   implicit def system: ActorSystem[_] = ActorSystem[Nothing](Behaviors.empty[Nothing], "SMS")

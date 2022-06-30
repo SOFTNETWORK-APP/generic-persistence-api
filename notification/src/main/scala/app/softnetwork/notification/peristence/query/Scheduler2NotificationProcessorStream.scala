@@ -29,7 +29,7 @@ trait Scheduler2NotificationProcessorStream
           system.eventStream.tell(Publish(Schedule4NotificationTriggered))
         }
         true
-      case other => false
+      case _ => false
     }
   }
 }

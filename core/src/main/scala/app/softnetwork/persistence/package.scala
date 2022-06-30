@@ -34,7 +34,7 @@ package object persistence {
   /**
     * Used for akka and elastic persistence ids, one per targeted environment (development, production, ...)
     */
-  val environment = sys.env.getOrElse(
+  val environment: String = sys.env.getOrElse(
     "TARGETED_ENV",
     if(BuildInfo.version.endsWith("FINAL")){
       "prod"
@@ -44,6 +44,6 @@ package object persistence {
     }
   )
 
-  val version = sys.env.getOrElse("VERSION", BuildInfo.version)
+  val version: String = sys.env.getOrElse("VERSION", BuildInfo.version)
 
 }

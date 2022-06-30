@@ -28,7 +28,7 @@ import java.io.{File => JFile}
     protected def render(template:String):Any =
       renderLocal.get()(template)
 
-    def withContextAndRenderFn[A](context:Any, render:(String)=>String)(fn: =>A):A = {
+    def withContextAndRenderFn[A](context:Any, render: String =>String)(fn: =>A):A = {
       contextLocal.set(context)
       renderLocal.set(render)
       try { fn }
@@ -51,9 +51,9 @@ import java.io.{File => JFile}
               , open:String = "{{"
               , close:String = "}}") =
       this(new Parser {
-        val src = source
-        var otag = open
-        var ctag = close
+        val src: Source = source
+        var otag: String = open
+        var ctag: String = close
       }.parse())
 
     def this(str:String) = this(Source.fromString(str))
@@ -106,7 +106,7 @@ import java.io.{File => JFile}
       context match {
         case m: Map[String, Any] =>
           product(
-            m.map((kv) =>
+            m.map(kv =>
                kv._2 match {
                 case s: String => kv._1 -> StringEscapeUtils.escapeHtml4(s)
                 case v => kv._1 -> v
@@ -219,11 +219,11 @@ import java.io.{File => JFile}
       } else false
     }
 
-    private def notOTag() = {
+    private def notOTag(): Unit = {
       buf.append(otag.substring(0,tagPosition))
       state = Text
     }
-    private def notCTag() = {
+    private def notCTag(): Unit = {
       buf.append(ctag.substring(0,tagPosition))
       state = Tag
     }
@@ -231,12 +231,12 @@ import java.io.{File => JFile}
 
     private def staticText():Unit = {
       val r = reduce
-      if (r.length>0) stack = StaticTextToken(r)::stack
+      if (r.nonEmpty) stack = StaticTextToken(r)::stack
     }
 
     private def checkContent(content:String):String = {
       val trimmed = content.trim
-      if (trimmed.length == 0) fail("Empty tag")
+      if (trimmed.isEmpty) fail("Empty tag")
       else trimmed
     }
 
@@ -279,7 +279,7 @@ import java.io.{File => JFile}
                 , otag
                 , ctag)::s.tail
 
-            case Some(IncompleteSection(key, inverted,_,_))
+            case Some(IncompleteSection(key, _,_,_))
               if key != name => fail("Unclosed section \""+key+"\"")
 
             case Some(other) =>
@@ -310,7 +310,7 @@ import java.io.{File => JFile}
     val maxLength:Int
     def write(out:StringBuilder):Unit
 
-    override def toString = {
+    override def toString: String = {
       val b = new StringBuilder(maxLength)
       write(b)
       b.toString
@@ -323,7 +323,7 @@ import java.io.{File => JFile}
   }
 
   case class StringProduct(str:String) extends TokenProduct {
-    val maxLength = str.length
+    val maxLength: Int = str.length
     def write(out:StringBuilder):Unit = out.append(str)
   }
 
@@ -350,8 +350,8 @@ import java.io.{File => JFile}
       val result = tasks.map(t=>{t._1.render(t._2, partials, callstack)})
       val len = result.foldLeft(0)({_+_.maxLength})
       new TokenProduct {
-        val maxLength = len
-        def write(out:StringBuilder) = result.foreach{_.write(out)}
+        val maxLength: Int = len
+        def write(out:StringBuilder): Unit = result.foreach{_.write(out)}
       }
     }
   }
@@ -414,7 +414,7 @@ import java.io.{File => JFile}
     protected def defaultRender(
                                  otag:String
                                  , ctag:String
-                               ):(Any,Map[String,Mustache],List[Any])=>(String)=>String =
+                               ):(Any,Map[String,Mustache],List[Any])=> String =>String =
       (context:Any, partials:Map[String,Mustache],callstack:List[Any])=>(str:String)=>{
         val t = new Mustache(str, otag, ctag)
         t.render(context, partials, callstack)
@@ -425,7 +425,7 @@ import java.io.{File => JFile}
                 , partials:Map[String,Mustache]
                 , callstack:List[Any]
                 , childrenString:String
-                , render: (Any, Map[String, Mustache],List[Any])=>(String)=>String
+                , render: (Any, Map[String, Mustache],List[Any])=> String =>String
                ):Any =
     {
       val r = render(context, partials, callstack)
@@ -444,7 +444,7 @@ import java.io.{File => JFile}
     private def eval(
                       value:Any
                       , childrenString:String
-                      , render:(String)=>String
+                      , render: String =>String
                     ):Any =
       value match {
         case Some(someValue) => eval(someValue, childrenString, render)
@@ -618,7 +618,7 @@ import java.io.{File => JFile}
                , callstack:List[Any]):TokenProduct = {
       val v = format(valueOf(key,context,partials,callstack,"",defaultRender(otag,ctag)))
       new TokenProduct {
-        val maxLength = v.length
+        val maxLength: Int = v.length
         def write(out:StringBuilder):Unit = {out.append(v)}
       }
     }
@@ -645,7 +645,7 @@ import java.io.{File => JFile}
                , callstack:List[Any]):TokenProduct = {
       val v = format(valueOf(key,context,partials,callstack,"",defaultRender(otag,ctag)))
       new TokenProduct {
-        val maxLength = (v.length*1.2).toInt
+        val maxLength: Int = (v.length*1.2).toInt
         def write(out:StringBuilder):Unit =
           v.foreach {
             case t if transcode.contains(t) => out.append(transcode.get(t))

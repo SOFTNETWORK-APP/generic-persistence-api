@@ -342,7 +342,7 @@ public class Scalr {
      * @author Riyad Kalla (software@thebuzzmedia.com)
      * @since 1.1
      */
-    public static enum Method {
+    public enum Method {
         /**
          * Used to indicate that the scaling implementation should decide which
          * method to use in order to get the best looking scaled image in the
@@ -395,7 +395,7 @@ public class Scalr {
          * jagged with some of the other {@link Method}s (even
          * {@link Method#QUALITY}).
          */
-        ULTRA_QUALITY;
+        ULTRA_QUALITY
     }
 
     /**
@@ -405,7 +405,7 @@ public class Scalr {
      * @author Riyad Kalla (software@thebuzzmedia.com)
      * @since 3.1
      */
-    public static enum Mode {
+    public enum Mode {
         /**
          * Used to indicate that the scaling implementation should calculate
          * dimensions for the resultant image by looking at the image's
@@ -445,7 +445,7 @@ public class Scalr {
          * dimensions for the resultant image that best-fit within the given
          * height, regardless of the orientation of the image.
          */
-        FIT_TO_HEIGHT;
+        FIT_TO_HEIGHT
     }
 
     /**
@@ -455,7 +455,7 @@ public class Scalr {
      * @author Riyad Kalla (software@thebuzzmedia.com)
      * @since 3.2
      */
-    public static enum Rotation {
+    public enum Rotation {
         /**
          * 90-degree, clockwise rotation (to the right). This is equivalent to a
          * quarter-turn of the image to the right; moving the picture on to its
@@ -497,7 +497,7 @@ public class Scalr {
          * but the top and bottom sides flip. This is different than a standard
          * rotation where the left and right would also have been flipped.
          */
-        FLIP_VERT;
+        FLIP_VERT
     }
 
     /**
@@ -643,11 +643,11 @@ public class Scalr {
 
         boolean hasReassignedSrc = false;
 
-        for (int i = 0; i < ops.length; i++) {
+        for (BufferedImageOp bufferedImageOp : ops) {
             long subT = -1;
             if (DEBUG)
                 subT = System.currentTimeMillis();
-            BufferedImageOp op = ops[i];
+            BufferedImageOp op = bufferedImageOp;
 
             // Skip null ops instead of throwing an exception.
             if (op == null)
@@ -670,7 +670,7 @@ public class Scalr {
             if (resultBounds == null)
                 throw new ImagingOpException(
                         "BufferedImageOp ["
-                                + op.toString()
+                                + op
                                 + "] getBounds2D(src) returned null bounds for the target image; this should not happen and indicates a problem with application of this type of op.");
 
             /*

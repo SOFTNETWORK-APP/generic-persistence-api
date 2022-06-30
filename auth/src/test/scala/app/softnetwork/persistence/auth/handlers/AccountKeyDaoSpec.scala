@@ -17,11 +17,11 @@ class AccountKeyDaoSpec extends AccountKeyDao with AccountKeyHandler with AnyWor
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     AccountKeyBehavior
   )
 
-  implicit lazy val system = typedSystem()
+  implicit lazy val system: ActorSystem[Nothing] = typedSystem()
 
   "AccountKey" must {
     "add key" in {
@@ -36,7 +36,7 @@ class AccountKeyDaoSpec extends AccountKeyDao with AccountKeyHandler with AnyWor
       addAccountKey("remove", "account")
       removeAccountKey("remove")
       lookupAccount("remove") await {
-        case Some(account) => fail()
+        case Some(_) => fail()
         case _             => succeed
       }
     }

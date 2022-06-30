@@ -28,7 +28,7 @@ class SingletonPatternSpec extends SamplePattern with AnyWordSpecLike with Befor
 
   implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
-  def test() = this ? TestSample complete() match {
+  def test(): Unit = this ? TestSample complete() match {
     case Success(s) => s match {
       case SampleTested => logger.info("sample tested !")
       case other => fail(other.toString)
@@ -36,7 +36,7 @@ class SingletonPatternSpec extends SamplePattern with AnyWordSpecLike with Befor
     case Failure(f) => fail(f.getMessage)
   }
 
-  def test2() = this ! TestSample
+  def test2(): Unit = this ! TestSample
 
   "SingletonPattern" must {
     "handle commands" in {
@@ -50,11 +50,11 @@ class SingletonPatternSpec extends SamplePattern with AnyWordSpecLike with Befor
 trait SamplePattern extends SingletonPattern[SampleCommand, SampleCommandResult] {
 
   implicit def command2Request(command: SampleCommand): Request = replyTo =>
-    new SampleCommandWrapper(command, replyTo)
+    SampleCommandWrapper(command, replyTo)
 
   override lazy val name = "Sample"
 
-  override lazy val key = ServiceKey[SampleCommand](name)
+  override lazy val key: ServiceKey[SampleCommand] = ServiceKey[SampleCommand](name)
 
   override def handleCommand(command: SampleCommand, replyTo: Option[ActorRef[SampleCommandResult]])(
     implicit context: ActorContext[SampleCommand]): Unit = {

@@ -21,7 +21,7 @@ class ElasticBehaviorSpec extends AnyWordSpecLike with InMemoryPersistenceTestKi
     * initialize all behaviors
     *
     */
-  override def behaviors: (ActorSystem[_]) => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     SampleBehavior
   )
 

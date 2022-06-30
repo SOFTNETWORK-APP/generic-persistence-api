@@ -6,16 +6,18 @@ import app.softnetwork.persistence.typed.Singleton
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
+import scala.concurrent.ExecutionContextExecutor
+
 /**
   * Created by smanciot on 29/03/2021.
   */
 class CounterDaoSpec extends AnyWordSpecLike with InMemoryPersistenceTestKit with Matchers {
 
-  val counterDao = CounterDao("counter")
+  val counterDao: CounterDao = CounterDao("counter")
 
-  implicit lazy val system = typedSystem()
+  implicit lazy val system: ActorSystem[_] = typedSystem()
 
-  implicit lazy val ec = system.executionContext
+  implicit lazy val ec: ExecutionContextExecutor = system.executionContext
 
   /**
     *

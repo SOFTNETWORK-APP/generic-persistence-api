@@ -58,7 +58,7 @@ trait AccountDao { _: AccountHandler =>
     implicit val ec: ExecutionContextExecutor = system.executionContext
     this ? (ALL_KEY, RecordNotification(uuids, channel, subject, content)) map {
       case NotificationRecorded => true
-      case other => false
+      case _ => false
     }
   }
 }

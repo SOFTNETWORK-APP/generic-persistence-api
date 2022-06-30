@@ -33,7 +33,7 @@ object Password {
       allowedCharacter,
       whitespace,
       specialCharacter
-    ).flatMap((rule) => rule match {
+    ).flatMap(rule => rule match {
       case Some(s) => Some(s.rule)
       case _       => None
     })
@@ -73,28 +73,28 @@ object Password {
   }
 
   class UpperCaseCharacter(val size: Int = 1) extends AllowedRegex(
-    "\\w*" + (for(i <- 1 to size) yield "[A-Z]\\w*").mkString(""),
+    "\\w*" + (for(_ <- 1 to size) yield "[A-Z]\\w*").mkString(""),
     "UPPER_CASE_CHARACTER"
   ){
     assert(size > 0, "the size must be at least greater than or equal to 1")
   }
 
   class LowerCaseCharacter(val size: Int = 1) extends AllowedRegex(
-    "\\w*" + (for(i <- 1 to size) yield "[a-z]\\w*").mkString(""),
+    "\\w*" + (for(_ <- 1 to size) yield "[a-z]\\w*").mkString(""),
     "LOWER_CASE_CHARACTER"
   ){
     assert(size > 0, "the size must be at least greater than or equal to 1")
   }
 
   class NumberCharacter(val size: Int = 1) extends AllowedRegex(
-    "\\w*" + (for(i <- 1 to size) yield "[0-9]\\w*").mkString(""),
+    "\\w*" + (for(_ <- 1 to size) yield "[0-9]\\w*").mkString(""),
     "NUMBER_CHARACTER"
   ){
     assert(size > 0, "the size must be at least greater than or equal to 1")
   }
 
   class SpecialCharacter(val size: Int = 1) extends AllowedRegex(
-    "\\w*" + (for(i <- 1 to size) yield "[^A-Za-z0-9]\\w*").mkString(""),
+    "\\w*" + (for(_ <- 1 to size) yield "[^A-Za-z0-9]\\w*").mkString(""),
     "SPECIAL_CHARACTER"
   ){
     assert(size > 0, "the size must be at least greater than or equal to 1")

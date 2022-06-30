@@ -8,9 +8,9 @@ import java.security.MessageDigest
   */
 package object security {
 
-  def md5(clearText: String) = MessageDigest.getInstance("MD5").digest(clearText.getBytes).clone()
+  def md5(clearText: String): Array[Byte] = MessageDigest.getInstance("MD5").digest(clearText.getBytes).clone()
 
-  def sha256(clearText: String) =
+  def sha256(clearText: String): String =
     String.format("%032x", new BigInteger(1, MessageDigest.getInstance("SHA-256").digest(clearText.getBytes("UTF-8"))))
 
 }

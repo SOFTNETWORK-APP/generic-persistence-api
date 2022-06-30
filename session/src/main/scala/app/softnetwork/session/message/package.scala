@@ -12,7 +12,7 @@ package object message {
 
   sealed trait RefreshTokenCommand extends EntityCommand {
     def selector: String
-    override val id = selector
+    override val id: String = selector
   }
 
   @SerialVersionUID(0L)
@@ -20,7 +20,7 @@ package object message {
 
   @SerialVersionUID(0L)
   case class StoreRefreshToken[T](data: RefreshTokenData[T]) extends RefreshTokenCommand {
-    override val selector = data.selector
+    override val selector: String = data.selector
   }
 
   @SerialVersionUID(0L)

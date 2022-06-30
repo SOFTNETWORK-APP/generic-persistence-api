@@ -214,7 +214,7 @@ trait SMSModeProvider extends SMSProvider {
                                 case TOO_LONG_MESSAGE     => Undelivered
                                 case _                    => Pending
                               }
-                            case Failure(f) => Pending
+                            case Failure(_) => Pending
                           }
                         val error = status match {
                           case Rejected    => providerStatus

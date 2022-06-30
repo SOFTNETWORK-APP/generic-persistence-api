@@ -25,7 +25,7 @@ trait MockNotificationProvider[T<:Notification] extends NotificationProvider[T] 
     }
     NotificationAck(
       Some(UUID.randomUUID().toString),
-      notification.to.map((recipient) => NotificationStatusResult(recipient, NotificationStatus.Sent, None)),
+      notification.to.map(recipient => NotificationStatusResult(recipient, NotificationStatus.Sent, None)),
       new Date()
     )
   }
@@ -38,7 +38,7 @@ trait AllNotificationsProvider extends NotificationProvider[Notification] {
       case mail: Mail => MailProvider.send(mail)
       case push: Push => PushProvider.send(push)
       case sms: SMS => SMSModeProvider.send(sms)
-      case other => NotificationAck(None, Seq.empty, new Date())
+      case _ => NotificationAck(None, Seq.empty, new Date())
     }
 
   override def ack(notification: Notification)(implicit system: ActorSystem[_]): NotificationAck =
@@ -46,7 +46,7 @@ trait AllNotificationsProvider extends NotificationProvider[Notification] {
       case mail: Mail => MailProvider.ack(mail)
       case push: Push => PushProvider.ack(push)
       case sms: SMS => SMSModeProvider.ack(sms)
-      case other => NotificationAck(notification.ackUuid, notification.results, new Date())
+      case _ => NotificationAck(notification.ackUuid, notification.results, new Date())
     }
 }
 
@@ -56,7 +56,7 @@ trait MockAllNotificationsProvider extends NotificationProvider[Notification] wi
       case mail: Mail => MockMailProvider.send(mail)
       case push: Push => MockPushProvider.send(push)
       case sms: SMS => MockSMSProvider.send(sms)
-      case other => NotificationAck(None, Seq.empty, new Date())
+      case _ => NotificationAck(None, Seq.empty, new Date())
     }
   }
 }
