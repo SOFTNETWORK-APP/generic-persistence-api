@@ -29,7 +29,7 @@ import org.softnetwork.session.model.Session
 
 import scala.concurrent.ExecutionContext
 
-object MangoPayApplication extends Application with ApiRoutes with PostgresGuardian with StrictLogging {
+trait MangoPayApplication extends Application with ApiRoutes with PostgresGuardian with StrictLogging {
   /**
     * initialize all behaviors
     *
@@ -68,6 +68,8 @@ object MangoPayApplication extends Application with ApiRoutes with PostgresGuard
       BasicServiceRoute(system).route
 
 }
+
+object MangoPayLauncher extends MangoPayApplication
 
 trait BasicServiceRoute extends SessionService with Directives with DefaultComplete with Json4sSupport {
 
