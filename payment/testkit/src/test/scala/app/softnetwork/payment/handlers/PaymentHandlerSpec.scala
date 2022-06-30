@@ -118,7 +118,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         registerCard = true
       )) await {
         case result: PaymentRedirection =>
-          val params = result.redirectUrl.split("\\?").last.split("&|=")
+          val params = result.redirectUrl.split("\\?").last.split("[&=]")
             .grouped(2)
             .map(a => (a(0), a(1)))
             .toMap

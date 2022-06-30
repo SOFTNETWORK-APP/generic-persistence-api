@@ -643,11 +643,10 @@ public class Scalr {
 
         boolean hasReassignedSrc = false;
 
-        for (BufferedImageOp bufferedImageOp : ops) {
+        for (BufferedImageOp op : ops) {
             long subT = -1;
             if (DEBUG)
                 subT = System.currentTimeMillis();
-            BufferedImageOp op = bufferedImageOp;
 
             // Skip null ops instead of throwing an exception.
             if (op == null)
@@ -1876,7 +1875,7 @@ public class Scalr {
 
         // Create our target image we will render the rotated result to.
         BufferedImage result = createOptimalImage(src, newWidth, newHeight);
-        Graphics2D g2d = (Graphics2D) result.createGraphics();
+        Graphics2D g2d = result.createGraphics();
 
         /*
          * Render the resultant image to our new rotatedImage buffer, applying

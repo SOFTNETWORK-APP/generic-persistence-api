@@ -109,16 +109,15 @@ trait AccountNotifications[T <: Account] extends Completion {
                               subject: String,
                               body: String,
                               maxTries: Int,
-                              deferred: Option[Date],
-                              registrations: Seq[DeviceRegistration])(implicit system: ActorSystem[_]): Boolean = {
-    registrations.isEmpty ||
+                              deferred: Option[Date])(implicit system: ActorSystem[_]): Boolean = {
+    account.registrations.isEmpty ||
       (notificationDao.sendNotification(
         Push.defaultInstance
           .withUuid(uuid)
           .withFrom(From.defaultInstance.withValue(PushClientId))
           .withSubject(subject)
           .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
-          .withDevices(registrations.map(registration => BasicDevice(registration.regId, registration.platform)))
+          .withDevices(account.registrations.map(registration => BasicDevice(registration.regId, registration.platform)))
           .withMaxTries(maxTries)
           .withDeferred(deferred.orNull)
       )complete ())
@@ -136,7 +135,7 @@ trait AccountNotifications[T <: Account] extends Completion {
     channel match {
       case NotificationType.MAIL_TYPE => sendMail(uuid, account, subject, body, maxTries, deferred)
       case NotificationType.SMS_TYPE  => sendSMS(uuid, account, subject, body, maxTries, deferred)
-      case NotificationType.PUSH_TYPE => sendPush(uuid, account, subject, body, maxTries, deferred, account.registrations)
+      case NotificationType.PUSH_TYPE => sendPush(uuid, account, subject, body, maxTries, deferred)
       case _ => false
     }
   }

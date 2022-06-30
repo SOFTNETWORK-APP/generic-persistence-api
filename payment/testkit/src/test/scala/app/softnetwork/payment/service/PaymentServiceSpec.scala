@@ -111,7 +111,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val redirection = responseAs[PaymentRedirection]
-        val params = redirection.redirectUrl.split("\\?").last.split("&|=")
+        val params = redirection.redirectUrl.split("\\?").last.split("[&=]")
           .grouped(2)
           .map(a => (a(0), a(1)))
           .toMap
@@ -390,7 +390,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         val redirection = responseAs[PaymentRedirection]
-        val params = redirection.redirectUrl.split("\\?").last.split("&|=")
+        val params = redirection.redirectUrl.split("\\?").last.split("[&=]")
           .grouped(2)
           .map(a => (a(0), a(1)))
           .toMap

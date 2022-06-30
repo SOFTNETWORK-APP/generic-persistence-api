@@ -35,8 +35,6 @@ class AccountServiceSpec extends AccountService with MockBasicAccountTypeKey wit
 
   private def computeEmail(user: String) = s"$user@gmail.com"
 
-  private def generateUuid(key: String) = s"$key-uuid"
-
   private val email = computeEmail(username)
 
   private val gsm = "33660010203"

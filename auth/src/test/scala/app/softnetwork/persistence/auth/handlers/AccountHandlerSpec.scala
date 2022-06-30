@@ -29,8 +29,6 @@ class AccountHandlerSpec extends AccountHandler with MockBasicAccountTypeKey wit
 
   private def computeEmail(user: String) = s"$user@gmail.com"
 
-  private def generateUuid(key: String) = s"$key-uuid"
-
   private val email = computeEmail(username)
 
   private val email2 = computeEmail(username2)

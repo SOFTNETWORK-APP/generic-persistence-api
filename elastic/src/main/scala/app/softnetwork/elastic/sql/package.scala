@@ -59,7 +59,7 @@ package object sql {
     }
   }
 
-  case class SQLBoolean(val value: Boolean) extends SQLToken{
+  case class SQLBoolean(value: Boolean) extends SQLToken{
     override def sql: String = s"$value"
   }
 

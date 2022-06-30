@@ -68,7 +68,7 @@ object Password {
     }
   }
 
-  case class AllowedRegex(regex: String, val errorCode: String = AllowedRegexRule.ERROR_CODE) extends PasswordRule {
+  case class AllowedRegex(regex: String, errorCode: String = AllowedRegexRule.ERROR_CODE) extends PasswordRule {
     override lazy val rule: Rule = new ExtendedAllowedRegexRule(regex, errorCode)
   }
 

@@ -59,7 +59,7 @@ trait MailProvider extends NotificationProvider[Mail] with StrictLogging {
     commonsMail.setHostName(mailConfig.host)
     commonsMail.setSmtpPort(mailConfig.port)
     commonsMail.setSslSmtpPort(mailConfig.sslPort.toString)
-    if (mailConfig.username.length > 0) {
+    if (mailConfig.username.nonEmpty) {
       commonsMail.setAuthenticator(new DefaultAuthenticator(mailConfig.username, mailConfig.password))
     }
     commonsMail.setSSLOnConnect(mailConfig.sslEnabled)

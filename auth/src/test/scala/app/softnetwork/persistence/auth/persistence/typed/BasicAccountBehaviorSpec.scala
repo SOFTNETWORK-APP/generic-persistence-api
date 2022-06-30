@@ -17,19 +17,13 @@ class BasicAccountBehaviorSpec extends AnyWordSpecLike with InMemoryPersistenceT
 
   private val username = "smanciot"
 
-  private val email = "stephane.manciot@gmail.com"
-
-  private val gsm = "33660010203"
-
-  private val gsm2 = "33660020304"
-
   private val password = "Changeit1"
 
   /**
     * initialize all behaviors
     *
     */
-  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = system => List(
+  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
     MockBasicAccountBehavior,
     SchedulerBehavior
   )
