@@ -205,9 +205,22 @@ lazy val sequence = project.in(file("sequence"))
     serverTestkit % "test->test;it->it"
   )
 
+lazy val kv = project.in(file("kv"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    core % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "test->test;it->it"
+  )
+
 lazy val auth = project.in(file("auth"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
+  .dependsOn(
+    kv % "compile->compile;test->test;it->it"
+  )
   .dependsOn(
     scheduler % "compile->compile;test->test;it->it"
   )
@@ -262,6 +275,9 @@ lazy val payment = project.in(file("payment"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
   .enablePlugins(BuildInfoPlugin)
+  .dependsOn(
+    kv % "compile->compile;test->test;it->it"
+  )
   .dependsOn(
     scheduler % "compile->compile;test->test;it->it"
   )
