@@ -332,6 +332,7 @@ lazy val root = project.in(file("."))
     serverTestkit,
     sessionTestkit,
     sequence,
+    kv,
     auth,
     authTestkit,
     resource,
