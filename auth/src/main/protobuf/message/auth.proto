@@ -136,21 +136,6 @@ message BasicAccountProfileUpdatedEvent {
     optional google.protobuf.Timestamp lastUpdated = 4 [(scalapb.field).type = "java.util.Date"];
 }
 
-message AccountKeyAdded {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "AccountEvent";
-    option (scalapb.message).extends = "AccountKeyCommandResult";
-    required string uuid = 1;
-    required string account = 2;
-}
-
-message AccountKeyRemoved {
-    option (scalapb.message).extends = "ProtobufEvent";
-    option (scalapb.message).extends = "AccountEvent";
-    option (scalapb.message).extends = "AccountKeyCommandResult";
-    required string uuid = 1;
-}
-
 message LoginUpdatedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "AccountEvent";
