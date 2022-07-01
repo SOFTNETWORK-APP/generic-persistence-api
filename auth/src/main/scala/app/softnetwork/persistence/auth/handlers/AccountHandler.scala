@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
   */
 trait AccountHandler extends EntityPattern[AccountCommand, AccountCommandResult] {_: CommandTypeKey[AccountCommand] =>
 
-  private[this] val accountKeyDao = AccountKeyDao
+  def accountKeyDao: AccountKeyDao = AccountKeyDao
 
   override protected def lookup[T](key: T)(implicit system: ActorSystem[_]): Future[Option[String]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext

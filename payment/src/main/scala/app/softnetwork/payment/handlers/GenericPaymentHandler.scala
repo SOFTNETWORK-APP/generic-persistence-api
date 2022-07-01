@@ -2,7 +2,7 @@ package app.softnetwork.payment.handlers
 
 import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
-import app.softnetwork.kv.handlers.{GenericKeyValueDao, KeyValueDao}
+import app.softnetwork.kv.handlers.GenericKeyValueDao
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.payment.model._
@@ -29,7 +29,7 @@ trait MockPaymentTypeKey extends CommandTypeKey[PaymentCommand]{
 }
 
 trait GenericPaymentHandler extends EntityPattern[PaymentCommand, PaymentResult] {_:  CommandTypeKey[PaymentCommand] =>
-  lazy val keyValueDao: GenericKeyValueDao = KeyValueDao //FIXME app.softnetwork.payment.persistence.data.paymentKvDao
+  lazy val keyValueDao: GenericKeyValueDao = PaymentKvDao //FIXME app.softnetwork.payment.persistence.data.paymentKvDao
 
   protected override def lookup[T](key: T)(implicit system: ActorSystem[_]): Future[Option[Recipient]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext

@@ -28,10 +28,4 @@ package object message {
 
   case object KvNotFound extends KvErrorMessage("KvNotFound")
 
-  sealed trait KvEvent extends Event
-
-  case class KvAddedEvent(key: String, value: String) extends KvEvent
-
-  case class KvRemovedEvent(key: String) extends KvEvent
-
 }

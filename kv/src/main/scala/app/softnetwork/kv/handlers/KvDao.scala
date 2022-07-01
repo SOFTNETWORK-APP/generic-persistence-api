@@ -15,16 +15,10 @@ import scala.reflect.ClassTag
 /**
   * Created by smanciot on 17/04/2020.
   */
-trait KeyValueTypeKey extends CommandTypeKey[KvCommand]{
-  override def TypeKey(implicit tTag: ClassTag[KvCommand]): EntityTypeKey[KvCommand] =
-    KeyValueBehavior.TypeKey
+trait KvHandler extends EntityPattern[KvCommand, KvCommandResult] {_: CommandTypeKey[KvCommand] =>
 }
 
-trait KeyValueHandler extends EntityPattern[KvCommand, KvCommandResult] with KeyValueTypeKey
-
-object KeyValueHandler extends KeyValueHandler
-
-trait KeyValueDao extends GenericKeyValueDao {_: KeyValueHandler =>
+trait KvDao extends GenericKeyValueDao {_: KvHandler =>
 
   def lookupKeyValue(key: String)(implicit system: ActorSystem[_]): Future[Option[String]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
@@ -50,5 +44,3 @@ trait KeyValueDao extends GenericKeyValueDao {_: KeyValueHandler =>
   }
 
 }
-
-object KeyValueDao extends KeyValueDao with KeyValueHandler

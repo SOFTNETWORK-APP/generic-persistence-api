@@ -13,7 +13,7 @@ import scala.language.implicitConversions
 /**
   * Created by smanciot on 02/06/2020.
   */
-trait KvDao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKeyValueDao {
+trait Kv2Dao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKeyValueDao {
   override implicit def command2Request(command: KvCommand): Request = replyTo => KvCommandWrapper(command, replyTo)
 
   override lazy val behavior: Behavior[KvCommand] = Kv(name)
@@ -40,8 +40,8 @@ trait KvDao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKey
 
 }
 
-object KvDao {
-  def apply(namespace: String): KvDao = new KvDao {
+object Kv2Dao {
+  def apply(namespace: String): Kv2Dao = new Kv2Dao {
     override lazy val name: String = namespace
   }
 }

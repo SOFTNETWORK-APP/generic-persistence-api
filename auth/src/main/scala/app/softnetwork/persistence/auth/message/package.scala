@@ -203,24 +203,4 @@ package object message {
 
   case object InternalAccountEventNotHandled extends AccountErrorMessage("InternalAccountEventNotHandled")
 
-  sealed trait AccountKeyCommand extends AccountCommand
-
-  @SerialVersionUID(0L)
-  case class AddAccountKey(account: String) extends AccountKeyCommand
-
-  case object RemoveAccountKey extends AccountKeyCommand
-
-  case object LookupAccountKey extends AccountKeyCommand
-
-  trait AccountKeyCommandResult extends AccountCommandResult
-
-  @SerialVersionUID(0L)
-  case class AccountKeyFound(account: String) extends AccountKeyCommandResult
-
-  @SerialVersionUID(0L)
-  class AccountKeyErrorMessage(override val message: String) extends ErrorMessage(message)
-    with AccountKeyCommandResult
-
-  case object AccountKeyNotFound extends AccountKeyErrorMessage("AccountPrincipalNotFound")
-
 }

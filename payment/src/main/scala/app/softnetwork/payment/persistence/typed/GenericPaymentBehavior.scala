@@ -3,10 +3,9 @@ package app.softnetwork.payment.persistence.typed
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
-import app.softnetwork.kv.handlers.{GenericKeyValueDao, KeyValueDao}
-import app.softnetwork.kv.persistence.typed.KeyValueBehavior
+import app.softnetwork.kv.handlers.GenericKeyValueDao
 import app.softnetwork.payment.config.Settings.PayInStatementDescriptor
-import app.softnetwork.payment.handlers.{GenericPaymentDao, MangoPayPaymentDao, MockPaymentDao}
+import app.softnetwork.payment.handlers.{GenericPaymentDao, MangoPayPaymentDao, MockPaymentDao, PaymentKvDao}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.message.TransactionEvents._
@@ -19,7 +18,6 @@ import app.softnetwork.persistence.typed._
 import app.softnetwork.scheduler.config.Settings
 import app.softnetwork.serialization.asJson
 import app.softnetwork.time.{now => _, _}
-
 import org.slf4j.Logger
 import org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand
 import org.softnetwork.akka.message.scheduler.{AddSchedule, RemoveSchedule}
@@ -36,14 +34,14 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
 
   override protected val manifestWrapper: ManifestW = ManifestW()
 
-  lazy val keyValueDao: GenericKeyValueDao = KeyValueDao //FIXME app.softnetwork.payment.persistence.data.paymentKvDao
+  lazy val keyValueDao: GenericKeyValueDao = PaymentKvDao //FIXME app.softnetwork.payment.persistence.data.paymentKvDao
 
   val nextRecurringPayment: String = "NextRecurringPayment"
 
   def paymentDao: GenericPaymentDao
 
   override def init(system: ActorSystem[_])(implicit c: ClassTag[PaymentCommand]): Unit = {
-    KeyValueBehavior.init(system)
+    PaymentKvBehavior.init(system)
     super.init(system)
   }
 
