@@ -1,0 +1,22 @@
+syntax = "proto2";
+
+import "scalapb/scalapb.proto";
+
+package app.softnetwork.kv.model;
+
+option (scalapb.options) = {
+    single_file: true
+    flat_package: true
+    import: "app.softnetwork.persistence.message._"
+    import: "app.softnetwork.persistence.model._"
+    import: "app.softnetwork.serialization._"
+    import: "app.softnetwork.kv.model._"
+    preserve_unknown_fields: false
+};
+
+message KeyValue{
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    option (scalapb.message).extends = "KvState";
+    required string key = 1;
+    required string value = 2;
+}
