@@ -11,7 +11,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.serialization._"
     import: "app.softnetwork.kv.model._"
-    preamble: "sealed trait KvEvent extends Event"
+    preamble: "trait KvEvent extends Event"
     preserve_unknown_fields: false
 };
 
