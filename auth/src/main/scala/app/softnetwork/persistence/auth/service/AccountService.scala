@@ -135,6 +135,11 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
             // create a new session
             val session = Session(account.uuid/** FIXME login.refreshable **/)
             session += (Session.adminKey, account.isAdmin)
+            account.currentProfile match {
+              case Some(profile) =>
+                session += (profileKey, profile.name)
+              case _ =>
+            }
             sessionToDirective(session)(ec) {
               // create a new anti csrf token
               setNewCsrfToken(checkHeader) {
