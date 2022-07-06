@@ -37,6 +37,11 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
 
   def initSchema(): Unit = create(schemaType.schema)
 
+  override def shutdown(): Unit = {
+    logger.info(s"Shutting down database")
+    db.shutdown
+  }
+
   def withDatabase[A](f: Database => A): A = f(db)
 
   def withSession[A](f: Session => A): A = {

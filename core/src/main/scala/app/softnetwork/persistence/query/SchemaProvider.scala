@@ -5,4 +5,5 @@ package app.softnetwork.persistence.query
   */
 trait SchemaProvider {
   def initSchema(): Unit
+  def shutdown(): Unit = ()
 }

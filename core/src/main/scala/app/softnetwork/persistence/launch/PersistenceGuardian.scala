@@ -65,6 +65,7 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
       |""".stripMargin
 
   def setup(): Behavior[ClusterDomainEvent] = {
+    sys.addShutdownHook(shutdown())
     Behaviors.setup[ClusterDomainEvent] { context =>
       // initialize database
       initSchema()
@@ -124,6 +125,11 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
   }
 }
 
-trait ClusterDomainEventHandler {
-  def handleEvent(event: ClusterDomainEvent)(implicit system: ActorSystem[_]): Unit = ()
+trait ClusterDomainEventHandler {_: SchemaProvider =>
+  def handleEvent(event: ClusterDomainEvent)(implicit system: ActorSystem[_]): Unit = {
+    event match {
+      case ClusterShuttingDown => shutdown()
+      case _ =>
+    }
+  }
 }
