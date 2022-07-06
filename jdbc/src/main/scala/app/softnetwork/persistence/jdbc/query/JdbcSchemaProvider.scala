@@ -35,7 +35,10 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
 
   def db: Database = SlickDatabase.forConfig(cfg, new SlickConfiguration(cfg.getConfig("slick")))
 
-  def initSchema(): Unit = create(schemaType.schema)
+  def initSchema(): Unit = {
+    create(schemaType.schema)
+    sys.addShutdownHook(shutdown())
+  }
 
   override def shutdown(): Unit = {
     logger.info(s"Shutting down database")

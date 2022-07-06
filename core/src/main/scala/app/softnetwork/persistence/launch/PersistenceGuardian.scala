@@ -13,6 +13,9 @@ import app.softnetwork.persistence.query.{EventProcessor, EventProcessorStream, 
 import app.softnetwork.persistence.typed.EntityBehavior
 import app.softnetwork.persistence.typed.Singleton
 
+import scala.concurrent.ExecutionContextExecutor
+import scala.util.{Failure, Success}
+
 /**
   * Created by smanciot on 15/05/2020.
   */
@@ -36,18 +39,6 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
     */
   def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = _ => Seq.empty
 
-  /**
-    *
-    * @return join this node to the cluster explicitly
-    */
-  def joinCluster(system: ActorSystem[_]): Unit = {
-    // join cluster
-    val cluster = Cluster(system)
-    val address: classic.Address = cluster.selfMember.address
-    system.log.info(s"Try to join this cluster node with the node specified by [$address]")
-    cluster.manager ! Join(address)
-  }
-
   def systemVersion(): String = version
 
   def initSystem: ActorSystem[_] => Unit = _ => ()
@@ -65,51 +56,42 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
       |""".stripMargin
 
   def setup(): Behavior[ClusterDomainEvent] = {
-    sys.addShutdownHook(shutdown())
     Behaviors.setup[ClusterDomainEvent] { context =>
       // initialize database
       initSchema()
 
       val system = context.system
 
+      val cluster: Cluster = Cluster(system)
+
+      context.log.info("Starting up cluster listener...")
+      cluster.subscriptions ! Subscribe(context.self, classOf[ClusterDomainEvent])
+
       // initialize behaviors
       for(behavior <- behaviors(system)) {
         behavior.init(system)
       }
 
-      // initialize singletons
-      for(singleton <- singletons(system)) {
-        singleton.init(context)
-      }
-
-      context.log.info("Starting up cluster listener...")
-      Cluster(system).subscriptions ! Subscribe(context.self, classOf[ClusterDomainEvent])
-
-      // initialize event streams
-      for(eventProcessorStream <- eventProcessorStreams(system)) {
-        context.spawnAnonymous[Nothing](EventProcessor(eventProcessorStream))
-      }
-
-      // print a cool banner ;)
-      println(banner)
-      println(s"V ${systemVersion()}")
-
-      // additional system initialization
-      initSystem(system)
-
-      // start the system
-      startSystem(system)
-
       // initialize bootstrap
       if(AkkaClusterWithBootstrap){
+        implicit val ec: ExecutionContextExecutor = system.executionContext
+
         // Akka Management hosts the HTTP routes used by bootstrap
-        AkkaManagement(system).start()
-        // Starting the bootstrap process needs to be done explicitly
-        ClusterBootstrap(system).start()
+        AkkaManagement(system).start().onComplete {
+          case Success(url) =>
+            system.log.info(s"akka management started @ $url")
+            // Starting the bootstrap process needs to be done explicitly
+            ClusterBootstrap(system).start()
+          case Failure(f) =>
+            system.log.error("akka management failed to start", f)
+            throw f
+        }
       }
       else if(AkkaClusterSeedNodes.isEmpty){
         // join the cluster
-        joinCluster(system)
+        val address: classic.Address = cluster.selfMember.address
+        context.log.info(s"Try to join this cluster node with the node specified by [$address]")
+        cluster.manager ! Join(address)
       }
       else{
         context.log.info("Self join will not be performed")
@@ -118,6 +100,31 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
       Behaviors.receiveMessagePartial {
         case event: ClusterDomainEvent =>
           context.log.info("Cluster Domain Event: {}", event)
+          event match {
+            case MemberUp(member) if member.address.equals(cluster.selfMember.address) =>
+
+              // initialize singletons
+              for(singleton <- singletons(system)) {
+                singleton.init(context)
+              }
+
+              // initialize event streams
+              for(eventProcessorStream <- eventProcessorStreams(system)) {
+                context.spawnAnonymous[Nothing](EventProcessor(eventProcessorStream))
+              }
+
+              // print a cool banner ;)
+              println(banner)
+              println(s"V ${systemVersion()}")
+
+              // additional system initialization
+              initSystem(system)
+
+              // start the system
+              startSystem(system)
+
+            case _ =>
+          }
           handleEvent(event)(system)
           Behaviors.same
       }
