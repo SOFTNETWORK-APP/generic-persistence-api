@@ -30,7 +30,7 @@
     <logger name="slick" level="WARN"/>
     <logger name="com.zaxxer" level="WARN"/>
 
-    <logger name="app.softnetwork" level="DEBUG"/>
+    <logger name="app.softnetwork" level="INFO"/>
 
     <root level="INFO">
         <appender-ref ref="ASYNC"/>

@@ -73,6 +73,8 @@ trait MockBasicAccountTypeKey extends CommandTypeKey[AccountCommand]{
 
 object BasicAccountDao extends AccountDao with AccountHandler with BasicAccountTypeKey
 
-object MockBasicAccountHandler extends AccountHandler with MockBasicAccountTypeKey
+trait MockBasicAccountHandler extends AccountHandler with MockBasicAccountTypeKey
+
+object MockBasicAccountHandler extends MockBasicAccountHandler
 
 object MockBasicAccountDao extends AccountDao with AccountHandler with MockBasicAccountTypeKey

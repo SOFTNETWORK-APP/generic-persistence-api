@@ -20,7 +20,7 @@ object Settings  extends StrictLogging {
 
 }
 
-case class SchedulerConfig(resetCronTabs: ResetCronTabs, eventStreams: SchedulerEventStreams)
+case class SchedulerConfig(resetCronTabs: ResetCronTabs, eventStreams: SchedulerEventStreams, akkaNodeRole: String)
 
 case class ResetCronTabs(initialDelay: Int, delay: Int)
 

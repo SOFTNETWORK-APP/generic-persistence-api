@@ -33,6 +33,12 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 
   lazy val hostname: String = InetAddress.getLocalHost.getHostAddress
 
+  /**
+    *
+    * @return roles associated with this node
+    */
+  def roles: Seq[String] = Seq.empty
+
   lazy val akka: String = s"""
                 |akka {
                 |  stdout-loglevel = off // defaults to WARNING can be disabled with off. The stdout-loglevel is only in effect during system startup and shutdown
@@ -46,12 +52,14 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |
                 |clustering.cluster.name = $systemName
                 |
+                |akka.cluster.roles = [${roles.mkString(",")}]
+                |
                 |akka.discovery {
                 |  config.services = {
                 |    $systemName = {
                 |      endpoints = [
                 |        {
-                |          host = $hostname
+                |          host = "$hostname"
                 |          port = 8558
                 |        }
                 |      ]

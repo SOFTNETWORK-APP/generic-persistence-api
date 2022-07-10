@@ -36,4 +36,6 @@ object Settings extends StrictLogging {
 
   val ExternalToPaymentAccountTag: String =
     config.getString("payment.event-streams.external-to-payment-account-tag")
+
+  val AkkaNodeRole: String = config.getString("payment.akka-node-role")
 }

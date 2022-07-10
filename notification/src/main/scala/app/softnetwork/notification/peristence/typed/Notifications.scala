@@ -1,25 +1,19 @@
 package app.softnetwork.notification.peristence.typed
 
 import java.util.Date
-
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
-import akka.actor.typed.{ActorSystem, ActorRef}
-
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.persistence.typed.scaladsl.Effect
-
+import app.softnetwork.notification.config.Settings
 import org.slf4j.Logger
 import org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand
-import org.softnetwork.akka.message.scheduler.{RemoveSchedule, AddSchedule}
+import org.softnetwork.akka.message.scheduler.{AddSchedule, RemoveSchedule}
 import org.softnetwork.akka.model.Schedule
-
 import app.softnetwork.persistence.typed._
-
 import app.softnetwork.notification.handlers._
 import app.softnetwork.notification.message._
 import app.softnetwork.notification.model._
-
 import org.softnetwork.notification.message._
-
 import org.softnetwork.notification.model._
 
 import scala.language.{implicitConversions, postfixOps}
@@ -29,6 +23,12 @@ import scala.language.{implicitConversions, postfixOps}
   */
 sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
   NotificationCommand, T, NotificationEvent, NotificationCommandResult] { self: NotificationProvider[T] =>
+
+  /**
+    *
+    * @return node role required to start this actor
+    */
+  override def role: String = Settings.NotificationConfig.akkaNodeRole
 
   private[this] val provider: NotificationProvider[T] = this
 

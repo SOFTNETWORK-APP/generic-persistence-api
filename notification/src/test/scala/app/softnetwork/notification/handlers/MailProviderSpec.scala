@@ -22,7 +22,7 @@ class MailProviderSpec extends AnyFlatSpec with Matchers with MockMailProvider {
 
   val mail: Mail = Mail.defaultInstance
     .withUuid("test")
-    .withFrom(From.defaultInstance.withValue(Settings.Config.mail.username))
+    .withFrom(From.defaultInstance.withValue(Settings.NotificationConfig.mail.username))
     .withTo(Seq(email))
     .withSubject("SUBJECT")
     .withMessage(message)

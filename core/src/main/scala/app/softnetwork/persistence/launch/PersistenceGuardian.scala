@@ -8,6 +8,8 @@ import akka.management.cluster.bootstrap.ClusterBootstrap
 import akka.management.scaladsl.AkkaManagement
 import akka.{actor => classic}
 import app.softnetwork.persistence._
+import message.{Command, Event, CommandResult}
+import model.State
 import app.softnetwork.persistence.config.Settings._
 import app.softnetwork.persistence.query.{EventProcessor, EventProcessorStream, SchemaProvider}
 import app.softnetwork.persistence.typed.EntityBehavior
@@ -16,16 +18,18 @@ import app.softnetwork.persistence.typed.Singleton
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
+import scala.language.implicitConversions
+
 /**
   * Created by smanciot on 15/05/2020.
   */
 trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =>
 
   /**
-    * initialize all behaviors
+    * initialize all entities
     *
     */
-  def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => Seq.empty
+  def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = _ => Seq.empty
 
   /**
     *
@@ -68,8 +72,8 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
       cluster.subscriptions ! Subscribe(context.self, classOf[ClusterDomainEvent])
 
       // initialize behaviors
-      for(behavior <- behaviors(system)) {
-        behavior.init(system)
+      for(behavior <- entities(system)) {
+        behavior.entity.init(system, behavior.role)
       }
 
       // initialize bootstrap
@@ -132,6 +136,12 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
   }
 }
 
+object PersistenceGuardian {
+  implicit def entity2PersistentEntity[C <: Command,S <: State,E <: Event,R <: CommandResult](entity: EntityBehavior[C, S, E, R]): PersistentEntity[C, S, E, R] = {
+    PersistentEntity(entity, Some(""))
+  }
+}
+
 trait ClusterDomainEventHandler {_: SchemaProvider =>
   def handleEvent(event: ClusterDomainEvent)(implicit system: ActorSystem[_]): Unit = {
     event match {
@@ -140,3 +150,5 @@ trait ClusterDomainEventHandler {_: SchemaProvider =>
     }
   }
 }
+
+case class PersistentEntity[C <: Command,S <: State,E <: Event,R <: CommandResult](entity: EntityBehavior[C, S, E, R], role: Option[String] = None)

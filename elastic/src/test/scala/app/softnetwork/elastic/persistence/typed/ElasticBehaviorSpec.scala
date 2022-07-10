@@ -3,12 +3,13 @@ package app.softnetwork.elastic.persistence.typed
 import akka.actor.typed.ActorSystem
 import app.softnetwork.elastic.persistence.query.ElasticProvider
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
-import app.softnetwork.persistence.typed.EntityBehavior
+
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.persistence.message.CommandWrapper
 import app.softnetwork.elastic.client.MockElasticClientApi
 import app.softnetwork.elastic.message._
 import app.softnetwork.elastic.model.Sample
+import app.softnetwork.persistence.launch.PersistentEntity
 
 import scala.language.implicitConversions
 
@@ -17,11 +18,13 @@ import scala.language.implicitConversions
   */
 class ElasticBehaviorSpec extends AnyWordSpecLike with InMemoryPersistenceTestKit {
 
+  import app.softnetwork.persistence.launch.PersistenceGuardian._
+
   /**
-    * initialize all behaviors
+    * initialize all entities
     *
     */
-  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
+  override def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = _ => List(
     SampleBehavior
   )
 

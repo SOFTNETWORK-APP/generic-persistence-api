@@ -12,7 +12,7 @@ import com.google.firebase.{FirebaseApp, FirebaseOptions}
 import com.google.firebase.messaging._
 import com.typesafe.scalalogging.StrictLogging
 import app.softnetwork.config.{Settings => CommonSettings}
-import app.softnetwork.notification.config.Settings
+import app.softnetwork.notification.config.{ApnsConfig, Settings}
 import org.softnetwork.notification.model._
 
 import scala.annotation.tailrec
@@ -127,7 +127,7 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
 
 object APNSPushProvider {
 
-  lazy val apnsConfig: Settings.ApnsConfig = Settings.Config.push.apns
+  lazy val apnsConfig: ApnsConfig = Settings.NotificationConfig.push.apns
 
   lazy val apnsClient: ApnsClient =
     clientCredentials(
@@ -185,7 +185,7 @@ object APNSPushProvider {
 object FCMPushProvider{
 
   lazy val firebaseApp: FirebaseApp = {
-    val databaseUrl = Settings.Config.push.fcm.databaseUrl
+    val databaseUrl = Settings.NotificationConfig.push.fcm.databaseUrl
     val options = FirebaseOptions.builder().setCredentials(GoogleCredentials.getApplicationDefault())
     if(databaseUrl.nonEmpty){
       options.setDatabaseUrl(databaseUrl)

@@ -1,16 +1,13 @@
 package app.softnetwork.scheduler.persistence.typed
 
 import java.sql.Timestamp
-
 import akka.actor.typed.ActorRef
-import akka.actor.typed.scaladsl.{TimerScheduler, ActorContext}
+import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
-
 import app.softnetwork.persistence._
-
 import app.softnetwork.persistence.typed._
+import app.softnetwork.scheduler.config.{SchedulerConfig, Settings}
 import app.softnetwork.scheduler.message._
-
 import org.softnetwork.akka.message.SchedulerEvents._
 import org.softnetwork.akka.message.scheduler._
 import org.softnetwork.akka.model.Scheduler
@@ -26,6 +23,12 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
   override val emptyState: Option[Scheduler] = Some(Scheduler(ALL_KEY, Seq.empty, Seq.empty))
 
   override val snapshotInterval: Int = 100
+
+  /**
+    *
+    * @return node role required to start this actor
+    */
+  override def role: String = Settings.SchedulerConfig.akkaNodeRole
 
   /**
     *

@@ -30,9 +30,9 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
 
   private[this] val defaultAtMost = 10.second
 
-  override def init(system: ActorSystem[_])(implicit tTag: ClassTag[ElasticCommand]): Unit = {
+  override def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit tTag: ClassTag[ElasticCommand]): Unit = {
     logger.info(s"Initializing ${TypeKey.name}")
-    super.init(system)
+    super.init(system, maybeRole)
     initIndex()
   }
 

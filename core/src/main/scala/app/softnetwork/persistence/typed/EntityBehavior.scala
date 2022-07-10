@@ -63,15 +63,21 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult] e
 
   def persistenceId: String
 
+  /**
+    *
+    * @return node role required to start this actor
+    */
+  def role: String = ""
+
   final def TypeKey(implicit c: ClassTag[C]): EntityTypeKey[C] =
     EntityTypeKey[C](s"$persistenceId-$environment")
 
   val emptyState: Option[S] = None
 
-  def init(system: ActorSystem[_])(implicit c: ClassTag[C]): Unit = {
-    ClusterSharding(system)init Entity(TypeKey) { entityContext =>
+  def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit c: ClassTag[C]): Unit = {
+    ClusterSharding(system) init Entity(TypeKey) { entityContext =>
       this(entityContext.entityId, PersistenceId(entityContext.entityTypeKey.name, entityContext.entityId))
-    }
+    }.withRole(maybeRole.getOrElse(role))
   }
 
   type BE = E with BroadcastEvent

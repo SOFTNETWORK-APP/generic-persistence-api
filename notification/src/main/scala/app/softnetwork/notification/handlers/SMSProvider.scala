@@ -31,7 +31,7 @@ trait SMSModeProvider extends SMSProvider {
 
   import scala.util.{Try, Success, Failure}
 
-  lazy val config: Option[SMSMode.Config] = Settings.Config.sms.mode
+  lazy val config: Option[SMSMode.Config] = Settings.NotificationConfig.sms.mode
 
   override def send(notification: SMS)(implicit system: ActorSystem[_]): NotificationAck = {
     import notification._

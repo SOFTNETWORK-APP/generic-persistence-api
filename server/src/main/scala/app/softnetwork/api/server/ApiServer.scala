@@ -34,7 +34,7 @@ trait ApiServer extends PersistenceGuardian {_: ApiRoutes with SchemaProvider =>
 
     implicit val ec: ExecutionContextExecutor = classicSystem.dispatcher
 
-    Http().bindAndHandle(routes(system), Interface, Port).onComplete {
+    Http().bindAndHandle(mainRoutes(system), Interface, Port).onComplete {
       case Success(binding) =>
         val address = binding.localAddress
         classicSystem.log.info(

@@ -6,8 +6,7 @@ import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.testkit.InMemoryPersistenceScalatestRouteTest
 import app.softnetwork.api.server.config.Settings.RootPath
 import app.softnetwork.api.server.{ApiRoutes, DefaultComplete}
-import app.softnetwork.persistence.typed.EntityBehavior
-import app.softnetwork.session.persistence.typed.SessionRefreshTokenBehavior
+import app.softnetwork.session.launch.SessionGuardian
 import app.softnetwork.session.service.SessionService
 import com.softwaremill.session.CsrfDirectives.{randomTokenCsrfProtection, setNewCsrfToken}
 import com.softwaremill.session.CsrfOptions.checkHeader
@@ -18,17 +17,9 @@ import org.softnetwork.session.model.Session
 
 import scala.concurrent.ExecutionContext
 
-trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalatestRouteTest { _: Suite =>
+trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalatestRouteTest with SessionGuardian { _: Suite =>
 
   import app.softnetwork.serialization._
-
-  /**
-    * initialize all behaviors
-    *
-    */
-  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => Seq(
-    SessionRefreshTokenBehavior
-  )
 
   var cookies: Seq[HttpHeader] = Seq.empty
 

@@ -9,6 +9,8 @@ object Settings  extends StrictLogging {
 
   lazy val config: Config = ConfigFactory.load()
 
+  val AkkaNodeRole: String = config.getString("resource.akka-node-role")
+
   val BaseUrl: String = config.getString("resource.baseUrl")
 
   val ResourcePath: String = config.getString("resource.path")

@@ -22,7 +22,7 @@ import akka.persistence.jdbc.util.SlickDatabase
 import app.softnetwork.utils.ClasspathResources
 import app.softnetwork.persistence.query.SchemaProvider
 import com.typesafe.config.{Config, ConfigFactory}
-import app.softnetwork.persistence.jdbc.query.JdbcSchema.{H2, Postgres, SchemaType}
+import app.softnetwork.persistence.jdbc.query.JdbcSchema._
 import com.typesafe.scalalogging.StrictLogging
 import slick.jdbc.JdbcBackend.{Database, Session}
 
@@ -78,3 +78,16 @@ trait PostgresSchemaProvider extends JdbcSchemaProvider {
 trait H2SchemaProvider extends JdbcSchemaProvider {
   override lazy val schemaType: SchemaType = H2
 }
+
+trait MySQLSchemaProvider extends JdbcSchemaProvider {
+  override lazy val schemaType: SchemaType = MySQL
+}
+
+trait OracleSchemaProvider extends JdbcSchemaProvider {
+  override lazy val schemaType: SchemaType = Oracle
+}
+
+trait SQLServerSchemaProvider extends JdbcSchemaProvider {
+  override lazy val schemaType: SchemaType = SQLServer
+}
+

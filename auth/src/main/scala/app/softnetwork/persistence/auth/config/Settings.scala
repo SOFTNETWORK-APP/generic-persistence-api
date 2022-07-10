@@ -12,6 +12,8 @@ object Settings extends StrictLogging {
 
   lazy val config: Config = ConfigFactory.load()
 
+  val AkkaNodeRole: String = config.getString("auth.akka-node-role")
+
   val Realm: String = config.getString("auth.realm")
 
   val Path: String = config.getString("auth.path")

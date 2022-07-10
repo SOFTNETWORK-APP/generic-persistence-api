@@ -10,6 +10,7 @@ import app.softnetwork.resource.model.Resource
 import scala.language.implicitConversions
 import app.softnetwork.persistence.{ManifestWrapper, now}
 import app.softnetwork.persistence.typed._
+import app.softnetwork.resource.config.Settings
 import app.softnetwork.utils.{Base64Tools, HashTools}
 import org.apache.tika.Tika
 
@@ -22,6 +23,12 @@ import scala.util.{Failure, Success, Try}
 sealed trait ResourceBehavior extends TimeStampedBehavior[ResourceCommand, Resource, ResourceEvent, ResourceResult] with ManifestWrapper[Resource]{
 
   override protected val manifestWrapper: ManifestW = ManifestW()
+
+  /**
+    *
+    * @return node role required to start this actor
+    */
+  override def role: String = Settings.AkkaNodeRole
 
   /**
     *

@@ -4,7 +4,7 @@ import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.kv.handlers.GenericKeyValueDao
-import app.softnetwork.payment.config.Settings.PayInStatementDescriptor
+import app.softnetwork.payment.config.Settings.{PayInStatementDescriptor, AkkaNodeRole}
 import app.softnetwork.payment.handlers.{GenericPaymentDao, MangoPayPaymentDao, MockPaymentDao, PaymentKvDao}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
@@ -40,9 +40,15 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
 
   def paymentDao: GenericPaymentDao
 
-  override def init(system: ActorSystem[_])(implicit c: ClassTag[PaymentCommand]): Unit = {
-    PaymentKvBehavior.init(system)
-    super.init(system)
+  /**
+    *
+    * @return node role required to start this actor
+    */
+  override lazy val role: String = AkkaNodeRole
+
+  override def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit c: ClassTag[PaymentCommand]): Unit = {
+    PaymentKvBehavior.init(system, maybeRole)
+    super.init(system, maybeRole)
   }
 
   /**
@@ -1279,6 +1285,24 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                               updatedPaymentAccount = updatedPaymentAccount.resetBankAccountId(Some(bankAccountId))
 
                               var events: List[PaymentEvent] = List.empty
+
+                              if(shouldCreateBankAccount){
+                                updatedPaymentAccount =
+                                  updatedPaymentAccount
+                                    .withBankAccount(
+                                      updatedPaymentAccount.getBankAccount
+                                        .withCreatedDate(lastUpdated)
+                                        .withLastUpdated(lastUpdated)
+                                    )
+                              }
+                              else if(shouldUpdateBankAccount){
+                                updatedPaymentAccount =
+                                  updatedPaymentAccount
+                                    .withBankAccount(
+                                      updatedPaymentAccount.getBankAccount
+                                        .withLastUpdated(lastUpdated)
+                                    )
+                              }
 
                               // BankAccountUpdatedEvent
                               events = events ++

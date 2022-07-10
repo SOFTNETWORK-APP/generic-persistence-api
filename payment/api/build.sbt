@@ -1,6 +1,6 @@
 import com.typesafe.sbt.packager.docker._
 
-mainClass in Compile := Some("app.softnetwork.payment.launch.MangoPayApplication")
+mainClass in Compile := Some("app.softnetwork.payment.api.MangoPayPostgresLauncher")
 
 dockerBaseImage := "java:8"
 

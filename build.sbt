@@ -30,7 +30,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.1.6.81"
+ThisBuild / version := "0.2.0.0"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -135,6 +135,27 @@ lazy val scheduler = project.in(file("scheduler"))
     coreTestkit % "test->test;it->it"
   )
 
+lazy val schedulerTestkit = project.in(file("scheduler/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    scheduler % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val schedulerApi = project.in(file("scheduler/api"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .dependsOn(
+    scheduler % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    schema % "compile->compile;test->test;it->it"
+  )
+
 lazy val session = project.in(file("session"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
@@ -150,6 +171,27 @@ lazy val notification = project.in(file("notification"))
   .settings(Defaults.itSettings, pbSettings)
   .dependsOn(
     scheduler % "compile->compile;test->test;it->it"
+  )
+
+lazy val notificationTestkit = project.in(file("notification/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    notification % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    schedulerTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val notificationApi = project.in(file("notification/api"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .dependsOn(
+    notification % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    schedulerApi % "compile->compile;test->test;it->it"
   )
 
 lazy val elasticTestkit = project.in(file("elastic/testkit"))
@@ -244,7 +286,21 @@ lazy val authTestkit = project.in(file("auth/testkit"))
     auth % "compile->compile;test->test;it->it"
   )
   .dependsOn(
+    notificationTestkit % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
     serverTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val authApi = project.in(file("auth/api"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .dependsOn(
+    auth % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    notificationApi % "compile->compile;test->test;it->it"
   )
 
 lazy val resource = project.in(file("resource"))
@@ -259,6 +315,27 @@ lazy val resource = project.in(file("resource"))
   )
   .dependsOn(
     serverTestkit % "test->test;it->it"
+  )
+
+lazy val resourceTestkit = project.in(file("resource/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    resource % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val resourceApi = project.in(file("resource/api"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .dependsOn(
+    resource % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    schema % "compile->compile;test->test;it->it"
   )
 
 lazy val sessionTestkit = project.in(file("session/testkit"))
@@ -298,6 +375,9 @@ lazy val paymentTestkit = project.in(file("payment/testkit"))
     payment % "compile->compile;test->test;it->it"
   )
   .dependsOn(
+    notificationTestkit % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
     sessionTestkit % "compile->compile;test->test;it->it"
   )
 
@@ -309,7 +389,7 @@ lazy val paymentApi = project.in(file("payment/api"))
     payment % "compile->compile;test->test;it->it"
   )
   .dependsOn(
-    schema % "compile->compile;test->test;it->it"
+    notificationApi % "compile->compile;test->test;it->it"
   )
 
 lazy val root = project.in(file("."))
@@ -324,8 +404,12 @@ lazy val root = project.in(file("."))
     akkaJdbc,
     counter,
     scheduler,
+    schedulerTestkit,
+    schedulerApi,
     session,
     notification,
+    notificationTestkit,
+    notificationApi,
     elasticTestkit,
     elastic,
     server,
@@ -335,7 +419,10 @@ lazy val root = project.in(file("."))
     kv,
     auth,
     authTestkit,
+    authApi,
     resource,
+    resourceTestkit,
+    resourceApi,
     payment,
     paymentTestkit,
     paymentApi

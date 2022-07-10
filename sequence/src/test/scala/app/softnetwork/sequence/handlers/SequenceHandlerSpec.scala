@@ -1,8 +1,8 @@
 package app.softnetwork.sequence.handlers
 
 import akka.actor.typed.ActorSystem
+import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
-import app.softnetwork.persistence.typed._
 import app.softnetwork.sequence.persistence.typed.Sequence
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.sequence.message._
@@ -14,11 +14,13 @@ import scala.concurrent.ExecutionContextExecutor
   */
 class SequenceHandlerSpec extends SequenceHandler with AnyWordSpecLike with InMemoryPersistenceTestKit {
 
+  import app.softnetwork.persistence.launch.PersistenceGuardian._
+
   /**
-    * initialize all behaviors
+    * initialize all entities
     *
     */
-  override def behaviors: ActorSystem[_] => Seq[EntityBehavior[_, _, _, _]] = _ => List(
+  override def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = _ => List(
     Sequence
   )
 

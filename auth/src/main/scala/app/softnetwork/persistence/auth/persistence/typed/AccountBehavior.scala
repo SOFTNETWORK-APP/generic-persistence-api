@@ -7,14 +7,13 @@ import app.softnetwork.security.Sha512Encryption
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.Logger
 import app.softnetwork.persistence.typed._
-import app.softnetwork.notification.peristence.typed._
 import app.softnetwork.persistence.auth.config.Settings._
 import app.softnetwork.persistence.auth.handlers._
 import app.softnetwork.persistence.auth.message._
 import Sha512Encryption._
 import app.softnetwork.persistence.auth.model._
 import app.softnetwork.persistence._
-import app.softnetwork.persistence.auth.config.Password
+import app.softnetwork.persistence.auth.config.{Password, Settings}
 import app.softnetwork.validation.{EmailValidator, GsmValidator}
 
 import scala.concurrent.ExecutionContextExecutor
@@ -37,6 +36,12 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
   protected def createAccountCreatedEvent(account: T): AccountCreatedEvent[T]
 
+  /**
+    *
+    * @return node role required to start this actor
+    */
+  override def role: String = Settings.AkkaNodeRole
+
   override protected def tagEvent(entityId: String, event: AccountEvent): Set[String] = {
     event match {
       case _: AccountCreatedEvent[_] => Set(persistenceId, s"$persistenceId-created")
@@ -51,9 +56,9 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     }
   }
 
-  override def init(system: ActorSystem[_])(implicit tTag: ClassTag[AccountCommand]): Unit = {
-    AccountKeyBehavior.init(system)
-    super.init(system)
+  override def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit tTag: ClassTag[AccountCommand]): Unit = {
+    AccountKeyBehavior.init(system, maybeRole)
+    super.init(system, maybeRole)
   }
 
   /**
@@ -842,20 +847,10 @@ trait BasicAccountBehavior extends AccountBehavior[BasicAccount, BasicAccountPro
 object BasicAccountBehavior extends BasicAccountBehavior
   with DefaultGenerator {
   override def persistenceId: String = "Account"
-
-  override def init(system: ActorSystem[_])(implicit tTag: ClassTag[AccountCommand]): Unit = {
-    AllNotificationsBehavior.init(system)
-    super.init(system)
-  }
 }
 
 object MockBasicAccountBehavior extends BasicAccountBehavior
   with MockGenerator
   with MockAccountNotifications[BasicAccount] {
   override def persistenceId: String = "MockAccount"
-
-  override def init(system: ActorSystem[_])(implicit tTag: ClassTag[AccountCommand]): Unit = {
-    MockAllNotificationsBehavior.init(system)
-    super.init(system)
-  }
 }
