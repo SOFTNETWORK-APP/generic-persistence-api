@@ -7,7 +7,7 @@ import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.notification.config.Settings
 import org.slf4j.Logger
 import org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand
-import org.softnetwork.akka.message.scheduler.{AddSchedule, RemoveSchedule}
+import app.softnetwork.scheduler.message.{AddSchedule, RemoveSchedule}
 import org.softnetwork.akka.model.Schedule
 import app.softnetwork.persistence.typed._
 import app.softnetwork.notification.handlers._

@@ -49,11 +49,11 @@ message NotificationRemovedEvent{
 message ScheduleForNotificationAdded{
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "NotificationToSchedulerEvent";
-    required org.softnetwork.akka.message.scheduler.AddSchedule command = 1;
+    required app.softnetwork.scheduler.message.AddSchedule command = 1;
 }
 
 message ScheduleForNotificationRemoved{
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "NotificationToSchedulerEvent";
-    required org.softnetwork.akka.message.scheduler.RemoveSchedule command = 1;
+    required app.softnetwork.scheduler.message.RemoveSchedule command = 1;
 }

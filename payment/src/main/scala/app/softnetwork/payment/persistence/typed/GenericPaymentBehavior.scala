@@ -20,7 +20,7 @@ import app.softnetwork.serialization.asJson
 import app.softnetwork.time.{now => _, _}
 import org.slf4j.Logger
 import org.softnetwork.akka.message.SchedulerEvents.SchedulerEventWithCommand
-import org.softnetwork.akka.message.scheduler.{AddSchedule, RemoveSchedule}
+import app.softnetwork.scheduler.message.{AddSchedule, RemoveSchedule}
 import org.softnetwork.akka.model.Schedule
 
 import scala.reflect.ClassTag
