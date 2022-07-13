@@ -3,7 +3,7 @@ syntax = "proto2";
 import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
 
-package org.softnetwork.akka.model;
+package app.softnetwork.scheduler.model;
 
 option (scalapb.options) = {
     single_file: true

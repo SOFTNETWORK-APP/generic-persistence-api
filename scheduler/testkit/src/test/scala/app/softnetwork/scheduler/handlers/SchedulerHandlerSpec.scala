@@ -2,11 +2,10 @@ package app.softnetwork.scheduler.handlers
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence._
-import app.softnetwork.scheduler.message.{CronTabAdded, LoadScheduler, ScheduleAdded, ScheduleNotAdded, SchedulerLoaded}
 import app.softnetwork.scheduler.scalatest.SchedulerTestKit
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.softnetwork.akka.message.scheduler._
-import org.softnetwork.akka.model.{CronTab, Schedule}
+import app.softnetwork.scheduler.message._
+import app.softnetwork.scheduler.model.{CronTab, Schedule}
 
 import scala.concurrent.ExecutionContextExecutor
 

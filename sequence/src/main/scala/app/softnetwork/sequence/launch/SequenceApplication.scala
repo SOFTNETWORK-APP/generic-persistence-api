@@ -4,8 +4,6 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.launch.Application
 import app.softnetwork.persistence.launch.{PersistenceGuardian, PersistentEntity}
 import app.softnetwork.persistence.query.SchemaProvider
-import app.softnetwork.scheduler.handlers.SchedulerDao
-import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
 import app.softnetwork.sequence.persistence.typed.Sequence
 import com.typesafe.scalalogging.StrictLogging
 
@@ -18,12 +16,6 @@ trait SequenceApplication extends Application with SequenceRoutes with Persisten
 
   import app.softnetwork.persistence.launch.PersistenceGuardian._
 
-  override def entities: ActorSystem[_] =>  Seq[PersistentEntity[_, _, _, _]] = _ => Seq(Sequence, SchedulerBehavior)
+  override def entities: ActorSystem[_] =>  Seq[PersistentEntity[_, _, _, _]] = _ => Seq(Sequence)
 
-  override def initSystem: ActorSystem[_] => Unit = system => {
-    Try(SchedulerDao.start(system)) match {
-      case Success(_) =>
-      case Failure(f) => logger.error(f.getMessage, f)
-    }
-  }
 }

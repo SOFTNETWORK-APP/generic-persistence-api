@@ -9,7 +9,6 @@ option (scalapb.options) = {
     single_file: true
     flat_package: true
     import: "app.softnetwork.persistence.message._"
-    import: "org.softnetwork.akka.message.scheduler._"
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.scheduler.message._"
     import: "app.softnetwork.scheduler.model._"
@@ -23,13 +22,13 @@ option (scalapb.options) = {
 message ScheduleAddedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required org.softnetwork.akka.model.Schedule schedule = 1;
+    required app.softnetwork.scheduler.model.Schedule schedule = 1;
 }
 
 message ScheduleTriggeredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required org.softnetwork.akka.model.Schedule schedule = 1;
+    required app.softnetwork.scheduler.model.Schedule schedule = 1;
 }
 
 message ScheduleRemovedEvent {
@@ -44,13 +43,13 @@ message ScheduleRemovedEvent {
 message CronTabAddedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required org.softnetwork.akka.model.CronTab cronTab = 1;
+    required app.softnetwork.scheduler.model.CronTab cronTab = 1;
 }
 
 message CronTabTriggeredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required org.softnetwork.akka.model.CronTab cronTab = 1;
+    required app.softnetwork.scheduler.model.CronTab cronTab = 1;
 }
 
 message CronTabRemovedEvent {

@@ -21,6 +21,7 @@ trait SchedulerTestKit extends SchedulerGuardian with InMemoryPersistenceTestKit
     new Entity2SchedulerProcessorStream with SchedulerHandler with InMemoryJournalProvider {
       override protected val forTests: Boolean = true
       override implicit def system: ActorSystem[_] = sys
+      logger.info(tag)
     }
 
   override def scheduler2EntityProcessorStreams: ActorSystem[_] => Seq[Scheduler2EntityProcessorStream[_, _]] = _ =>

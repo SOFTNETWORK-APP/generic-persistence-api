@@ -30,7 +30,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.2.0.0"
+ThisBuild / version := "0.2.0.1"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -132,7 +132,7 @@ lazy val scheduler = project.in(file("scheduler"))
     core % "compile->compile;test->test;it->it"
   )
   .dependsOn(
-    coreTestkit % "test->test;it->it"
+    server % "compile->compile;test->test;it->it"
   )
 
 lazy val schedulerTestkit = project.in(file("scheduler/testkit"))
@@ -143,6 +143,9 @@ lazy val schedulerTestkit = project.in(file("scheduler/testkit"))
   )
   .dependsOn(
     coreTestkit % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "test->test;it->it"
   )
 
 lazy val schedulerApi = project.in(file("scheduler/api"))
@@ -237,9 +240,6 @@ lazy val serverTestkit = project.in(file("server/testkit"))
 lazy val sequence = project.in(file("sequence"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings, pbSettings)
-  .dependsOn(
-    scheduler % "compile->compile;test->test;it->it"
-  )
   .dependsOn(
     server % "compile->compile;test->test;it->it"
   )
@@ -403,18 +403,18 @@ lazy val root = project.in(file("."))
     jdbcTestkit,
     akkaJdbc,
     counter,
-    scheduler,
-    schedulerTestkit,
-    schedulerApi,
     session,
-    notification,
-    notificationTestkit,
-    notificationApi,
     elasticTestkit,
     elastic,
     server,
     serverTestkit,
     sessionTestkit,
+    scheduler,
+    schedulerTestkit,
+    schedulerApi,
+    notification,
+    notificationTestkit,
+    notificationApi,
     sequence,
     kv,
     auth,

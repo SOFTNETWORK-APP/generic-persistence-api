@@ -1,6 +1,6 @@
 package app.softnetwork.scheduler.launch
 
-import app.softnetwork.persistence.launch.PersistenceApplication
+import app.softnetwork.api.server.launch.HealthCheckApplication
 import app.softnetwork.persistence.query.SchemaProvider
 
-trait SchedulerApplication extends PersistenceApplication with SchedulerGuardian {_: SchemaProvider => }
+trait SchedulerApplication extends HealthCheckApplication with SchedulerGuardian {_: SchemaProvider => }

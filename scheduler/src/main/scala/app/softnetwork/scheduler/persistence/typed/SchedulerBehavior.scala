@@ -6,11 +6,10 @@ import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed._
-import app.softnetwork.scheduler.config.{SchedulerConfig, Settings}
+import app.softnetwork.scheduler.config.Settings
 import app.softnetwork.scheduler.message._
 import org.softnetwork.akka.message.SchedulerEvents._
-import org.softnetwork.akka.message.scheduler._
-import org.softnetwork.akka.model.Scheduler
+import app.softnetwork.scheduler.model.Scheduler
 
 import scala.concurrent.duration._
 import scala.math._
@@ -20,7 +19,9 @@ import scala.math._
   */
 trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, SchedulerEvent, SchedulerCommandResult] {
 
-  override val emptyState: Option[Scheduler] = Some(Scheduler(ALL_KEY, Seq.empty, Seq.empty))
+  lazy val schedulerId: String = Settings.SchedulerConfig.id.getOrElse(ALL_KEY)
+
+  override val emptyState: Option[Scheduler] = Some(Scheduler(schedulerId, Seq.empty, Seq.empty))
 
   override val snapshotInterval: Int = 100
 
@@ -371,26 +372,26 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
             s.schedules.filterNot(schedule =>
               schedule.uuid == evt.schedule.uuid
             ) :+ evt.schedule
-        )).getOrElse(Scheduler(ALL_KEY, schedules = Seq(evt.schedule))))
+        )).getOrElse(Scheduler(schedulerId, schedules = Seq(evt.schedule))))
       case evt: ScheduleRemovedEvent =>
         Option(state.map(s => s.copy(
           schedules = s.schedules.filterNot(schedule =>
             schedule.uuid == evt.uuid
           )
-        )).getOrElse(Scheduler(ALL_KEY)))
+        )).getOrElse(Scheduler(schedulerId)))
       case evt: CronTabAddedEvent =>
         Option(state.map(s => s.copy(
           cronTabs =
             s.cronTabs.filterNot(cronTab =>
               cronTab.uuid == evt.cronTab.uuid
             ) :+ evt.cronTab
-        )).getOrElse(Scheduler(ALL_KEY, cronTabs = Seq(evt.cronTab))))
+        )).getOrElse(Scheduler(schedulerId, cronTabs = Seq(evt.cronTab))))
       case evt: CronTabRemovedEvent =>
         Option(state.map(s => s.copy(
           cronTabs = s.cronTabs.filterNot(cronTab =>
             cronTab.uuid == evt.uuid
           )
-        )).getOrElse(Scheduler(ALL_KEY)))
+        )).getOrElse(Scheduler(schedulerId)))
       case _ => super.handleEvent(state, event)
     }
 }

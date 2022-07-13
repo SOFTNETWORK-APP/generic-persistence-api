@@ -141,14 +141,3 @@ object PersistenceGuardian {
     PersistentEntity(entity, Some(""))
   }
 }
-
-trait ClusterDomainEventHandler {_: SchemaProvider =>
-  def handleEvent(event: ClusterDomainEvent)(implicit system: ActorSystem[_]): Unit = {
-    event match {
-      case ClusterShuttingDown => shutdown()
-      case _ =>
-    }
-  }
-}
-
-case class PersistentEntity[C <: Command,S <: State,E <: Event,R <: CommandResult](entity: EntityBehavior[C, S, E, R], role: Option[String] = None)

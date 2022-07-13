@@ -10,7 +10,7 @@ import app.softnetwork.persistence.message.{CommandResult, Command}
 import app.softnetwork.scheduler.message._
 
 import org.softnetwork.akka.message.SchedulerEvents._
-import org.softnetwork.akka.model.{CronTab, Schedule}
+import app.softnetwork.scheduler.model.{CronTab, Schedule}
 
 import scala.concurrent.Future
 

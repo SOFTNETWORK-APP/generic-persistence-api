@@ -48,14 +48,14 @@ package object message {
   /**
     * a command that should be handled by a specific entity
     */
-  trait EntityCommand extends Command {
+  trait EntityCommand extends Command with Entity {
     def id: String // TODO rename to uuid ?
   }
 
   /**
     * allow a command to be handled by no specific entity
     */
-  trait AllEntities extends EntityCommand with Entity {_: Command =>
+  trait AllEntities extends EntityCommand {_: Command =>
     override val id: String = ALL_KEY
   }
 
