@@ -7,13 +7,12 @@ import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.scheduler.message._
 import app.softnetwork.scheduler.config.{SchedulerConfig, Settings}
-import app.softnetwork.scheduler.model.{CronTab, Schedule}
+import org.softnetwork.akka.model.{CronTab, Schedule}
 import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
 
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.Failure
 
 /**
   * Created by smanciot on 04/09/2020.
@@ -33,20 +32,12 @@ trait SchedulerDao extends Completion { _: SchedulerHandler =>
 
   def start(implicit system: ActorSystem[_]): Unit = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    resetScheduler() await {
-      case bool if bool =>
-        system.scheduler.scheduleWithFixedDelay(
-          config.resetCronTabs.initialDelay.seconds,
-          config.resetCronTabs.delay.seconds
-        )(
-          () => !! (ResetCronTabs)
+    resetScheduler() await{
+      _ =>
+        system.scheduler.scheduleOnce(
+          Settings.SchedulerConfig.resetCronTabs.initialDelay.seconds,
+          () => resetCronTabsAndSchedules()
         )
-      case _ =>
-    } match {
-      case Failure(f) =>
-        logger.error(f.getMessage, f)
-        throw f
-      case _ =>
     }
   }
 
@@ -54,6 +45,14 @@ trait SchedulerDao extends Completion { _: SchedulerHandler =>
     implicit val ec: ExecutionContextExecutor = system.executionContext
     !?(ResetScheduler).map {
       case SchedulerReseted => true
+      case _ => false
+    }
+  }
+
+  private[scheduler] def resetCronTabsAndSchedules()(implicit system: ActorSystem[_]): Future[Boolean] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    !?(ResetCronTabsAndSchedules).map {
+      case CronTabsAndSchedulesReseted => true
       case _ => false
     }
   }

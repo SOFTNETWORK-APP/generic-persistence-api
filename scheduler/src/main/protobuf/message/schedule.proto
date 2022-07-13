@@ -12,13 +12,14 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.scheduler.message._"
     import: "app.softnetwork.scheduler.model._"
+    import: "org.softnetwork.akka.model._"
     preserve_unknown_fields: false
 };
 
 message AddSchedule {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerCommand";
-    required app.softnetwork.scheduler.model.Schedule schedule = 1;
+    required org.softnetwork.akka.model.Schedule schedule = 1;
 }
 
 message RemoveSchedule {
@@ -33,7 +34,7 @@ message RemoveSchedule {
 message AddCronTab {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerCommand";
-    required app.softnetwork.scheduler.model.CronTab cronTab = 1;
+    required org.softnetwork.akka.model.CronTab cronTab = 1;
 }
 
 message RemoveCronTab {

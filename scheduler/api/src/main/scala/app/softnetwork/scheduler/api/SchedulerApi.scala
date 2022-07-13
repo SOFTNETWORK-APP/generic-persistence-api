@@ -5,7 +5,7 @@ import app.softnetwork.persistence.jdbc.query.JdbcSchema.SchemaType
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcSchema, JdbcSchemaProvider}
 import app.softnetwork.scheduler.handlers.SchedulerHandler
 import app.softnetwork.scheduler.launch.SchedulerApplication
-import app.softnetwork.scheduler.persistence.query.{Entity2SchedulerProcessorStream, Scheduler2EntityProcessorStream}
+import app.softnetwork.scheduler.persistence.query.Entity2SchedulerProcessorStream
 
 trait SchedulerApi extends SchedulerApplication with JdbcSchemaProvider {
 
@@ -17,6 +17,4 @@ trait SchedulerApi extends SchedulerApplication with JdbcSchemaProvider {
       override implicit def system: ActorSystem[_] = sys
     }
 
-  override def scheduler2EntityProcessorStreams: ActorSystem[_] => Seq[Scheduler2EntityProcessorStream[_, _]] = _ =>
-    Seq.empty
 }

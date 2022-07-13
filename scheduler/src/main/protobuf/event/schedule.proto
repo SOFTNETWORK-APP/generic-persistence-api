@@ -12,6 +12,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.scheduler.message._"
     import: "app.softnetwork.scheduler.model._"
+    import: "org.softnetwork.akka.model._"
     preamble: "sealed trait SchedulerEvent extends Event"
     preamble: "trait SchedulerEventWrapper[E <: SchedulerEvent] extends SchedulerEvent {def event: E}"
     preamble: "trait SchedulerEventWithCommand extends SchedulerEvent {def command: SchedulerCommand}"
@@ -22,13 +23,13 @@ option (scalapb.options) = {
 message ScheduleAddedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required app.softnetwork.scheduler.model.Schedule schedule = 1;
+    required org.softnetwork.akka.model.Schedule schedule = 1;
 }
 
 message ScheduleTriggeredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required app.softnetwork.scheduler.model.Schedule schedule = 1;
+    required org.softnetwork.akka.model.Schedule schedule = 1;
 }
 
 message ScheduleRemovedEvent {
@@ -43,13 +44,13 @@ message ScheduleRemovedEvent {
 message CronTabAddedEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required app.softnetwork.scheduler.model.CronTab cronTab = 1;
+    required org.softnetwork.akka.model.CronTab cronTab = 1;
 }
 
 message CronTabTriggeredEvent {
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "SchedulerEvent";
-    required app.softnetwork.scheduler.model.CronTab cronTab = 1;
+    required org.softnetwork.akka.model.CronTab cronTab = 1;
 }
 
 message CronTabRemovedEvent {

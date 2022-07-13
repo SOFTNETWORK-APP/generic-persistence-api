@@ -6,7 +6,7 @@ import app.softnetwork.persistence.scalatest.InMemoryPersistenceTestKit
 import app.softnetwork.scheduler.config.Settings
 import app.softnetwork.scheduler.handlers.SchedulerHandler
 import app.softnetwork.scheduler.launch.SchedulerGuardian
-import app.softnetwork.scheduler.persistence.query.{Entity2SchedulerProcessorStream, Scheduler2EntityProcessorStream}
+import app.softnetwork.scheduler.persistence.query.Entity2SchedulerProcessorStream
 import org.scalatest.Suite
 
 trait SchedulerTestKit extends SchedulerGuardian with InMemoryPersistenceTestKit {_: Suite =>
@@ -24,6 +24,4 @@ trait SchedulerTestKit extends SchedulerGuardian with InMemoryPersistenceTestKit
       logger.info(tag)
     }
 
-  override def scheduler2EntityProcessorStreams: ActorSystem[_] => Seq[Scheduler2EntityProcessorStream[_, _]] = _ =>
-    Seq.empty
 }

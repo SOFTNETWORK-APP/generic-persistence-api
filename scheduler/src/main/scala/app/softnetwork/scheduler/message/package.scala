@@ -3,7 +3,8 @@ package app.softnetwork.scheduler
 import akka.actor.typed.scaladsl.TimerScheduler
 import app.softnetwork.persistence.message.{Command, CommandResult, EntityCommand, ErrorMessage}
 import app.softnetwork.scheduler.config.Settings
-import app.softnetwork.scheduler.model.{CronTabItem, Scheduler, SchedulerItem}
+import app.softnetwork.scheduler.model.{CronTabItem, SchedulerItem}
+import org.softnetwork.akka.model.Scheduler
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -70,9 +71,9 @@ package object message {
     override lazy val id: String = Settings.SchedulerConfig.id.getOrElse(ALL_KEY)
   }
 
-  case object ResetCronTabs extends SchedulerCommand
+  private[scheduler] case object ResetCronTabsAndSchedules extends SchedulerCommand
 
-  case object ResetScheduler extends SchedulerCommand
+  private[scheduler] case object ResetScheduler extends SchedulerCommand
 
   case class TriggerSchedule(persistenceId: String, entityId: String, key: String) extends SchedulerCommand
     with SchedulerItem
@@ -85,6 +86,8 @@ package object message {
   sealed trait SchedulerCommandResult extends CommandResult
 
   case object SchedulerReseted extends SchedulerCommandResult
+
+  case object CronTabsAndSchedulesReseted extends SchedulerCommandResult
 
   case object ScheduleAdded extends SchedulerCommandResult
 

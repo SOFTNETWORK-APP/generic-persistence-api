@@ -3,7 +3,7 @@ syntax = "proto2";
 import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
 
-package app.softnetwork.scheduler.model;
+package org.softnetwork.akka.model;
 
 option (scalapb.options) = {
     single_file: true
@@ -13,6 +13,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.serialization._"
     import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "app.softnetwork.scheduler.model._"
+    import: "org.softnetwork.akka.model._"
     preserve_unknown_fields: false
 };
 

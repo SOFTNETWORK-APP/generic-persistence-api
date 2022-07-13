@@ -26,7 +26,8 @@ trait SchedulerGuardian extends PersistenceGuardian with StrictLogging {_: Schem
 
   def entity2SchedulerProcessorStream: ActorSystem[_] => Entity2SchedulerProcessorStream
 
-  def scheduler2EntityProcessorStreams: ActorSystem[_] => Seq[Scheduler2EntityProcessorStream[_, _]]
+  def scheduler2EntityProcessorStreams: ActorSystem[_] => Seq[Scheduler2EntityProcessorStream[_, _]] = _ =>
+    Seq.empty
 
   def schedulerEventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
     Seq(

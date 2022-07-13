@@ -1,29 +1,33 @@
 package app.softnetwork.scheduler.persistence.typed
 
 import java.sql.Timestamp
-import akka.actor.typed.ActorRef
+import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed._
 import app.softnetwork.scheduler.config.Settings
+import app.softnetwork.scheduler.handlers.SchedulerDao
 import app.softnetwork.scheduler.message._
 import org.softnetwork.akka.message.SchedulerEvents._
-import app.softnetwork.scheduler.model.Scheduler
+import org.softnetwork.akka.model.Scheduler
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.math._
 
 /**
   * Created by smanciot on 04/09/2020.
   */
-trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, SchedulerEvent, SchedulerCommandResult] {
+private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, SchedulerEvent, SchedulerCommandResult] {
 
   lazy val schedulerId: String = Settings.SchedulerConfig.id.getOrElse(ALL_KEY)
 
   override val emptyState: Option[Scheduler] = Some(Scheduler(schedulerId, Seq.empty, Seq.empty))
 
   override val snapshotInterval: Int = 100
+
+  private def schedulerDao: SchedulerDao = SchedulerDao
 
   /**
     *
@@ -61,7 +65,7 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
                             )(implicit context: ActorContext[SchedulerCommand]
   ): Effect[SchedulerEvent, Option[Scheduler]] =
     command match {
-      case ResetCronTabs =>
+      case ResetCronTabsAndSchedules =>
         state match {
           case Some(scheduler) =>
             scheduler.cronTabs.foreach{cronTab =>
@@ -70,15 +74,22 @@ trait SchedulerBehavior extends EntityBehavior[SchedulerCommand, Scheduler, Sche
             scheduler.schedules.filter(_.scheduledDate.isDefined).foreach{schedule =>
               context.self ! AddSchedule(schedule)
             }
+            implicit val system: ActorSystem[_] = context.system
+            implicit val ec: ExecutionContextExecutor = system.executionContext
+            system.scheduler.scheduleOnce(
+              Settings.SchedulerConfig.resetCronTabs.delay.seconds,
+              () => schedulerDao.resetCronTabsAndSchedules()
+            )
             context.log.info(s"${scheduler.cronTabs.size} cron tabs and ${scheduler.schedules.size} schedules reseted")
           case _ =>
         }
-        Effect.none
+        Effect.none.thenRun(_ => CronTabsAndSchedulesReseted ~> replyTo)
       case ResetScheduler => // add all schedules
         state match {
           case Some(scheduler) =>
-            val temp = scheduler.cronTabs.groupBy(_.persistenceId).map(kv => (kv._1, kv._2.groupBy(_.entityId).map(cts => (cts._1, cts._2.map(_.key).toSet))))
-            val events: List[CronTabsResetedEvent] = (for(
+            val temp = scheduler.cronTabs.groupBy(_.persistenceId)
+              .map(kv => (kv._1, kv._2.groupBy(_.entityId).map(cts => (cts._1, cts._2.map(_.key).toSet))))
+            val events: List[SchedulerEvent] = (for(
               persistenceId <- temp.keys;
               (entityId, keys) <- temp(persistenceId)
             ) yield CronTabsResetedEvent(persistenceId, entityId, keys.toSeq)).toList

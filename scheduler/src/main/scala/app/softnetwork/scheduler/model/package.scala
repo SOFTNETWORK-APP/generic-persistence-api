@@ -6,7 +6,7 @@ import java.time.temporal.ChronoUnit
 import java.util.Date
 import com.markatta.akron.CronExpression
 import com.typesafe.scalalogging.StrictLogging
-import app.softnetwork.scheduler.model.Schedule
+import org.softnetwork.akka.model.Schedule
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
