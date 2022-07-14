@@ -71,7 +71,7 @@ package object message {
     override lazy val id: String = Settings.SchedulerConfig.id.getOrElse(ALL_KEY)
   }
 
-  private[scheduler] case object ResetCronTabsAndSchedules extends SchedulerCommand
+  private[scheduler] case class ResetCronTabsAndSchedules(resetScheduler: Boolean = false) extends SchedulerCommand
 
   private[scheduler] case object ResetScheduler extends SchedulerCommand
 
@@ -114,4 +114,6 @@ package object message {
   case object CronTabNotFound extends SchedulerErrorMessage("CronTabNotFound")
 
   case object CronTabNotAdded extends SchedulerErrorMessage("CronTabNotAdded")
+
+  case object CronTabsAndSchedulesNotReseted extends SchedulerErrorMessage("CronTabsAndSchedulesNotReseted")
 }

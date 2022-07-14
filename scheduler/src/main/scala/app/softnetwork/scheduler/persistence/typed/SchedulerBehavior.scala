@@ -3,7 +3,7 @@ package app.softnetwork.scheduler.persistence.typed
 import java.sql.Timestamp
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
-import akka.persistence.typed.scaladsl.Effect
+import akka.persistence.typed.scaladsl.{Effect, EffectBuilder}
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed._
 import app.softnetwork.scheduler.config.Settings
@@ -65,25 +65,42 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                             )(implicit context: ActorContext[SchedulerCommand]
   ): Effect[SchedulerEvent, Option[Scheduler]] =
     command match {
-      case ResetCronTabsAndSchedules =>
-        state match {
-          case Some(scheduler) =>
-            scheduler.cronTabs.foreach{cronTab =>
-              context.self ! AddCronTab(cronTab)
-            }
-            scheduler.schedules.filter(_.scheduledDate.isDefined).foreach{schedule =>
-              context.self ! AddSchedule(schedule)
-            }
-            implicit val system: ActorSystem[_] = context.system
-            implicit val ec: ExecutionContextExecutor = system.executionContext
-            system.scheduler.scheduleOnce(
-              Settings.SchedulerConfig.resetCronTabs.delay.seconds,
-              () => schedulerDao.resetCronTabsAndSchedules()
-            )
-            context.log.info(s"${scheduler.cronTabs.size} cron tabs and ${scheduler.schedules.size} schedules reseted")
-          case _ =>
+      case cmd: ResetCronTabsAndSchedules =>
+        def trigerResetCronTabsAndSchedules(scheduler: Scheduler, switch: Boolean)
+        : EffectBuilder[SchedulerEvent, Option[Scheduler]] = {
+          implicit val system: ActorSystem[_] = context.system
+          implicit val ec: ExecutionContextExecutor = system.executionContext
+          system.scheduler.scheduleOnce(
+            Settings.SchedulerConfig.resetCronTabs.delay.seconds,
+            () => schedulerDao.resetCronTabsAndSchedules(resetScheduler = false)
+          )
+          Effect.persist(
+            ResetCronTabsAndSchedulesUpdatedEvent(switch, now())
+          ).thenRun(_ => CronTabsAndSchedulesReseted ~> replyTo)
         }
-        Effect.none.thenRun(_ => CronTabsAndSchedulesReseted ~> replyTo)
+        state match {
+          case Some(scheduler) if !scheduler.getTriggerResetCronTabsAndSchedules || !cmd.resetScheduler =>
+            if(scheduler.lastCronTabsAndSchedulesReseted.isEmpty ||
+              ((now().getTime - scheduler.getLastCronTabsAndSchedulesReseted.getTime) >
+                Settings.SchedulerConfig.resetCronTabs.delay * 1000)){
+              scheduler.cronTabs.foreach{cronTab =>
+                context.self ! AddCronTab(cronTab)
+              }
+              scheduler.schedules.filter(_.scheduledDate.isDefined).foreach{schedule =>
+                context.self ! AddSchedule(schedule)
+              }
+              context.log.info(s"${scheduler.cronTabs.size} cron tabs and ${scheduler.schedules.size} schedules reseted")
+              trigerResetCronTabsAndSchedules(scheduler, switch = !scheduler.getTriggerResetCronTabsAndSchedules)
+            }
+            else{
+              Effect.none.thenRun(_ => CronTabsAndSchedulesNotReseted ~> replyTo)
+            }
+          case Some(scheduler) if scheduler.lastCronTabsAndSchedulesReseted.isEmpty ||
+            ((now().getTime - scheduler.getLastCronTabsAndSchedulesReseted.getTime) >
+              Settings.SchedulerConfig.resetCronTabs.delay * 1000) =>
+            trigerResetCronTabsAndSchedules(scheduler, switch = false)
+          case _ => Effect.none.thenRun(_ => CronTabsAndSchedulesNotReseted ~> replyTo)
+        }
       case ResetScheduler => // add all schedules
         state match {
           case Some(scheduler) =>
@@ -403,6 +420,11 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
             cronTab.uuid == evt.uuid
           )
         )).getOrElse(Scheduler(schedulerId)))
+      case evt: ResetCronTabsAndSchedulesUpdatedEvent =>
+        Option(state.map(s => s
+          .withTriggerResetCronTabsAndSchedules(evt.triggerResetCronTabsAndSchedules)
+          .withLastCronTabsAndSchedulesReseted(evt.lastTriggered)
+        ).getOrElse(Scheduler(schedulerId)))
       case _ => super.handleEvent(state, event)
     }
 }

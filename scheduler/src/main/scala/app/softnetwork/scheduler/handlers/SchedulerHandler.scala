@@ -36,7 +36,7 @@ trait SchedulerDao extends Completion { _: SchedulerHandler =>
       _ =>
         system.scheduler.scheduleOnce(
           Settings.SchedulerConfig.resetCronTabs.initialDelay.seconds,
-          () => resetCronTabsAndSchedules()
+          () => resetCronTabsAndSchedules(resetScheduler = true)
         )
     }
   }
@@ -49,9 +49,9 @@ trait SchedulerDao extends Completion { _: SchedulerHandler =>
     }
   }
 
-  private[scheduler] def resetCronTabsAndSchedules()(implicit system: ActorSystem[_]): Future[Boolean] = {
+  private[scheduler] def resetCronTabsAndSchedules(resetScheduler: Boolean)(implicit system: ActorSystem[_]): Future[Boolean] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    !?(ResetCronTabsAndSchedules).map {
+    !?(ResetCronTabsAndSchedules(resetScheduler)).map {
       case CronTabsAndSchedulesReseted => true
       case _ => false
     }

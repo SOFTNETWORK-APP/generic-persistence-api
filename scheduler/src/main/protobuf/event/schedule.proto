@@ -2,6 +2,7 @@ syntax = "proto2";
 
 import "scalapb/scalapb.proto";
 import "model/schedule.proto";
+import "google/protobuf/timestamp.proto";
 
 package org.softnetwork.akka.message.SchedulerEvents;
 
@@ -12,6 +13,7 @@ option (scalapb.options) = {
     import: "app.softnetwork.persistence.model._"
     import: "app.softnetwork.scheduler.message._"
     import: "app.softnetwork.scheduler.model._"
+    import: "app.softnetwork.protobuf.ScalaPBTypeMappers._"
     import: "org.softnetwork.akka.model._"
     preamble: "sealed trait SchedulerEvent extends Event"
     preamble: "trait SchedulerEventWrapper[E <: SchedulerEvent] extends SchedulerEvent {def event: E}"
@@ -68,4 +70,11 @@ message CronTabsResetedEvent {
     required string persistenceId = 1;
     required string entityId = 2;
     repeated string keys = 3;
+}
+
+message ResetCronTabsAndSchedulesUpdatedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    required bool triggerResetCronTabsAndSchedules = 1;
+    required google.protobuf.Timestamp lastTriggered = 2 [(scalapb.field).type = "java.util.Date"];
 }

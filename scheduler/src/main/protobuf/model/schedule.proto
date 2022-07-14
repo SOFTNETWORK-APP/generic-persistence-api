@@ -50,4 +50,6 @@ message Scheduler {
     required string uuid = 1;
     repeated Schedule schedules = 2;
     repeated CronTab cronTabs = 3;
+    optional bool triggerResetCronTabsAndSchedules = 4;
+    optional google.protobuf.Timestamp lastCronTabsAndSchedulesReseted = 5 [(scalapb.field).type = "java.util.Date"];
 }
