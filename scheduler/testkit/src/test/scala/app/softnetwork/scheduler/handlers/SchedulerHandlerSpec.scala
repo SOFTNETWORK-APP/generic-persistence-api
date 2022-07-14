@@ -30,7 +30,7 @@ class SchedulerHandlerSpec extends SchedulerHandler with AnyWordSpecLike with Sc
         case other => fail(other.getClass)
       }
       this !? LoadScheduler assert {
-        case r: SchedulerLoaded => assert(r.schdeduler.cronTabs.exists(ct => ct.uuid == cronTab.uuid))
+        case r: SchedulerLoaded => assert(r.scheduler.cronTabs.exists(ct => ct.uuid == cronTab.uuid))
         case _ => fail()
       }
     }

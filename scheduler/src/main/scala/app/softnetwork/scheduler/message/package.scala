@@ -101,7 +101,7 @@ package object message {
 
   case object CronTabRemoved extends SchedulerCommandResult
 
-  case class SchedulerLoaded(schdeduler: Scheduler) extends SchedulerCommandResult
+  case class SchedulerLoaded(scheduler: Scheduler) extends SchedulerCommandResult
 
   class SchedulerErrorMessage (override val message: String) extends ErrorMessage(message) with SchedulerCommandResult
 

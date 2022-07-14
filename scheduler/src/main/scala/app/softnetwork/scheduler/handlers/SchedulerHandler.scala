@@ -7,7 +7,7 @@ import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.scheduler.message._
 import app.softnetwork.scheduler.config.{SchedulerConfig, Settings}
-import org.softnetwork.akka.model.{CronTab, Schedule}
+import org.softnetwork.akka.model.{CronTab, Schedule, Scheduler}
 import app.softnetwork.scheduler.persistence.typed.SchedulerBehavior
 
 import scala.concurrent.duration.DurationInt
@@ -70,6 +70,22 @@ trait SchedulerDao extends Completion { _: SchedulerHandler =>
     !? (AddCronTab(cronTab)).map {
       case CronTabAdded => true
       case _ => false
+    }
+  }
+
+  def loadScheduler(schedulerId: Option[String] = None)(implicit system: ActorSystem[_]): Future[Option[Scheduler]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    schedulerId match {
+      case Some(value) => 
+        ??(value, LoadScheduler).map {
+          case r: SchedulerLoaded => Some(r.scheduler)
+          case _ => None
+        }
+      case None =>
+        !?(LoadScheduler).map {
+          case r: SchedulerLoaded => Some(r.scheduler)
+          case _ => None
+        }
     }
   }
 
