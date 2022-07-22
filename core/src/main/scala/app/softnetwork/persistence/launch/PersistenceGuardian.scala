@@ -138,6 +138,6 @@ trait PersistenceGuardian extends ClusterDomainEventHandler {_: SchemaProvider =
 
 object PersistenceGuardian {
   implicit def entity2PersistentEntity[C <: Command,S <: State,E <: Event,R <: CommandResult](entity: EntityBehavior[C, S, E, R]): PersistentEntity[C, S, E, R] = {
-    PersistentEntity(entity, Some(""))
+    PersistentEntity(entity, None)
   }
 }
