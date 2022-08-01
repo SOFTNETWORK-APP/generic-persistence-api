@@ -23,7 +23,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
 
   lazy val schedulerId: String = Settings.SchedulerConfig.id.getOrElse(ALL_KEY)
 
-  override val emptyState: Option[Scheduler] = Some(Scheduler(schedulerId, Seq.empty, Seq.empty))
+  override val emptyState: Option[Scheduler] = None
 
   override val snapshotInterval: Int = 100
 
@@ -117,7 +117,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
               context.log.info("Scheduler reseted")
               SchedulerReseted ~> replyTo
             })
-          case _ => Effect.none.thenRun(_ => {
+          case _ => Effect.persist(SchedulerInitializedEvent(now())).thenRun(_ => {
             context.log.info("Scheduler not reseted")
             SchedulerNotFound ~> replyTo
           })
@@ -425,6 +425,8 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
           .withTriggerResetCronTabsAndSchedules(evt.triggerResetCronTabsAndSchedules)
           .withLastCronTabsAndSchedulesReseted(evt.lastTriggered)
         ).getOrElse(Scheduler(schedulerId)))
+      case _: SchedulerInitializedEvent =>
+        Some(Scheduler(schedulerId, Seq.empty, Seq.empty))
       case _ => super.handleEvent(state, event)
     }
 }

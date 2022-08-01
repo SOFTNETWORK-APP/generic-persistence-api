@@ -78,3 +78,9 @@ message ResetCronTabsAndSchedulesUpdatedEvent {
     required bool triggerResetCronTabsAndSchedules = 1;
     required google.protobuf.Timestamp lastTriggered = 2 [(scalapb.field).type = "java.util.Date"];
 }
+
+message SchedulerInitializedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "SchedulerEvent";
+    required google.protobuf.Timestamp createdDate = 1 [(scalapb.field).type = "java.util.Date"];
+}
