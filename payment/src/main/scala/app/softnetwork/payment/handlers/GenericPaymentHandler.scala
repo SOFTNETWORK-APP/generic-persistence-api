@@ -88,6 +88,42 @@ trait GenericPaymentDao{ _: GenericPaymentHandler =>
     }
   }
 
+  def payIn(orderUuid: String,
+            debitedAccount: String,
+            debitedAmount: Int = 100,
+            currency: String = "EUR",
+            creditedAccount: String,
+            registrationId: Option[String] = None,
+            registrationData: Option[String] = None,
+            registerCard: Boolean = false,
+            ipAddress: Option[String] = None,
+            browserInfo: Option[BrowserInfo] = None,
+            statementDescriptor: Option[String] = None,
+            paymentType: Transaction.PaymentType = Transaction.PaymentType.CARD)(implicit system: ActorSystem[_]
+  ): Future[Either[PayInFailed, Either[PaymentRedirection, PaidIn]]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    !?(
+      PayIn(orderUuid,
+        debitedAccount,
+        debitedAmount,
+        currency,
+        creditedAccount,
+        registrationId,
+        registrationData,
+        registerCard,
+        ipAddress,
+        browserInfo,
+        statementDescriptor,
+        paymentType
+      )
+    ) map {
+      case result: PaymentRedirection => Right(Left(result))
+      case result: PaidIn => Right(Right(result))
+      case error: PayInFailed => Left(error)
+      case _ => Left(PayInFailed("unknown"))
+    }
+  }
+
   def preAuthorizeCard(orderUuid: String,
                        debitedAccount: String,
                        debitedAmount: Int = 100,
