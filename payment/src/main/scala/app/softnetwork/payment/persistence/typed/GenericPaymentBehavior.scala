@@ -324,6 +324,27 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
 
+      case cmd: CancelPreAuthorization =>
+        import cmd._
+        state match {
+          case Some(paymentAccount) =>
+            paymentAccount.transactions.find(_.id == cardPreAuthorizedTransactionId) match {
+              case Some(_) =>
+                val preAuthorizationCanceled = cancelPreAuthorization(orderUuid, cardPreAuthorizedTransactionId)
+                Effect.persist(
+                  PreAuthorizationCanceledEvent.defaultInstance
+                    .withLastUpdated(now())
+                    .withOrderUuid(orderUuid)
+                    .withDebitedAccount(paymentAccount.externalUuid)
+                    .withCardPreAuthorizedTransactionId(cardPreAuthorizedTransactionId)
+                    .withPreAuthorizationCanceled(preAuthorizationCanceled)
+                ).thenRun(_ => PreAuthorizationCanceled(preAuthorizationCanceled) ~> replyTo)
+              case _ => // should never be the case
+                Effect.none.thenRun(_ => TransactionNotFound ~> replyTo)
+            }
+          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
+        }
+
       case cmd: PayInWithCardPreAuthorized =>
         import cmd._
         state match {

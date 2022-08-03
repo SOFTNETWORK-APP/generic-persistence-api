@@ -96,6 +96,16 @@ object PaymentMessages {
   }
 
   /**
+    *
+    * @param orderUuid                      - order unique id
+    * @param cardPreAuthorizedTransactionId - card pre authorized transaction id
+    */
+  case class CancelPreAuthorization(orderUuid: String, cardPreAuthorizedTransactionId: String)
+    extends PaymentCommandWithKey {
+    lazy val key: String = cardPreAuthorizedTransactionId
+  }
+
+  /**
     * Flow [PreRegisterCard -> ] PreAuthorizeCard [ -> PreAuthorizeCardFor3DS] -> PayInWithCardPreAuthorized
     *
     * @param preAuthorizationId - pre authorization transaction id
@@ -458,6 +468,8 @@ object PaymentMessages {
   case class FirstRecurringPaidIn(transactionId: String) extends PaidInResult
 
   case class NextRecurringPaid(transactionId: String) extends PaidInResult
+
+  case class PreAuthorizationCanceled(preAuthorizationCanceled: Boolean) extends PaymentResult
 
   case object Schedule4PaymentTriggered extends PaymentResult
 

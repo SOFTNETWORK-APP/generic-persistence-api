@@ -9,7 +9,8 @@ import app.softnetwork.notification.scalatest.NotificationTestKit
 import app.softnetwork.payment.config.Settings._
 import app.softnetwork.payment.handlers.MockPaymentHandler
 import app.softnetwork.payment.launch.{PaymentGuardian, PaymentRoutes}
-import app.softnetwork.payment.model.{BankAccountView, Card, KycDocument, KycDocumentValidationReport, PaymentAccountView, UboDeclarationView}
+import app.softnetwork.payment.message.PaymentMessages._
+import app.softnetwork.payment.model._
 import app.softnetwork.payment.persistence.query.{GenericPaymentCommandProcessorStream, Scheduler2PaymentProcessorStream}
 import app.softnetwork.payment.persistence.typed.{GenericPaymentBehavior, MockPaymentBehavior}
 import app.softnetwork.payment.service.{GenericPaymentService, MockPaymentService}
@@ -19,6 +20,7 @@ import app.softnetwork.session.scalatest.{SessionServiceRoute, SessionTestKit}
 import org.scalatest.Suite
 
 import java.nio.file.Paths
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 trait PaymentTestKit extends NotificationTestKit with PaymentGuardian {_: Suite =>
 
@@ -48,6 +50,28 @@ trait PaymentTestKit extends NotificationTestKit with PaymentGuardian {_: Suite 
       scheduler2NotificationProcessorStream(sys),
       scheduler2PaymentProcessorStream(sys)
     )
+
+  def payInFor3DS(orderUuid: String, transactionId: String, registerCard: Boolean)(implicit system: ActorSystem[_]
+  ): Future[Either[PayInFailed, Either[PaymentRedirection, PaidIn]]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    MockPaymentHandler !? PayInFor3DS(orderUuid, transactionId, registerCard) map {
+      case result: PaymentRedirection => Right(Left(result))
+      case result: PaidIn => Right(Right(result))
+      case error: PayInFailed => Left(error)
+      case _ => Left(PayInFailed("unknown"))
+    }
+  }
+
+  def preAuthorizeCardFor3DS(orderUuid: String, preAuthorizationId: String, registerCard: Boolean = true)(
+    implicit system: ActorSystem[_]): Future[Either[CardPreAuthorizationFailed, Either[PaymentRedirection, CardPreAuthorized]]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    MockPaymentHandler !? PreAuthorizeCardFor3DS(orderUuid, preAuthorizationId, registerCard) map {
+      case result: PaymentRedirection => Right(Left(result))
+      case result: CardPreAuthorized => Right(Right(result))
+      case error: CardPreAuthorizationFailed => Left(error)
+      case _ => Left(CardPreAuthorizationFailed("unknown"))
+    }
+  }
 
 }
 

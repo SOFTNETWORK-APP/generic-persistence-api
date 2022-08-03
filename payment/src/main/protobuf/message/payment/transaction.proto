@@ -212,3 +212,13 @@ message NextRecurringPaymentFailedEvent {
     required int32 numberOfRecurringPayments = 10;
     optional google.protobuf.Timestamp lastRecurringPaymentDate = 11 [(scalapb.field).type = "java.util.Date"];
 }
+
+message PreAuthorizationCanceledEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "DebitedAccountEvent";
+    required google.protobuf.Timestamp lastUpdated = 1 [(scalapb.field).type = "java.util.Date"];
+    required string debitedAccount = 2;
+    required string orderUuid = 3;
+    required string cardPreAuthorizedTransactionId = 4;
+    required bool preAuthorizationCanceled = 5;
+}

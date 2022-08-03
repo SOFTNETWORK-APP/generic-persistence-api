@@ -245,3 +245,10 @@ message RecurringPaymentRegisteredEvent {
     required string externalUuid = 1;
     required app.softnetwork.payment.model.RecurringPayment recurringPayment = 2;
 }
+
+message CancelPreAuthorizationCommandEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string orderUuid = 1;
+    required string cardPreAuthorizedTransactionId = 2;
+}

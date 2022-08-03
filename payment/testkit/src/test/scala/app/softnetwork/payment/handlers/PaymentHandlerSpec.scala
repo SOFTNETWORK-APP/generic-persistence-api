@@ -447,6 +447,28 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
       }
     }
 
+    "cancel pre authorized card" in {
+      !? (PreAuthorizeCard(
+        orderUuid,
+        computeExternalUuidWithProfile(customerUuid, Some("customer")),
+        100,
+        "EUR",
+        Some(cardPreRegistration.id),
+        Some(cardPreRegistration.preregistrationData),
+        registerCard = true
+      )) await {
+        case result: CardPreAuthorized =>
+          val transactionId = result.transactionId
+          preAuthorizationId = transactionId
+          !? (CancelPreAuthorization(orderUuid, preAuthorizationId)) await {
+            case result: PreAuthorizationCanceled =>
+              assert(result.preAuthorizationCanceled)
+            case other => fail(other.getClass)
+          }
+        case other => fail(other.getClass)
+      }
+    }
+
     "pay in / out with pre authorized card" in {
       !? (PreAuthorizeCard(
         orderUuid,
