@@ -1,5 +1,7 @@
 package app.softnetwork.scheduler
 
+import app.softnetwork.persistence.now
+
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit
@@ -24,7 +26,15 @@ package object model {
   }
 
   trait SchedulerDecorator { _: Schedule =>
-    val triggerable: Boolean = repeatedly.getOrElse(false) || lastTriggered.isEmpty
+    val triggerable: Boolean =
+//      // the schedule can be triggered repeatedly
+//      repeatedly.getOrElse(false) ||
+      // the schedule has never been triggered and has no scheduled date
+      (lastTriggered.isEmpty && scheduledDate.isEmpty) ||
+      // the schedule should be triggered at a specified date that has been reached
+      (scheduledDate.isDefined &&
+        now().after(getScheduledDate) &&
+        (lastTriggered.isEmpty || getLastTriggered.before(getScheduledDate)))
   }
 
   trait CronTabItem extends StrictLogging {

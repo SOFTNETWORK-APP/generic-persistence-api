@@ -122,8 +122,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
             SchedulerNotFound ~> replyTo
           })
         }
-      // add a new schedule which will be triggered either repeatedly or once
-      // after the delay specified in seconds or at the specified scheduled date
+      // add a new schedule which will be triggered either after the delay specified in seconds or when the specified scheduled date has been reached
       case cmd: AddSchedule =>
         import cmd._
         val updatedSchedule =
@@ -136,57 +135,22 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
             case _ => schedule
           }
         Effect.persist(
-          // add schedule if and only if it has to be repeatedly triggered or has never been triggered ...
-          if (updatedSchedule.triggerable) {
             ScheduleAddedEvent(updatedSchedule)
-          }
-          // ... otherwise remove it
-          else {
-            ScheduleRemovedEvent(updatedSchedule.persistenceId, updatedSchedule.entityId, updatedSchedule.key)
-          }
         ).thenRun(
           _ => {
-            import updatedSchedule._
-            val ignored = lastTriggered.isDefined && (now().getTime - getLastTriggered.getTime) * 1000 < 120 * 1000
-            if(!ignored && triggerable){
-              if(scheduledDate.isDefined){
-                // trigger schedule only if the scheduled date has been reached
-                if(now().after(getScheduledDate)){
-                  context.log.info(s"Triggering schedule $updatedSchedule")
-                  timers.startSingleTimer(
-                    uuid,
-                    TriggerSchedule(schedule.persistenceId, schedule.entityId, key),
-                    delay.seconds
-                  )
-                }
-              }
-              else if(repeatedly.getOrElse(false)){
-                context.log.debug(s"Triggering schedule $updatedSchedule")
-                timers.startTimerWithFixedDelay(
-                  uuid,
-                  TriggerSchedule(schedule.persistenceId, schedule.entityId, key),
-                  delay.seconds
-                )
-              }
-              else if(lastTriggered.isEmpty){
-                context.log.debug(s"Triggering schedule $updatedSchedule")
-                timers.startSingleTimer(
-                  uuid,
-                  TriggerSchedule(schedule.persistenceId, schedule.entityId, key),
-                  delay.seconds
-                )
-              }
-              else{
-                context.log.debug(s"Schedule $updatedSchedule has already been triggered")
-              }
+            if(updatedSchedule.triggerable){
+              context.log.info(s"Triggering schedule $updatedSchedule")
+              timers.startSingleTimer(
+                updatedSchedule.uuid,
+                TriggerSchedule(updatedSchedule.persistenceId, updatedSchedule.entityId, updatedSchedule.key),
+                updatedSchedule.delay.seconds
+              )
+            }
+            else{
+              context.log.warn(s"Schedule $updatedSchedule has not been triggered")
             }
             context.log.debug(s"$schedule added")
-            val result =
-              if(triggerable)
-                ScheduleAdded
-              else
-                ScheduleNotAdded
-            result ~> replyTo
+            ScheduleAdded ~> replyTo
           }
         )
       case cmd: TriggerSchedule => // effectively trigger the schedule
@@ -204,10 +168,18 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                     schedule.withLastTriggered(now())
                   }
                 Effect.persist(
-                  List(
-                    ScheduleAddedEvent(updatedSchedule), // update schedule
-                    ScheduleTriggeredEvent(updatedSchedule)
-                  )
+                  if(updatedSchedule.triggerable ||
+                    (updatedSchedule.scheduledDate.isDefined && now().before(updatedSchedule.getScheduledDate))
+                  ){
+                    List(
+                      ScheduleAddedEvent(updatedSchedule) // update schedule
+                    )
+                  }
+                  else{
+                    List(
+                      ScheduleRemovedEvent(updatedSchedule.persistenceId, updatedSchedule.entityId, updatedSchedule.key)
+                    )
+                  } :+ ScheduleTriggeredEvent(updatedSchedule)
                 ).thenRun(_ => {
                   context.log.info(s"$schedule triggered at ${updatedSchedule.getLastTriggered}")
                   ScheduleTriggered ~> replyTo
