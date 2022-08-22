@@ -27,7 +27,7 @@ object MangoPay extends StrictLogging{
                      hooksPath: String,
                      mandatePath: String){
 
-    lazy val secureModeReturnUrl = s"""$BaseUrl$secureModePath/$SecureModeRoute"""
+    lazy val secureModeReturnUrl = s"""$BaseUrl/$secureModePath/$SecureModeRoute"""
 
     lazy val preAuthorizeCardFor3DS = s"$secureModeReturnUrl/$PreAuthorizeCardRoute"
 

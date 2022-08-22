@@ -447,7 +447,19 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                   case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
                 }
 
-              case _ => Effect.none.thenRun(_ => PayInFailed(s"$paymentType not supported") ~> replyTo)
+              case _ =>
+                Effect.persist(
+                  broadcastEvent(
+                    PaidInEvent.defaultInstance
+                      .withOrderUuid(orderUuid)
+                      .withTransactionId("")
+                      .withDebitedAccount(paymentAccount.externalUuid)
+                      .withDebitedAmount(debitedAmount)
+                      .withLastUpdated(now())
+                      .withCardId("")
+                      .withPaymentType(paymentType)
+                  )
+                ).thenRun(_ => PayInFailed(s"$paymentType not supported") ~> replyTo)
             }
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
