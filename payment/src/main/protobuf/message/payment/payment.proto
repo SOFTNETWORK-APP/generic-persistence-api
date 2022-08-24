@@ -192,6 +192,7 @@ message TransferCommandEvent{
     required int32 feesAmount = 5;
     required string currency = 6 [default = "EUR"];
     required bool payOutRequired = 7 [default = true];
+    optional string externalReference = 8;
 }
 
 message DirectDebitCommandEvent{
@@ -202,6 +203,7 @@ message DirectDebitCommandEvent{
     required int32 feesAmount = 3;
     required string currency = 4 [default = "EUR"];
     required string statementDescriptor = 5;
+    optional string externalReference = 6;
 }
 
 message CreateOrUpdatePaymentAccountCommandEvent{

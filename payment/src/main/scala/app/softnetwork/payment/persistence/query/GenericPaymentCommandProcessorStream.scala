@@ -91,7 +91,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
         }
       case evt: TransferCommandEvent =>
         import evt._
-        val command = Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, currency, payOutRequired)
+        val command = Transfer(orderUuid, debitedAccount, creditedAccount, debitedAmount, feesAmount, currency, payOutRequired, externalReference)
         !? (command) map {
           case _: Transfered =>
             if(forTests) system.eventStream.tell(Publish(event))
@@ -102,7 +102,7 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
         }
       case evt: DirectDebitCommandEvent =>
         import evt._
-        val command = DirectDebit(creditedAccount, debitedAmount, feesAmount, currency, statementDescriptor)
+        val command = DirectDebit(creditedAccount, debitedAmount, feesAmount, currency, statementDescriptor, externalReference)
         !? (command) map {
           case _: DirectDebited =>
             if(forTests) system.eventStream.tell(Publish(event))
