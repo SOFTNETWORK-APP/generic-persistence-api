@@ -82,6 +82,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
 
   var mandateId: String = _
 
+  var directDebitTransactionId: String = _
+
   "Payment handler" must {
     "pre register card" in {
       !? (PreRegisterCard(
@@ -575,6 +577,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     "direct debit" in {
       !? (DirectDebit(computeExternalUuidWithProfile(vendorUuid, Some("vendor")), 100, 0, "EUR", "Direct Debit")) await {
         case r: DirectDebited =>
+          directDebitTransactionId = r.transactionId
           !? (LoadPaymentAccount(computeExternalUuidWithProfile(vendorUuid, Some("vendor")))) await {
             case result: PaymentAccountLoaded =>
               result.paymentAccount.transactions.find(_.id == r.transactionId) match {
@@ -587,6 +590,13 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               }
             case other => fail(other.toString)
           }
+        case other => fail(other.toString)
+      }
+    }
+
+    "load direct debit status" in {
+      !? (LoadDirectDebitTransaction(directDebitTransactionId)) await {
+        case _: DirectDebited =>
         case other => fail(other.toString)
       }
     }

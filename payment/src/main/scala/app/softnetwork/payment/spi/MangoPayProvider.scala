@@ -1025,7 +1025,8 @@ trait MangoPayProvider extends PaymentProvider {
                 creditedUserId = Option(result.getCreditedUserId),
                 creditedWalletId = Some(creditedWalletId),
                 debitedWalletId = Option(result.getDebitedWalletId),
-                orderUuid = orderUuid
+                orderUuid = orderUuid,
+                externalReference = externalReference
               ).withPaymentType(Transaction.PaymentType.BANK_WIRE)
             )
           case Failure(f) =>
@@ -1590,7 +1591,8 @@ trait MangoPayProvider extends PaymentProvider {
                 authorId = result.getAuthorId,
                 creditedUserId = Option(result.getCreditedUserId),
                 creditedWalletId = Option(result.getCreditedWalletId),
-                mandateId = Some(mandateId)
+                mandateId = Some(mandateId),
+                externalReference = externalReference
               ).withPaymentType(Transaction.PaymentType.DIRECT_DEBITED)
             )
           case Failure(f) =>

@@ -317,7 +317,8 @@ trait MockMangoPayProvider extends MangoPayProvider {
             creditedUserId = Some(creditedUserId),
             creditedWalletId = Some(creditedWalletId),
             debitedWalletId = Some(debitedWalletId),
-            orderUuid = orderUuid
+            orderUuid = orderUuid,
+            externalReference = externalReference
           ).withPaymentType(Transaction.PaymentType.BANK_WIRE)
         )
       case _ => None
@@ -932,7 +933,8 @@ trait MockMangoPayProvider extends MangoPayProvider {
             authorId = Some(authorId),
             creditedUserId = Some(creditedUserId),
             creditedWalletId = Some(creditedWalletId),
-            mandateId = Some(mandateId)
+            mandateId = Some(mandateId),
+            externalReference = externalReference
           ).withPaymentType(Transaction.PaymentType.DIRECT_DEBITED)
         )
       case _ => None

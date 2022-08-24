@@ -56,7 +56,7 @@ message Transaction {
     required google.protobuf.Timestamp createdDate = 2 [(scalapb.field).type = "java.util.Date"];
     required google.protobuf.Timestamp lastUpdated = 3 [(scalapb.field).type = "java.util.Date"];
     required string id = 4;
-    required string orderUuid = 5;
+    required string orderUuid = 5; // should be optional
     required TransactionNature nature = 6;
     required TransactionType type = 7;
     required TransactionStatus status = 8;
@@ -76,6 +76,7 @@ message Transaction {
     optional string preAuthorizationId = 22;
     required PaymentType paymentType = 23 [default = CARD];
     optional string recurringPayInRegistrationId = 24;
+    optional string externalReference = 25;
 }
 
 message BrowserInfo {
@@ -127,6 +128,7 @@ message TransferTransaction {
     required string creditedWalletId = 6;
     required string debitedWalletId = 7;
     optional string orderUuid = 8;
+    optional string externalReference = 9;
 }
 
 message PayOutTransaction {
@@ -151,6 +153,7 @@ message DirectDebitTransaction {
     required string currency = 6 [default = "EUR"];
     required string mandateId = 7;
     required string statementDescriptor = 8;
+    optional string externalReference = 9;
 }
 
 message PreAuthorizationTransaction {

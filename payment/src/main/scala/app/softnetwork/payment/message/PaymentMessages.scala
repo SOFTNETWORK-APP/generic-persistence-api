@@ -177,22 +177,52 @@ object PaymentMessages {
     lazy val key: String = payInTransactionId
   }
 
+  /**
+    *
+    * @param orderUuid - optional order uuid
+    * @param debitedAccount - debited account
+    * @param creditedAccount - credited account
+    * @param debitedAmount - debited amount
+    * @param feesAmount - fees amount
+    * @param currency - currency
+    * @param payOutRequired - whether an immediate pay out is required or not
+    * @param externalReference - optional external reference
+    */
   case class Transfer(orderUuid: Option[String] = None,
                       debitedAccount: String,
                       creditedAccount: String,
                       debitedAmount: Int,
                       feesAmount: Int = 0,
                       currency: String = "EUR",
-                      payOutRequired: Boolean = true) extends PaymentCommandWithKey {
+                      payOutRequired: Boolean = true,
+                      externalReference: Option[String] = None) extends PaymentCommandWithKey {
     val key: String = debitedAccount
   }
 
+  /**
+    *
+    * @param creditedAccount - account whose wallet will be credited through the bank wire direct debit
+    * @param debitedAmount - debited amount
+    * @param feesAmount - fees amount
+    * @param currency - currency
+    * @param statementDescriptor - statement descriptor
+    * @param externalReference - optional external reference
+    */
   case class DirectDebit(creditedAccount: String,
                          debitedAmount: Int,
                          feesAmount: Int = 0,
                          currency: String = "EUR",
-                         statementDescriptor: String) extends PaymentCommandWithKey {
+                         statementDescriptor: String,
+                         externalReference: Option[String] = None) extends PaymentCommandWithKey {
     val key: String = creditedAccount
+  }
+
+  /**
+    *
+    * @param directDebitTransactionId - direct debit transaction id
+    */
+  case class LoadDirectDebitTransaction(directDebitTransactionId: String) extends PaymentCommandWithKey {
+    val key: String = directDebitTransactionId
   }
 
   /**

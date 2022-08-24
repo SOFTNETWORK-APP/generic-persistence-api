@@ -252,3 +252,9 @@ message CancelPreAuthorizationCommandEvent {
     required string orderUuid = 1;
     required string cardPreAuthorizedTransactionId = 2;
 }
+
+message LoadDirectDebitTransactionCommandEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string directDebitTransactionId = 1;
+}
