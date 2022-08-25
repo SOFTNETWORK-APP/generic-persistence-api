@@ -676,6 +676,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         import cmd._
         state match {
           case Some(paymentAccount) => // debited account
+            var maybeCreditedPaymentAccount: Option[PaymentAccount] = None
             transfer(paymentAccount.userId match {
               case Some(authorId) =>
                 paymentAccount.walletId match {
@@ -683,7 +684,8 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                     // load credited payment account
                     paymentDao.loadPaymentAccount(creditedAccount) complete() match {
                       case Success(s) =>
-                        s match {
+                        maybeCreditedPaymentAccount = s
+                        maybeCreditedPaymentAccount match {
                           case Some(creditedPaymentAccount) => // credited account
                             creditedPaymentAccount.userId match {
                               case Some(creditedUserId) =>
@@ -744,10 +746,10 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       TransferedEvent.defaultInstance
                         .withFeesAmount(feesAmount)
                         .withDebitedAmount(debitedAmount)
-                        .withDebitedAccount(debitedAccount)
+                        .withDebitedAccount(paymentAccount.externalUuid)
                         .withCurrency(currency)
                         .withLastUpdated(lastUpdated)
-                        .withCreditedAccount(creditedAccount)
+                        .withCreditedAccount(maybeCreditedPaymentAccount.map(_.externalUuid).getOrElse(creditedAccount))
                         .withTransactionId(transaction.id)
                         .withTransactionStatus(transaction.status)
                         .withPaymentType(transaction.paymentType)
@@ -766,17 +768,13 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 }
                 else{
                   Effect.persist(
-                    (orderUuid match {
-                      case Some(uuid) =>
-                        broadcastEvent(
-                          TransferFailedEvent.defaultInstance
-                            .withDebitedAccount(uuid)
-                            .withResultMessage(transaction.resultMessage)
-                            .withTransaction(transaction)
-                            .copy(externalReference = externalReference)
-                        )
-                      case _ => List.empty
-                    }) :+
+                    broadcastEvent(
+                      TransferFailedEvent.defaultInstance
+                        .withDebitedAccount(paymentAccount.externalUuid)
+                        .withResultMessage(transaction.resultMessage)
+                        .withTransaction(transaction)
+                        .copy(externalReference = externalReference)
+                    ) :+
                       PaymentAccountUpsertedEvent.defaultInstance
                         .withDocument(updatedPaymentAccount)
                         .withLastUpdated(lastUpdated)
@@ -946,7 +944,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                   broadcastEvent(
                                     DirectDebitedEvent.defaultInstance
                                       .withLastUpdated(lastUpdated)
-                                      .withCreditedAccount(creditedAccount)
+                                      .withCreditedAccount(paymentAccount.externalUuid)
                                       .withDebitedAmount(debitedAmount)
                                       .withFeesAmount(feesAmount)
                                       .withCurrency(currency)
@@ -963,7 +961,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                 Effect.persist(
                                   broadcastEvent(
                                     DirectDebitFailedEvent.defaultInstance
-                                      .withCreditedAccount(creditedAccount)
+                                      .withCreditedAccount(paymentAccount.externalUuid)
                                       .withResultMessage(transaction.resultMessage)
                                       .withTransaction(transaction)
                                       .copy(externalReference = externalReference)
