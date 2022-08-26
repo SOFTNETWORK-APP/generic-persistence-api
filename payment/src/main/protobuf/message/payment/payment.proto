@@ -260,3 +260,12 @@ message LoadDirectDebitTransactionCommandEvent {
     option (scalapb.message).extends = "PaymentCommandEvent";
     required string directDebitTransactionId = 1;
 }
+
+message PaymentAccountCreatedOrUpdatedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
+    option (scalapb.message).extends = "BroadcastEvent";
+    required string externalUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+    optional string profile = 3;
+}

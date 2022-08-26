@@ -53,6 +53,10 @@ trait PaymentAccountDecorator {self: PaymentAccount =>
   lazy val mandateExists: Boolean = bankAccount.flatMap(_.mandateId).isDefined &&
     bankAccount.flatMap(_.mandateStatus).exists(s => s.isMandateCreated || s.isMandateActivated || s.isMandateSubmitted)
 
+  lazy val mandateRequired: Boolean =
+    recurryingPayments.exists(r => r.`type`.isDirectDebit && r.nextPaymentDate.isDefined) ||
+      transactions.exists(t => t.paymentType.isDirectDebited && t.status.isTransactionCreated)
+
   lazy val mandateActivated: Boolean = bankAccount.flatMap(_.mandateId).isDefined &&
     bankAccount.flatMap(_.mandateStatus).exists(s => s.isMandateActivated || s.isMandateSubmitted)
 

@@ -147,11 +147,15 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           }
         }
         Effect.persist(
-          PaymentAccountUpsertedEvent.defaultInstance
-            .withDocument(
-              updatedPaymentAccount
-            )
-            .withLastUpdated(lastUpdated)
+          broadcastEvent(
+            PaymentAccountCreatedOrUpdatedEvent.defaultInstance
+              .withLastUpdated(lastUpdated)
+              .withExternalUuid(updatedPaymentAccount.externalUuid)
+              .copy(profile = updatedPaymentAccount.profile)
+          ) :+
+            PaymentAccountUpsertedEvent.defaultInstance
+              .withDocument(updatedPaymentAccount)
+              .withLastUpdated(lastUpdated)
         ).thenRun(_ => {
           val result =
             if(updated)
@@ -814,8 +818,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         import cmd._
         state match {
           case Some(paymentAccount) =>
-            if(paymentAccount.mandateExists &&
-              paymentAccount.recurryingPayments.exists(r => r.`type`.isDirectDebit && r.nextPaymentDate.isDefined)){
+            if(paymentAccount.mandateExists && paymentAccount.mandateRequired){
               Effect.none.thenRun(_ => MandateNotCanceled ~> replyTo)
             }
             else{
@@ -2047,7 +2050,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                   case _ => Effect.none.thenRun(_ => UserNotFound ~> replyTo)
                 }
               case _ => // DirectDebits
-                if(!paymentAccount.mandateExists){
+                if(!paymentAccount.mandateActivated){
                   Effect.none.thenRun(_ => MandateRequired ~> replyTo)
 //                  paymentAccount.userId match {
 //                    case Some(userId) =>
