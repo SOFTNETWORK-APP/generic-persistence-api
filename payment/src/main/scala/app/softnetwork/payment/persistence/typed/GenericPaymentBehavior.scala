@@ -631,7 +631,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                   PaidOutEvent.defaultInstance
                                     .withOrderUuid(orderUuid)
                                     .withLastUpdated(lastUpdated)
-                                    .withCreditedAccount(creditedAccount)
+                                    .withCreditedAccount(paymentAccount.externalUuid)
                                     .withCreditedAmount(creditedAmount)
                                     .withFeesAmount(feesAmount)
                                     .withCurrency(currency)
@@ -814,8 +814,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
 
-      case cmd: CancelMandate =>
-        import cmd._
+      case _: CancelMandate =>
         state match {
           case Some(paymentAccount) =>
             if(paymentAccount.mandateExists && paymentAccount.mandateRequired){
@@ -841,7 +840,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           Effect.persist(
                             broadcastEvent(
                               MandateUpdatedEvent.defaultInstance
-                                .withExternalUuid(creditedAccount)
+                                .withExternalUuid(paymentAccount.externalUuid)
                                 .withLastUpdated(lastUpdated)
                                 .withBankAccountId(bankAccount.getId)
                                 .copy(
@@ -2247,7 +2246,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           Effect.persist(
             broadcastEvent(
               MandateUpdatedEvent.defaultInstance
-                .withExternalUuid(creditedAccount)
+                .withExternalUuid(paymentAccount.externalUuid)
                 .withLastUpdated(lastUpdated)
                 .withMandateId(mandateResult.id)
                 .withMandateStatus(mandateResult.status)
