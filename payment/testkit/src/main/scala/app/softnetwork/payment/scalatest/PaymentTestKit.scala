@@ -9,7 +9,7 @@ import app.softnetwork.notification.scalatest.NotificationTestKit
 import app.softnetwork.payment.config.Settings._
 import app.softnetwork.payment.handlers.MockPaymentHandler
 import app.softnetwork.payment.launch.{PaymentGuardian, PaymentRoutes}
-import app.softnetwork.payment.message.PaymentMessages._
+import app.softnetwork.payment.message.PaymentMessages.{KycDocumentStatusNotUpdated, UboDeclarationStatusUpdated, _}
 import app.softnetwork.payment.model._
 import app.softnetwork.payment.persistence.query.{GenericPaymentCommandProcessorStream, Scheduler2PaymentProcessorStream}
 import app.softnetwork.payment.persistence.typed.{GenericPaymentBehavior, MockPaymentBehavior}
@@ -70,6 +70,55 @@ trait PaymentTestKit extends NotificationTestKit with PaymentGuardian {_: Suite 
       case result: CardPreAuthorized => Right(Right(result))
       case error: CardPreAuthorizationFailed => Left(error)
       case _ => Left(CardPreAuthorizationFailed("unknown"))
+    }
+  }
+
+  def payInFirstRecurringFor3DS(recurringPayInRegistrationId: String, transactionId: String)(
+    implicit system: ActorSystem[_]): Future[Either[FirstRecurringCardPaymentFailed, Either[PaymentRedirection, FirstRecurringPaidIn]]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    MockPaymentHandler !? PayInFirstRecurringFor3DS(recurringPayInRegistrationId, transactionId) map {
+      case result: PaymentRedirection => Right(Left(result))
+      case result: FirstRecurringPaidIn => Right(Right(result))
+      case error: FirstRecurringCardPaymentFailed => Left(error)
+      case _ => Left(FirstRecurringCardPaymentFailed("unknown"))
+    }
+  }
+
+  def updateKycDocumentStatus(kycDocumentId: String, status: Option[KycDocument.KycDocumentStatus] = None)(
+    implicit system: ActorSystem[_]): Future[Either[PaymentError, KycDocumentStatusUpdated]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    MockPaymentHandler !? UpdateKycDocumentStatus(kycDocumentId, status) map {
+      case result: KycDocumentStatusUpdated => Right(result)
+      case error: PaymentError => Left(error)
+      case _ => Left(KycDocumentStatusNotUpdated)
+    }
+  }
+
+  def updateUboDeclarationStatus(uboDeclarationId: String, status: Option[UboDeclaration.UboDeclarationStatus] = None)(
+    implicit system: ActorSystem[_]): Future[Boolean] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    MockPaymentHandler !? UpdateUboDeclarationStatus(uboDeclarationId, status) map {
+      case UboDeclarationStatusUpdated => true
+      case _ => false
+    }
+  }
+
+  def updateMandateStatus(mandateId: String, status: Option[BankAccount.MandateStatus] = None)(
+    implicit system: ActorSystem[_]): Future[Either[PaymentError, MandateStatusUpdated]] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    MockPaymentHandler !? UpdateMandateStatus(mandateId, status) map {
+      case result: MandateStatusUpdated => Right(result)
+      case error: PaymentError => Left(error)
+      case _ => Left(MandateStatusNotUpdated)
+    }
+  }
+
+  def validateRegularUser(userId: String)(
+    implicit system: ActorSystem[_]): Future[Boolean] = {
+    implicit val ec: ExecutionContextExecutor = system.executionContext
+    MockPaymentHandler !? ValidateRegularUser(userId) map {
+      case RegularUserValidated => true
+      case _ => false
     }
   }
 
