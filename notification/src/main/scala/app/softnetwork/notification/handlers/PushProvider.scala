@@ -66,6 +66,7 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
           case Success(responses) =>
             for(response <- responses) yield {
               val result: NotificationStatusResult = response
+              logger.info(s"send push to APNS -> $result")
               result
             }
           case Failure(f) =>
