@@ -269,3 +269,17 @@ message PaymentAccountCreatedOrUpdatedEvent {
     required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
     optional string profile = 3;
 }
+
+message CancelMandateCommandEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentCommandEvent";
+    required string externalUuid = 1;
+}
+
+message MandateCancelationFailedEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "PaymentAccountEvent";
+    option (scalapb.message).extends = "BroadcastEvent";
+    required string externalUuid = 1;
+    required google.protobuf.Timestamp lastUpdated = 2 [(scalapb.field).type = "java.util.Date"];
+}

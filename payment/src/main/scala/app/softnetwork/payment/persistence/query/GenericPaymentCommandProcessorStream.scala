@@ -144,6 +144,17 @@ trait GenericPaymentCommandProcessorStream extends EventProcessorStream[PaymentC
             logger.error(s"$platformEventProcessorId - command $command returns unexpectedly ${other.getClass}")
             Done
         }
+      case evt: CancelMandateCommandEvent =>
+        import evt._
+        val command = CancelMandate(externalUuid)
+        !? (command) map {
+          case MandateCanceled =>
+            if(forTests) system.eventStream.tell(Publish(event))
+            Done
+          case other =>
+            logger.error(s"$platformEventProcessorId - command $command returns unexpectedly ${other.getClass}")
+            Done
+        }
       case other =>
         logger.warn(s"$platformEventProcessorId does not support event [${other.getClass}]")
         Future.successful(Done)

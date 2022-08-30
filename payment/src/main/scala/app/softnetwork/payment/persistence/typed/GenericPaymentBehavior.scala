@@ -818,7 +818,11 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         state match {
           case Some(paymentAccount) =>
             if(paymentAccount.mandateExists && paymentAccount.mandateRequired){
-              Effect.none.thenRun(_ => MandateNotCanceled ~> replyTo)
+              Effect.persist(
+                broadcastEvent(
+                  MandateCancelationFailedEvent(paymentAccount.externalUuid, now())
+                )
+              ).thenRun(_ => MandateNotCanceled ~> replyTo)
             }
             else{
               paymentAccount.bankAccount match {
