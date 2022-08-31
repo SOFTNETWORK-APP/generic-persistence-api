@@ -105,8 +105,9 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
           FirebaseMessaging.getInstance(firebaseApp).sendMulticast(notification)
         ) match {
           case Success(s) =>
-            logger.info(s"send push to FCM -> $s")
-            s
+            val results: Seq[NotificationStatusResult] = s
+            logger.info(s"send push to FCM -> ${results.mkString("|")}")
+            results
           case Failure(f) =>
             logger.error(s"send push to FCM -> ${f.getMessage}", f)
             tokens.map(token => NotificationStatusResult(token, NotificationStatus.Undelivered, Some(f.getMessage)))
