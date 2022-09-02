@@ -40,106 +40,120 @@ trait SMSModeProvider extends SMSProvider {
       case Some(conf) =>
         import conf._
 
-        val sendUrl = s"""
-                     |$baseUrl/$version/sendSMS.do?
-                     |accessToken=$accessToken
-                     |&message=${URLEncoder.encode(StringEscapeUtils.unescapeHtml4(message).replaceAll("<br/>", "\\\n"), "ISO-8859-15")}
-                     |&numero=${to.mkString(",")}
-                     |&emetteur=${URLEncoder.encode(from.value, "ISO-8859-15")}
-                     |${if(notificationUrl.isDefined)s"&notification_url=${notificationUrl.get}" else ""}
-                     |${if(notificationUrlResponse.isDefined)s"&notification_ url_reponse=${notificationUrlResponse.get}" else ""}
-                     |${if(stop) "&stop=2" else ""}
-                     |""".stripMargin.replaceAll("\\s+", "")
+        if(disabled){
+          new NotificationAck(
+            None,
+            to.map(recipient => NotificationStatusResult(
+              recipient,
+              Undelivered,
+              None
+            )),
+            now()
+          )
+        }
+        else{
+          val sendUrl = s"""
+                           |$baseUrl/$version/sendSMS.do?
+                           |accessToken=$accessToken
+                           |&message=${URLEncoder.encode(StringEscapeUtils.unescapeHtml4(message).replaceAll("<br/>", "\\\n"), "ISO-8859-15")}
+                           |&numero=${to.mkString(",")}
+                           |&emetteur=${URLEncoder.encode(from.value, "ISO-8859-15")}
+                           |${if(notificationUrl.isDefined)s"&notification_url=${notificationUrl.get}" else ""}
+                           |${if(notificationUrlResponse.isDefined)s"&notification_ url_reponse=${notificationUrlResponse.get}" else ""}
+                           |${if(stop) "&stop=2" else ""}
+                           |""".stripMargin.replaceAll("\\s+", "")
 
-        logger.info(sendUrl)
+          logger.info(sendUrl)
 
-        val url = new URL(sendUrl)
+          val url = new URL(sendUrl)
 
-        val connection = url.openConnection().asInstanceOf[HttpURLConnection]
-        connection.setRequestMethod("GET") // POST if number of recipients is greater or equal to 300
-        connection.setUseCaches(false)
-        connection.setDoInput(true)
-        //connection.setDoOutput(true)
-        connection.getResponseCode match {
+          val connection = url.openConnection().asInstanceOf[HttpURLConnection]
+          connection.setRequestMethod("GET") // POST if number of recipients is greater or equal to 300
+          connection.setUseCaches(false)
+          connection.setDoInput(true)
+          //connection.setDoOutput(true)
+          connection.getResponseCode match {
 
-          case responseCode if responseCode == 200 || responseCode == 201 =>
-            Try{
-              val br = new BufferedReader(new InputStreamReader(connection.getInputStream))
-              Stream.continually(br.readLine()).takeWhile(_ != null).mkString("")
-            } match {
-              case Success(responseData) =>
-                logger.info(responseData)
-                // code_retour | description | smsID
-                responseData.split("\\|").toList match {
-                  case l if l.size == 3 =>
-                    val smsId = l.last.trim
-                    ResponseType(l.head.trim.toInt) match {
-                      case ResponseType.ACCEPTED =>
-                        new NotificationAck(
-                          Some(smsId),
-                          to.map(recipient => NotificationStatusResult(
-                            recipient,
-                            Pending,
-                            None
-                          )),
-                          now()
-                        )
-                      case _                     =>
-                        new NotificationAck(
-                          Some(smsId),
-                          to.map(recipient => NotificationStatusResult(
-                            recipient,
-                            Undelivered,
-                            Some(l(1).trim)
-                          )),
-                          now()
-                        )
-                    }
-                  case l if l.size == 2 =>
-                    new NotificationAck(
-                      None,
-                      to.map(recipient => NotificationStatusResult(
-                        recipient,
-                        Undelivered,
-                        Some(l.last.trim)
-                      )),
-                      now()
-                    )
-                  case _                =>
-                    new NotificationAck(
-                      None,
-                      to.map(recipient => NotificationStatusResult(
-                        recipient,
-                        Undelivered,
-                        None
-                      )),
-                      now()
-                    )
-                }
+            case responseCode if responseCode == 200 || responseCode == 201 =>
+              Try{
+                val br = new BufferedReader(new InputStreamReader(connection.getInputStream))
+                Stream.continually(br.readLine()).takeWhile(_ != null).mkString("")
+              } match {
+                case Success(responseData) =>
+                  logger.info(responseData)
+                  // code_retour | description | smsID
+                  responseData.split("\\|").toList match {
+                    case l if l.size == 3 =>
+                      val smsId = l.last.trim
+                      ResponseType(l.head.trim.toInt) match {
+                        case ResponseType.ACCEPTED =>
+                          new NotificationAck(
+                            Some(smsId),
+                            to.map(recipient => NotificationStatusResult(
+                              recipient,
+                              Pending,
+                              None
+                            )),
+                            now()
+                          )
+                        case _                     =>
+                          new NotificationAck(
+                            Some(smsId),
+                            to.map(recipient => NotificationStatusResult(
+                              recipient,
+                              Undelivered,
+                              Some(l(1).trim)
+                            )),
+                            now()
+                          )
+                      }
+                    case l if l.size == 2 =>
+                      new NotificationAck(
+                        None,
+                        to.map(recipient => NotificationStatusResult(
+                          recipient,
+                          Undelivered,
+                          Some(l.last.trim)
+                        )),
+                        now()
+                      )
+                    case _                =>
+                      new NotificationAck(
+                        None,
+                        to.map(recipient => NotificationStatusResult(
+                          recipient,
+                          Undelivered,
+                          None
+                        )),
+                        now()
+                      )
+                  }
 
-              case Failure(f) =>
-                logger.error(f.getMessage, f)
-                new NotificationAck(
-                  None,
-                  to.map(recipient => NotificationStatusResult(
-                    recipient,
-                    Undelivered,
-                    Some(f.getMessage)
-                  )),
-                  now()
-                )
-            }
+                case Failure(f) =>
+                  logger.error(f.getMessage, f)
+                  new NotificationAck(
+                    None,
+                    to.map(recipient => NotificationStatusResult(
+                      recipient,
+                      Undelivered,
+                      Some(f.getMessage)
+                    )),
+                    now()
+                  )
+              }
 
-          case _ =>
-            new NotificationAck(
-              None,
-              to.map(recipient => NotificationStatusResult(
-                recipient,
-                Undelivered,
-                None
-              )),
-              now()
-            )
+            case _ =>
+              new NotificationAck(
+                None,
+                to.map(recipient => NotificationStatusResult(
+                  recipient,
+                  Undelivered,
+                  None
+                )),
+                now()
+              )
+          }
+
         }
 
       case None =>

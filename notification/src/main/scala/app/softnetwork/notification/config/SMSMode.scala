@@ -11,7 +11,8 @@ object SMSMode {
                      version: String = "1.6",
                      notificationUrl: Option[String] = None,
                      notificationUrlResponse: Option[String] = None,
-                     stop: Boolean = false
+                     stop: Boolean = false,
+                     disabled: Boolean = false
                    )
 
   object ResponseType extends Enumeration {
