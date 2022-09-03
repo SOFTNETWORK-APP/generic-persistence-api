@@ -3,7 +3,7 @@ package app.softnetwork.persistence.auth.api
 import akka.actor.typed.ActorSystem
 import app.softnetwork.notification.handlers.NotificationHandler
 import app.softnetwork.notification.model.Notification
-import app.softnetwork.notification.peristence.query.Scheduler2NotificationProcessorStream
+import app.softnetwork.notification.peristence.query.{NotificationCommandProcessorStream,Scheduler2NotificationProcessorStream}
 import app.softnetwork.notification.peristence.typed.{AllNotificationsBehavior, NotificationBehavior}
 import app.softnetwork.persistence.auth.handlers.{AccountDao, BasicAccountDao, BasicAccountTypeKey}
 import app.softnetwork.persistence.auth.launch.AccountApplication
@@ -48,4 +48,12 @@ trait BasicAccountApi extends AccountApplication[BasicAccount, BasicAccountProfi
       override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
       override implicit def system: ActorSystem[_] = sys
     }
+
+  override def notificationCommandProcessorStream: ActorSystem[_] => NotificationCommandProcessorStream = sys => {
+    new NotificationCommandProcessorStream with NotificationHandler with JdbcJournalProvider with JdbcSchemaProvider {
+      override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
+      override implicit def system: ActorSystem[_] = sys
+    }
+  }
+
 }
