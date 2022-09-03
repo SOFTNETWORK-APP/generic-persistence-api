@@ -4,6 +4,7 @@ import "scalapb/scalapb.proto";
 import "google/protobuf/timestamp.proto";
 import "model/notificationType.proto";
 import "model/auth.proto";
+import "message/notification.proto";
 
 package app.softnetwork.persistence.auth.message;
 
@@ -158,4 +159,16 @@ message AccountNotificationRecordedEvent {
     required org.softnetwork.notification.model.NotificationType channel = 2;
     required string subject = 3;
     required string content = 4;
+}
+
+message AccountToNotificationCommandEvent {
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "AccountEvent";
+    option (scalapb.message).extends = "AccountToNotificationCommandEventDecorator";
+    oneof wrapped {
+        org.softnetwork.notification.message.AddMailCommandEvent addMail = 1;
+        org.softnetwork.notification.message.AddSMSCommandEvent addSMS = 2;
+        org.softnetwork.notification.message.AddPushCommandEvent addPush = 3;
+        org.softnetwork.notification.message.RemoveNotificationCommandEvent removeNotification = 4;
+    }
 }

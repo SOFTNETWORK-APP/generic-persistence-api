@@ -7,8 +7,7 @@ import app.softnetwork.persistence.auth.launch.AccountGuardian
 import app.softnetwork.persistence.auth.model.{Account, AccountDecorator, Profile}
 import org.scalatest.Suite
 
-trait AccountTestKit[T <: Account with AccountDecorator, P <: Profile] extends AccountGuardian[T, P]
-  with NotificationTestKit {_: Suite =>
+trait AccountTestKit[T <: Account with AccountDecorator, P <: Profile] extends NotificationTestKit with AccountGuardian[T, P] {_: Suite =>
   implicit lazy val tsystem: ActorSystem[_] = typedSystem()
 
   /**

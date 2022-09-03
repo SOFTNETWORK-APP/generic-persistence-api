@@ -38,5 +38,11 @@ case class SMSConfig(mode: Option[SMSMode.Config] = None)
 
 case class FcmConfig(databaseUrl: String)
 
-case class NotificationConfig(mail: MailConfig, push: PushConfig, sms : SMSConfig, akkaNodeRole: String)
+case class EventStreams(externalToNotificationTag: String)
+
+case class NotificationConfig(mail: MailConfig,
+                              push: PushConfig,
+                              sms : SMSConfig,
+                              eventStreams: EventStreams,
+                              akkaNodeRole: String)
 

@@ -11,10 +11,12 @@ import app.softnetwork.persistence.auth.config.Settings._
 import app.softnetwork.persistence.auth.handlers._
 import app.softnetwork.persistence.auth.message._
 import Sha512Encryption._
+import app.softnetwork.notification.config.{Settings => NotificationSettings}
 import app.softnetwork.persistence.auth.model._
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.auth.config.{Password, Settings}
 import app.softnetwork.validation.{EmailValidator, GsmValidator}
+import org.softnetwork.notification.message.NotificationCommandEvent
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.language.{implicitConversions, postfixOps}
@@ -44,6 +46,10 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
   override protected def tagEvent(entityId: String, event: AccountEvent): Set[String] = {
     event match {
+      case _: NotificationCommandEvent =>
+        Set(
+          NotificationSettings.NotificationConfig.eventStreams.externalToNotificationTag
+        )
       case _: AccountCreatedEvent[_] => Set(persistenceId, s"$persistenceId-created")
       case _: AccountActivatedEvent => Set(persistenceId, s"$persistenceId-activated")
       case _: AccountDisabledEvent => Set(persistenceId, s"$persistenceId-disabled")
@@ -132,7 +138,6 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                       import account._
                       if(!secondaryPrincipals.exists(principal => lookupAccount(principal.value).isDefined)){
                         val activationRequired = status.isInactive
-                        var notified = false
                         val updatedAccount =
                           if(activationRequired) { // an activation is required
                             log.info(s"activation required for ${account.primaryPrincipal.value}")
@@ -141,39 +146,29 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                               ActivationTokenExpirationTime
                             )
                             accountKeyDao.addAccountKey(activationToken.token, entityId)
-                            notified = sendActivation(entityId, account, activationToken)
-                            log.info(
-                              s"activation token ${if(!notified) "not " else "" }sent for ${account.primaryPrincipal.value}"
-                            )
-                            if(notified){
-                              removeActivation(entityId)
-                            }
-                            if(!notified)
-                              account
-                                .copyWithVerificationToken(Some(activationToken))
-                                .copyWithStatus(AccountStatus.PendingActivation)
-                                .asInstanceOf[T]
-                            else
-                              account.copyWithVerificationToken(Some(activationToken)).asInstanceOf[T]
+                            account
+                              .copyWithVerificationToken(Some(activationToken))
+                              .asInstanceOf[T]
                           }
                           else{
                             account
                           }
-                        Effect.persist[AccountEvent, Option[T]](createAccountCreatedEvent(updatedAccount))
-                          .thenRun(
-                            _ =>
-                              if(activationRequired && !notified) {
-                                UndeliveredActivationToken
+                        val notifications: Seq[AccountToNotificationCommandEvent] = {
+                          updatedAccount.verificationToken match {
+                            case Some(verificationToken) =>
+                              sendActivation(entityId, account, verificationToken)
+                            case _ =>
+                              if(updatedAccount.status.isActive){
+                                sendRegistration(entityId, updatedAccount)
                               }
-                              else {
-                                if(updatedAccount.status.isActive){
-                                  if(sendRegistration(entityId, updatedAccount)){
-                                    removeRegistration(entityId)
-                                  }
-                                }
-                                AccountCreated(updatedAccount)
-                              } ~> replyTo
-                          )
+                              else{
+                                Seq.empty
+                              }
+                          }
+                        }
+                        Effect.persist[AccountEvent, Option[T]](
+                          notifications.toList :+ createAccountCreatedEvent(updatedAccount)
+                        ).thenRun(_ => AccountCreated(updatedAccount) ~> replyTo)
                       }
                       else {
                         Effect.none.thenRun(_ => LoginAlreadyExists ~> replyTo)
@@ -198,16 +193,13 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     account.primaryPrincipal.value, ActivationTokenExpirationTime
                   )
                   accountKeyDao.addAccountKey(activationToken.token, entityId)
-                  val notified = sendActivation(entityId, account, activationToken)
-                  log.info(s"activation token ${if(!notified) "not " else "" }sent for ${account.primaryPrincipal.value}")
-                  if(notified){
-                    removeActivation(entityId)
-                  }
+                  val notifications = sendActivation(entityId, account, activationToken)
                   Effect.persist[AccountEvent, Option[T]](
-                    VerificationTokenAdded(
-                      entityId,
-                      activationToken
-                    )
+                    notifications.toList :+
+                      VerificationTokenAdded(
+                        entityId,
+                        activationToken
+                      )
                   ).thenRun(_ => TokenExpired ~> replyTo)
                 }
                 else if(v.token != token){
@@ -241,13 +233,14 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
               account.verificationCode.foreach(v => accountKeyDao.removeAccountKey(v.code))
               val verificationCode = generator.generatePinCode(VerificationCodeSize, VerificationCodeExpirationTime)
               accountKeyDao.addAccountKey(verificationCode.code, entityId)
-              val notified = sendVerificationCode(generateUUID(), account, verificationCode)
+              val notifications = sendVerificationCode(generateUUID(), account, verificationCode)
               Effect.persist[AccountEvent, Option[T]](
-                VerificationCodeAdded(
-                  entityId,
-                  verificationCode
-                ).withLastUpdated(now())
-              ).thenRun(_ => (if(notified) VerificationCodeSent else UndeliveredVerificationCode) ~> replyTo)
+                notifications.toList :+
+                  VerificationCodeAdded(
+                    entityId,
+                    verificationCode
+                  ).withLastUpdated(now())
+              ).thenRun(_ => VerificationCodeSent ~> replyTo)
             case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
           }
         }
@@ -263,13 +256,14 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
               account.verificationToken.foreach(v => accountKeyDao.removeAccountKey(v.token))
               val verificationToken = generator.generateToken(account.primaryPrincipal.value, VerificationTokenExpirationTime)
               accountKeyDao.addAccountKey(verificationToken.token, entityId)
-              val notified = sendResetPassword(generateUUID(), account, verificationToken)
+              val notifications = sendResetPassword(generateUUID(), account, verificationToken)
               Effect.persist[AccountEvent, Option[T]](
-                VerificationTokenAdded(
-                  entityId,
-                  verificationToken
-                ).withLastUpdated(now())
-              ).thenRun(_ => (if(notified) ResetPasswordTokenSent else UndeliveredResetPasswordToken) ~> replyTo)
+                notifications.toList :+
+                  VerificationTokenAdded(
+                    entityId,
+                    verificationToken
+                  ).withLastUpdated(now())
+              ).thenRun(_ => ResetPasswordTokenSent ~> replyTo)
             case _ => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
           }
         }
@@ -291,13 +285,14 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                       account.primaryPrincipal.value, ActivationTokenExpirationTime
                     )
                     accountKeyDao.addAccountKey(verificationToken.token, entityId)
-                    val notified = sendResetPassword(generateUUID(), account, verificationToken)
+                    val notifications = sendResetPassword(generateUUID(), account, verificationToken)
                     Effect.persist[AccountEvent, Option[T]](
-                      VerificationTokenAdded(
-                        entityId,
-                        verificationToken
-                      ).withLastUpdated(now())
-                    ).thenRun(_ => (if(notified) NewResetPasswordTokenSent else UndeliveredResetPasswordToken) ~> replyTo)
+                      notifications.toList :+
+                        VerificationTokenAdded(
+                          entityId,
+                          verificationToken
+                        ).withLastUpdated(now())
+                    ).thenRun(_ => NewResetPasswordTokenSent ~> replyTo)
                   }
                   else{
                     Effect.none.thenRun(_ => TokenExpired ~> replyTo)
@@ -583,7 +578,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
               case evt: AccountNotificationRecordedEvent =>
                 import evt._
                 val notificationUuid = generateUUID()
-                if(sendNotification(
+                val notifications = addNotifications(
                   notificationUuid,
                   account,
                   subject,
@@ -592,12 +587,10 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                   else
                     StringEscapeUtils.unescapeHtml4(content).replaceAll("<br/>", "\\\n"),
                   Seq(channel)
-                )){
-                  Effect.none.thenRun(_ => AccountNotificationSent(entityId, notificationUuid) ~> replyTo)
-                }
-                else{
-                  Effect.none.thenRun(_ => AccountNotificationNotSent(entityId, None) ~> replyTo)
-                }
+                )
+                Effect.persist(
+                  notifications.toList
+                ).thenRun(_ => AccountNotificationSent(entityId, notificationUuid) ~> replyTo)
               case _ => Effect.none.thenRun(_ => InternalAccountEventNotHandled ~> replyTo)
             }
           case _             => Effect.none.thenRun(_ => AccountNotFound ~> replyTo)
@@ -849,8 +842,6 @@ object BasicAccountBehavior extends BasicAccountBehavior
   override def persistenceId: String = "Account"
 }
 
-object MockBasicAccountBehavior extends BasicAccountBehavior
-  with MockGenerator
-  with MockAccountNotifications[BasicAccount] {
+object MockBasicAccountBehavior extends BasicAccountBehavior with MockGenerator {
   override def persistenceId: String = "MockAccount"
 }

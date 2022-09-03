@@ -6,18 +6,17 @@ import app.softnetwork.concurrent.Completion
 import mustache.Mustache
 import org.apache.commons.text.StringEscapeUtils
 import org.slf4j.Logger
-import app.softnetwork.notification.handlers.{MockNotificationDao, NotificationDao}
 import org.softnetwork.notification.model._
 import org.softnetwork.notification.model.NotificationType
 import app.softnetwork.notification.serialization._
 import app.softnetwork.persistence.auth.config.Settings._
+import app.softnetwork.persistence.auth.message.AccountToNotificationCommandEvent
 import app.softnetwork.persistence.auth.model._
+import org.softnetwork.notification.message.{AddMailCommandEvent, AddPushCommandEvent, AddSMSCommandEvent, RemoveNotificationCommandEvent}
 
 import scala.language.{implicitConversions, postfixOps}
 
 trait AccountNotifications[T <: Account] extends Completion {
-
-  def notificationDao: NotificationDao = NotificationDao
 
   /** number of login failures authorized before disabling user account **/
   val maxLoginFailures: Int = MaxLoginFailures
@@ -30,74 +29,90 @@ trait AccountNotifications[T <: Account] extends Completion {
     s"$entityId-registration"
   }
 
-  private[this] def sendMail(
+  private[this] def addMail(
                               uuid: String,
                               account: T,
                               subject: String,
                               body: String,
                               maxTries: Int,
-                              deferred: Option[Date])(implicit system: ActorSystem[_]): Boolean = {
+                              deferred: Option[Date])(implicit system: ActorSystem[_]): Option[AccountToNotificationCommandEvent] = {
     account.email match {
       case Some(email) =>
-        notificationDao.sendNotification(
-          Mail.defaultInstance
-            .withUuid(uuid)
-            .withFrom(From(MailFrom, Some(MailName)))
-            .withTo(Seq(email))
-            .withSubject(subject)
-            .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
-            .withRichMessage(body)
-            .withMaxTries(maxTries)
-            .withDeferred(deferred.orNull)
-        ) complete ()
-      case _ => false
+          Some(
+            AccountToNotificationCommandEvent.defaultInstance.withAddMail(
+              AddMailCommandEvent(
+                Mail.defaultInstance
+                  .withUuid(uuid)
+                  .withFrom(From(MailFrom, Some(MailName)))
+                  .withTo(Seq(email))
+                  .withSubject(subject)
+                  .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
+                  .withRichMessage(body)
+                  .withMaxTries(maxTries)
+                  .withDeferred(deferred.orNull)
+              )
+            )
+          )
+      case _ => None
     }
   }
 
-  private[this] def sendSMS(
+  private[this] def addSMS(
                              uuid: String,
                              account: T,
                              subject: String,
                              body: String,
                              maxTries: Int,
-                             deferred: Option[Date])(implicit system: ActorSystem[_]): Boolean = {
+                             deferred: Option[Date])(implicit system: ActorSystem[_]): Option[AccountToNotificationCommandEvent] = {
     account.gsm match {
       case Some(gsm) =>
-        notificationDao.sendNotification(
-          SMS.defaultInstance
-            .withUuid(uuid)
-            .withFrom(From(SMSClientId, Some(SMSName)))
-            .withTo(Seq(gsm))
-            .withSubject(subject)
-            .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
-            .withMaxTries(maxTries)
-            .withDeferred(deferred.orNull)
-        ) complete ()
-      case _ => false
+        Some(
+          AccountToNotificationCommandEvent.defaultInstance.withAddSMS(
+            AddSMSCommandEvent(
+              SMS.defaultInstance
+                .withUuid(uuid)
+                .withFrom(From(SMSClientId, Some(SMSName)))
+                .withTo(Seq(gsm))
+                .withSubject(subject)
+                .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
+                .withMaxTries(maxTries)
+                .withDeferred(deferred.orNull)
+            )
+          )
+        )
+      case _ => None
     }
   }
 
-  private[this] def sendPush(
+  private[this] def addPush(
                               uuid: String,
                               account: T,
                               subject: String,
                               body: String,
                               maxTries: Int,
-                              deferred: Option[Date])(implicit system: ActorSystem[_]): Boolean = {
-    account.registrations.isEmpty ||
-      (notificationDao.sendNotification(
-        Push.defaultInstance
-          .withUuid(uuid)
-          .withFrom(From.defaultInstance.withValue(PushClientId))
-          .withSubject(subject)
-          .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
-          .withDevices(account.registrations.map(registration => BasicDevice(registration.regId, registration.platform)))
-          .withMaxTries(maxTries)
-          .withDeferred(deferred.orNull)
-      )complete ())
+                              deferred: Option[Date])(implicit system: ActorSystem[_]): Option[AccountToNotificationCommandEvent] = {
+    if(account.registrations.isEmpty) {
+      None
+    }
+    else {
+      Some(
+        AccountToNotificationCommandEvent.defaultInstance.withAddPush(
+          AddPushCommandEvent(
+            Push.defaultInstance
+              .withUuid(uuid)
+              .withFrom(From.defaultInstance.withValue(PushClientId))
+              .withSubject(subject)
+              .withMessage(StringEscapeUtils.unescapeHtml4(body).replaceAll("<br/>", "\\\n"))
+              .withDevices(account.registrations.map(registration => BasicDevice(registration.regId, registration.platform)))
+              .withMaxTries(maxTries)
+              .withDeferred(deferred.orNull)
+          )
+        )
+      )
+    }
   }
 
-  private[this] def sendNotificationByChannel(
+  private[this] def addNotificationByChannel(
                                                uuid: String,
                                                account: T,
                                                subject: String,
@@ -105,16 +120,16 @@ trait AccountNotifications[T <: Account] extends Completion {
                                                channel: NotificationType,
                                                maxTries: Int,
                                                deferred: Option[Date])(
-                                               implicit system: ActorSystem[_]): Boolean = {
+                                               implicit system: ActorSystem[_]): Option[AccountToNotificationCommandEvent] = {
     channel match {
-      case NotificationType.MAIL_TYPE => sendMail(uuid, account, subject, body, maxTries, deferred)
-      case NotificationType.SMS_TYPE  => sendSMS(uuid, account, subject, body, maxTries, deferred)
-      case NotificationType.PUSH_TYPE => sendPush(uuid, account, subject, body, maxTries, deferred)
-      case _ => false
+      case NotificationType.MAIL_TYPE => addMail(s"mail#$uuid", account, subject, body, maxTries, deferred)
+      case NotificationType.SMS_TYPE  => addSMS(s"sms#$uuid", account, subject, body, maxTries, deferred)
+      case NotificationType.PUSH_TYPE => addPush(s"push#$uuid", account, subject, body, maxTries, deferred)
+      case _ => None
     }
   }
 
-  def sendNotification(
+  def addNotifications(
                         uuid: String,
                         account: T,
                         subject: String,
@@ -122,10 +137,9 @@ trait AccountNotifications[T <: Account] extends Completion {
                         channels: Seq[NotificationType],
                         maxTries: Int = 1,
                         deferred: Option[Date] = None)(
-                        implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                        implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     log.info(s"about to send notification to ${account.primaryPrincipal.value}\r\n$body")
-    channels.par.map(channel => sendNotificationByChannel(uuid, account, subject, body, channel, maxTries, deferred))
-      .exists(p => p)
+    channels.flatMap(channel => addNotificationByChannel(uuid, account, subject, body, channel, maxTries, deferred))
   }
 
   def sendActivation(
@@ -133,7 +147,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                       account: T,
                       activationToken: VerificationToken,
                       maxTries: Int = 3,
-                      deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                      deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     val subject = NotificationsConfig.activation
 
     val body = Mustache("notification/activation.mustache").render(
@@ -146,7 +160,7 @@ trait AccountNotifications[T <: Account] extends Completion {
       )
     )
 
-    sendNotification(
+    addNotifications(
       activationTokenUuid(uuid),
       account,
       subject,
@@ -161,7 +175,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                         uuid: String,
                         account: T,
                         maxTries: Int = 2,
-                        deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                        deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     val subject = NotificationsConfig.registration
 
     val body = Mustache("notification/registration.mustache").render(
@@ -173,7 +187,7 @@ trait AccountNotifications[T <: Account] extends Completion {
       )
     )
 
-    sendNotification(
+    addNotifications(
       registrationUuid(uuid),
       account,
       subject,
@@ -189,7 +203,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                             account: T,
                             verificationCode: VerificationCode,
                             maxTries: Int = 1,
-                            deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                            deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     val subject = NotificationsConfig.resetPassword
 
     val body = Mustache("notification/verification_code.mustache").render(
@@ -202,7 +216,7 @@ trait AccountNotifications[T <: Account] extends Completion {
       )
     )
 
-    sendNotification(
+    addNotifications(
       uuid,
       account,
       subject,
@@ -217,7 +231,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                            uuid: String,
                            account: T,
                            maxTries: Int = 1,
-                           deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                           deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     val subject = NotificationsConfig.accountDisabled
 
     val body = Mustache("notification/account_disabled.mustache").render(
@@ -231,7 +245,7 @@ trait AccountNotifications[T <: Account] extends Completion {
       )
     )
 
-    sendNotification(
+    addNotifications(
       uuid,
       account,
       subject,
@@ -247,7 +261,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                          account: T,
                          verificationToken: VerificationToken,
                          maxTries: Int = 1,
-                         deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                         deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     val subject = NotificationsConfig.resetPassword
 
     val body = Mustache("notification/reset_password.mustache").render(
@@ -262,7 +276,7 @@ trait AccountNotifications[T <: Account] extends Completion {
       )
     )
 
-    sendNotification(
+    addNotifications(
       uuid,
       account,
       subject,
@@ -277,7 +291,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                            uuid: String,
                            account: T,
                            maxTries: Int = 1,
-                           deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                           deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     val subject = NotificationsConfig.passwordUpdated
 
     val body = Mustache("notification/password_updated.mustache").render(
@@ -289,7 +303,7 @@ trait AccountNotifications[T <: Account] extends Completion {
       )
     )
 
-    sendNotification(
+    addNotifications(
       uuid,
       account,
       subject,
@@ -304,7 +318,7 @@ trait AccountNotifications[T <: Account] extends Completion {
                             uuid: String,
                             account: T,
                             maxTries: Int = 1,
-                            deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Boolean = {
+                            deferred: Option[Date] = None)(implicit log: Logger, system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
     val subject = NotificationsConfig.principalUpdated
 
     val body = Mustache("notification/principal_updated.mustache").render(
@@ -316,7 +330,7 @@ trait AccountNotifications[T <: Account] extends Completion {
       )
     )
 
-    sendNotification(
+    addNotifications(
       uuid,
       account,
       subject,
@@ -327,21 +341,40 @@ trait AccountNotifications[T <: Account] extends Completion {
     )
   }
 
-  def removeActivation(uuid: String)(implicit system: ActorSystem[_]): Boolean = removeNotification(
+  def removeActivation(uuid: String)(implicit system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = removeNotifications(
     activationTokenUuid(uuid), Seq(NotificationType.MAIL_TYPE, NotificationType.PUSH_TYPE, NotificationType.SMS_TYPE)
   )
 
-  def removeRegistration(uuid: String)(implicit system: ActorSystem[_]): Boolean = removeNotification(
+  def removeRegistration(uuid: String)(implicit system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = removeNotifications(
     registrationUuid(uuid), Seq(NotificationType.MAIL_TYPE, NotificationType.PUSH_TYPE, NotificationType.SMS_TYPE)
   )
 
-  private[this] def removeNotification(uuid: String, channels: Seq[NotificationType] = Seq.empty)(
-    implicit system: ActorSystem[_]): Boolean = {
-    channels.par.forall{_ => notificationDao.removeNotification(uuid) complete ()}
+  private[this] def removeNotifications(uuid: String, channels: Seq[NotificationType] = Seq.empty)(
+    implicit system: ActorSystem[_]): Seq[AccountToNotificationCommandEvent] = {
+    channels.flatMap(channel => removeNotificationByChannel(channel, uuid))
   }
 
-}
-
-trait MockAccountNotifications[T <: Account] extends AccountNotifications[T] {
-  override def notificationDao: NotificationDao = MockNotificationDao
+  private[this] def removeNotificationByChannel(channel: NotificationType, uuid: String): Option[AccountToNotificationCommandEvent] = {
+    channel match {
+      case NotificationType.MAIL_TYPE =>
+        Some(
+          AccountToNotificationCommandEvent.defaultInstance.withRemoveNotification(
+            RemoveNotificationCommandEvent(s"mail#$uuid")
+          )
+        )
+      case NotificationType.SMS_TYPE  =>
+        Some(
+          AccountToNotificationCommandEvent.defaultInstance.withRemoveNotification(
+            RemoveNotificationCommandEvent(s"sms#$uuid")
+        )
+    )
+      case NotificationType.PUSH_TYPE =>
+        Some(
+          AccountToNotificationCommandEvent.defaultInstance.withRemoveNotification(
+            RemoveNotificationCommandEvent(s"push#$uuid")
+          )
+        )
+      case _ => None
+    }
+  }
 }

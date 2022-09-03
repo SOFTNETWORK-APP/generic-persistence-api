@@ -1,14 +1,11 @@
 package app.softnetwork.notification.handlers
 
-import akka.actor.typed.ActorSystem
 import akka.cluster.sharding.typed.scaladsl.EntityTypeKey
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.persistence.typed.CommandTypeKey
 import app.softnetwork.notification.message._
-import app.softnetwork.notification.model.Notification
 import app.softnetwork.notification.peristence.typed._
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.reflect.ClassTag
 
 /**
@@ -29,44 +26,3 @@ trait NotificationHandler extends EntityPattern[NotificationCommand, Notificatio
   with AllNotificationsTypeKey
 
 trait MockNotificationHandler extends NotificationHandler with MockAllNotificationsTypeKey
-
-trait NotificationDao {_: NotificationHandler =>
-
-  def sendNotification(notification: Notification)(implicit system: ActorSystem[_]): Future[Boolean] = {
-    implicit val ec: ExecutionContextExecutor = system.executionContext
-    this !? SendNotification(notification) map {
-      case _: NotificationSent      => true
-      case _: NotificationDelivered => true
-      case _                        => false
-    }
-  }
-
-  def resendNotification(id: String)(implicit system: ActorSystem[_]): Future[Boolean] = {
-    implicit val ec: ExecutionContextExecutor = system.executionContext
-    this !? ResendNotification(id) map {
-      case _: NotificationSent      => true
-      case _: NotificationDelivered => true
-      case _                        => false
-    }
-  }
-
-  def removeNotification(id: String)(implicit system: ActorSystem[_]): Future[Boolean] = {
-    implicit val ec: ExecutionContextExecutor = system.executionContext
-    this !? RemoveNotification(id) map {
-      case NotificationRemoved => true
-      case _                   => false
-    }
-  }
-
-  def geNotificationStatus(id: String)(implicit system: ActorSystem[_]): Future[NotificationCommandResult] = {
-    implicit val ec: ExecutionContextExecutor = system.executionContext
-    this !? GetNotificationStatus(id)
-  }
-
-}
-
-trait MockNotificationDao extends NotificationDao with MockNotificationHandler
-
-object NotificationDao extends NotificationDao with NotificationHandler
-
-object MockNotificationDao extends MockNotificationDao

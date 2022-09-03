@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
 import app.softnetwork.notification.handlers.NotificationHandler
 import app.softnetwork.notification.model.Notification
-import app.softnetwork.notification.peristence.query.Scheduler2NotificationProcessorStream
+import app.softnetwork.notification.peristence.query.{NotificationCommandProcessorStream, Scheduler2NotificationProcessorStream}
 import app.softnetwork.notification.peristence.typed.{AllNotificationsBehavior, NotificationBehavior}
 import app.softnetwork.payment.handlers.MangoPayPaymentHandler
 import app.softnetwork.payment.launch.PaymentApplication
@@ -50,6 +50,13 @@ trait MangoPayApi extends PaymentApplication with JdbcSchemaProvider {
       override implicit def system: ActorSystem[_] = sys
       override def schemaType: JdbcSchema.SchemaType = jdbcSchemaType
     }
+
+  override def notificationCommandProcessorStream: ActorSystem[_] => NotificationCommandProcessorStream = sys => {
+    new NotificationCommandProcessorStream with NotificationHandler with JdbcJournalProvider with JdbcSchemaProvider {
+      override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
+      override implicit def system: ActorSystem[_] = sys
+    }
+  }
 
   override def paymentService: ActorSystem[_] => GenericPaymentService = sys => MangoPayPaymentService(sys)
 

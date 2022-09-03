@@ -18,7 +18,9 @@ option (scalapb.options) = {
     preamble: "sealed trait NotificationEvent extends Event{def uuid: String}"
     preamble: "sealed trait NotificationRecordedEvent[T<:Notification] extends NotificationEvent{def notification: T; val uuid = notification.uuid}"
     preamble: "sealed trait NotificationToSchedulerEvent extends SchedulerEventWithCommand with NotificationEvent with Entity {val uuid = ALL_KEY}"
-    preamble: "trait NotificationEventWithCommand extends NotificationEvent {def command: NotificationCommand}"
+    preamble: "trait NotificationCommandEvent extends NotificationEvent"
+    preamble: "trait AddNotificationCommandEvent extends NotificationCommandEvent {def notification: Notification; val uuid = notification.uuid}"
+    preamble: "trait WrapNotificationCommandEvent extends NotificationCommandEvent {def event: NotificationCommandEvent; lazy val uuid = event.uuid}"
     preserve_unknown_fields: false
 };
 
@@ -56,4 +58,28 @@ message ScheduleForNotificationRemoved{
     option (scalapb.message).extends = "ProtobufEvent";
     option (scalapb.message).extends = "NotificationToSchedulerEvent";
     required app.softnetwork.scheduler.message.RemoveSchedule command = 1;
+}
+
+message AddMailCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "AddNotificationCommandEvent";
+    required org.softnetwork.notification.model.Mail notification = 1;
+}
+
+message AddSMSCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "AddNotificationCommandEvent";
+    required org.softnetwork.notification.model.SMS notification = 1;
+}
+
+message AddPushCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "AddNotificationCommandEvent";
+    required org.softnetwork.notification.model.Push notification = 1;
+}
+
+message RemoveNotificationCommandEvent{
+    option (scalapb.message).extends = "ProtobufEvent";
+    option (scalapb.message).extends = "NotificationCommandEvent";
+    required string uuid = 1;
 }

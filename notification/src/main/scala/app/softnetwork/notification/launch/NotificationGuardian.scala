@@ -2,7 +2,7 @@ package app.softnetwork.notification.launch
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.notification.model.Notification
-import app.softnetwork.notification.peristence.query.Scheduler2NotificationProcessorStream
+import app.softnetwork.notification.peristence.query.{NotificationCommandProcessorStream, Scheduler2NotificationProcessorStream}
 import app.softnetwork.notification.peristence.typed.NotificationBehavior
 import app.softnetwork.persistence.launch.PersistentEntity
 import app.softnetwork.persistence.query.{EventProcessorStream, SchemaProvider}
@@ -34,11 +34,19 @@ trait NotificationGuardian extends SchedulerGuardian {_: SchemaProvider =>
       scheduler2NotificationProcessorStream(sys)
     )
 
+  def notificationCommandProcessorStream: ActorSystem[_] => NotificationCommandProcessorStream
+
+  def notificationEventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
+    Seq(
+      notificationCommandProcessorStream(sys)
+    )
+
   /**
     * initialize all event processor streams
     *
     */
   override def eventProcessorStreams: ActorSystem[_] => Seq[EventProcessorStream[_]] = sys =>
-    schedulerEventProcessorStreams(sys)
+    schedulerEventProcessorStreams(sys) ++
+      notificationEventProcessorStreams(sys)
 
 }

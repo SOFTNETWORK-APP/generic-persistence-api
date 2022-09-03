@@ -5,7 +5,7 @@ import app.softnetwork.notification.config.Settings.NotificationConfig
 import app.softnetwork.notification.handlers.MockNotificationHandler
 import app.softnetwork.notification.launch.NotificationGuardian
 import app.softnetwork.notification.model.Notification
-import app.softnetwork.notification.peristence.query.Scheduler2NotificationProcessorStream
+import app.softnetwork.notification.peristence.query.{NotificationCommandProcessorStream, Scheduler2NotificationProcessorStream}
 import app.softnetwork.notification.peristence.typed.{MockAllNotificationsBehavior, NotificationBehavior}
 import app.softnetwork.persistence.query.InMemoryJournalProvider
 import app.softnetwork.scheduler.scalatest.SchedulerTestKit
@@ -28,4 +28,10 @@ trait NotificationTestKit extends SchedulerTestKit with NotificationGuardian {_:
       override implicit def system: ActorSystem[_] = sys
     }
 
+  override def notificationCommandProcessorStream: ActorSystem[_] => NotificationCommandProcessorStream = sys => {
+    new NotificationCommandProcessorStream with MockNotificationHandler with InMemoryJournalProvider {
+      override val forTests: Boolean = true
+      override implicit def system: ActorSystem[_] = sys
+    }
+  }
 }

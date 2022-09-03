@@ -14,12 +14,6 @@ class AccountHandlerSpec extends MockBasicAccountHandler with AnyWordSpecLike wi
 
   import MockGenerator._
 
-  /**
-    *
-    * @return roles associated with this node
-    */
-  override lazy val roles: Seq[String] = Seq(Settings.AkkaNodeRole)
-
   private val username = "test"
 
   private val username2 = "test2"

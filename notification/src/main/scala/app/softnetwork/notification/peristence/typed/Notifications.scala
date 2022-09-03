@@ -15,6 +15,7 @@ import app.softnetwork.notification.message._
 import app.softnetwork.notification.model._
 import org.softnetwork.notification.message._
 import org.softnetwork.notification.model._
+import app.softnetwork.scheduler.config.{Settings => SchedulerSettings}
 
 import scala.language.{implicitConversions, postfixOps}
 
@@ -46,7 +47,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
     */
   override protected def tagEvent(entityId: String, event: NotificationEvent): Set[String] = {
     event match {
-      case _: SchedulerEventWithCommand => Set(s"$persistenceId-to-scheduler", "entity-to-scheduler")
+      case _: SchedulerEventWithCommand => Set(s"$persistenceId-to-scheduler", SchedulerSettings.SchedulerConfig.eventStreams.entityToSchedulerTag)
       case _ => Set(persistenceId)
     }
   }
