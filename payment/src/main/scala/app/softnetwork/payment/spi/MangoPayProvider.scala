@@ -28,7 +28,7 @@ trait MangoPayProvider extends PaymentProvider {
   import scala.collection.JavaConverters._
 
   implicit def computeBirthday(epochSecond: Long): String = {
-    epochSecondToLocalDate(epochSecond).format(DateTimeFormatter.ofPattern("dd/MM:yyyy"))
+    epochSecondToLocalDate(epochSecond).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
   }
 
   implicit def mangoPayTransactionStatusToTransactionStatus(status: MangoPayTransactionStatus): Transaction.TransactionStatus =

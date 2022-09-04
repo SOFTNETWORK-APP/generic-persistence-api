@@ -1658,16 +1658,25 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         state match {
           case Some(paymentAccount) =>
             var declarationCreated: Boolean = false
+            def createInternalDeclaration(): Option[UboDeclaration] = {
+              createDeclaration(paymentAccount.userId.getOrElse("")) match {
+                case Some(declaration) =>
+                  declarationCreated = true
+                  keyValueDao.addKeyValue(declaration.id, entityId)
+                  Some(declaration)
+                case _ => None
+              }
+            }
             (paymentAccount.getLegalUser.uboDeclaration match {
               case None =>
-                createDeclaration(paymentAccount.userId.getOrElse("")) match {
-                  case Some(declaration) =>
-                    declarationCreated = true
-                    keyValueDao.addKeyValue(declaration.id, entityId)
-                    Some(declaration)
-                  case _ => None
+                createInternalDeclaration()
+              case Some(uboDeclaration) =>
+                if(uboDeclaration.status.isUboDeclarationRefused){
+                  createInternalDeclaration()
                 }
-              case some => some
+                else{
+                  Some(uboDeclaration)
+                }
             }) match {
               case Some(declaration) =>
                 import cmd._
@@ -1755,10 +1764,12 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
         state match {
           case Some(paymentAccount) =>
             paymentAccount.getLegalUser.uboDeclaration match {
-              case Some(uboDeclaration) if uboDeclaration.status.isUboDeclarationValidationAsked =>
+              // check if this update is related to the actual ubo declaration waiting for validation
+              case Some(uboDeclaration) if cmd.uboDeclarationId == uboDeclaration.id &&
+                uboDeclaration.status.isUboDeclarationValidationAsked =>
                 import cmd._
                 getDeclaration(paymentAccount.userId.getOrElse(""), uboDeclarationId) match {
-                  case Some(declaration) if declaration.id == uboDeclarationId =>
+                  case Some(declaration) =>
                     val internalStatus = {
                       if (environment != "prod") {
                         status.getOrElse(declaration.status)
@@ -1769,15 +1780,21 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                     }
                     var events: List[PaymentEvent] = List.empty
                     val lastUpdated = now()
+                    var updatedDeclaration =
+                      declaration.withStatus(internalStatus)
+                    if(internalStatus.isUboDeclarationRefused){
+                      updatedDeclaration =
+                        updatedDeclaration.withUbos(Seq.empty/*updatedDeclaration.ubos.map(_.copy(id = None))*/)
+                    }
                     var updatedPaymentAccount = paymentAccount
-                      .withLegalUser(paymentAccount.getLegalUser.withUboDeclaration(declaration.withStatus(internalStatus)))
+                      .withLegalUser(paymentAccount.getLegalUser.withUboDeclaration(updatedDeclaration))
                       .withLastUpdated(lastUpdated)
                     events = events ++
                       broadcastEvent(
                         UboDeclarationUpdatedEvent.defaultInstance
                           .withExternalUuid(paymentAccount.externalUuid)
                           .withLastUpdated(lastUpdated)
-                          .withUboDeclaration(declaration)
+                          .withUboDeclaration(updatedDeclaration)
                       )
                     if(internalStatus.isUboDeclarationIncomplete || internalStatus.isUboDeclarationRefused){
                       events = events ++
