@@ -4,11 +4,13 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence.launch.{PersistenceGuardian, PersistentEntity}
 import app.softnetwork.persistence.query.{EventProcessorStream, SchemaProvider}
 import app.softnetwork.persistence.typed.Singleton
-import app.softnetwork.resource.persistence.query.ResourceToExternalProcessorStream
+import app.softnetwork.resource.model.GenericResource
+import app.softnetwork.resource.persistence.query.GenericResourceToExternalProcessorStream
 import app.softnetwork.resource.persistence.typed.ResourceBehavior
 import com.typesafe.scalalogging.StrictLogging
 
-trait ResourceGuardian extends PersistenceGuardian with StrictLogging {_: SchemaProvider =>
+trait GenericResourceGuardian[Resource <: GenericResource] extends PersistenceGuardian with StrictLogging {
+  _: SchemaProvider =>
 
   import app.softnetwork.persistence.launch.PersistenceGuardian._
 
@@ -28,7 +30,7 @@ trait ResourceGuardian extends PersistenceGuardian with StrictLogging {_: Schema
     */
   override def singletons: ActorSystem[_] => Seq[Singleton[_]] = _ => Seq.empty
 
-  def resourceToExternalProcessorStream:  ActorSystem[_] => ResourceToExternalProcessorStream
+  def resourceToExternalProcessorStream:  ActorSystem[_] => GenericResourceToExternalProcessorStream[Resource]
 
   /**
     * initialize all event processor streams

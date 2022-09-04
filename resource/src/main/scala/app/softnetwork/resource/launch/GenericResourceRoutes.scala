@@ -4,9 +4,11 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
 import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.persistence.query.SchemaProvider
+import app.softnetwork.resource.model.GenericResource
 import app.softnetwork.resource.service.GenericResourceService
 
-trait ResourceRoutes extends ApiRoutes with ResourceGuardian {_: SchemaProvider =>
+trait GenericResourceRoutes[Resource <: GenericResource] extends ApiRoutes with GenericResourceGuardian[Resource] {
+  _: SchemaProvider =>
 
   def resourceService: ActorSystem[_] => GenericResourceService
 
