@@ -41,7 +41,7 @@ trait GenericResourceService extends SessionService
 
   val route: Route = {
     pathPrefix(Settings.ResourcePath){
-      images ~ resource()
+      library ~ images ~ resource()
     }
   }
 
@@ -51,15 +51,39 @@ trait GenericResourceService extends SessionService
     }
   }
 
+  lazy val library: Route = {
+    pathPrefix("library"){
+      path(Segments(1, 128)) { segments =>
+        get {
+          complete(HttpResponse(StatusCodes.OK, entity = listResources(segments.mkString("/"))))
+        }
+      }
+    }
+  }
+
   def resource(fieldName: String = "file"): Route = {
-    path(Segments(2)) { segments =>
+    path(Segments(3, 128)) { segments =>
       get {
-        getResource(segments.head, Seq(ImageSizes.get(segments(1).toLowerCase).map(SizeOption)).flatten)
+        var uuid: String = segments.last
+        var options: Seq[ResourceOption] = Seq.empty
+        val uri: String = (ImageSizes.get(segments.last.toLowerCase()) match {
+          case Some(value) =>
+            options = Seq(SizeOption(value))
+            uuid = segments(segments.size-2)
+            segments.dropRight(2)
+          case _ =>
+            segments.dropRight(1)
+        }).mkString("/")
+        getResource(uuid, Some(uri), options)
+      }
+    } ~ path(Segments(2)) { segments =>
+      get {
+        getResource(segments.head, None, Seq(ImageSizes.get(segments(1).toLowerCase).map(SizeOption)).flatten)
       }
     } ~
       pathSuffix(Segment) { uuid =>
         get{
-          getResource(uuid, Seq.empty)
+          getResource(uuid, None, Seq.empty)
         } ~
           // check anti CSRF token
           randomTokenCsrfProtection(checkHeader) {
@@ -96,13 +120,13 @@ trait GenericResourceService extends SessionService
       }
   }
 
-  protected def getResource(uuid: String, options: Seq[ResourceOption]): Route = {
-    loadResource(uuid, None, options:_*) match {
+  protected def getResource(uuid: String, uri: Option[String] = None, options: Seq[ResourceOption] = Seq.empty): Route = {
+    loadResource(uuid, uri, None, options:_*) match {
       case Some(path) => getFromFile(path.toFile)
       case _ =>
         run(uuid, LoadResource(uuid)) match {
           case result: ResourceLoaded =>
-            loadResource(uuid, Option(result.resource.content), options:_*) match {
+            loadResource(uuid, uri, Option(result.resource.content), options:_*) match {
               case Some(path) => getFromFile(path.toFile)
               case _ => complete(HttpResponse(StatusCodes.NotFound))
             }

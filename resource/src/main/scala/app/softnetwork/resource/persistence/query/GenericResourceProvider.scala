@@ -19,7 +19,7 @@ protected[resource] trait GenericResourceProvider[Resource <: GenericResource] e
     */
   override def createDocument(document: Resource)(implicit t: ClassTag[Resource]): Boolean = {
     import document._
-    upsertDocument(uuid, content)
+    upsertResource(uuid, content, uri)
   }
 
   /**
@@ -32,7 +32,7 @@ protected[resource] trait GenericResourceProvider[Resource <: GenericResource] e
     */
   override def updateDocument(document: Resource, upsert: Boolean = true)(implicit t: ClassTag[Resource]): Boolean = {
     import document._
-    upsertDocument(uuid, content)
+    upsertResource(uuid, content, uri)
   }
 
   /**

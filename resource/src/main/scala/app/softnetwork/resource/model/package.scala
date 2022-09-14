@@ -10,6 +10,7 @@ package object model {
     def md5: String
     def mimetype: Option[String]
     lazy val image: Boolean = ImageTools.isAnImage(mimetype)
+    def uri: Option[String]
   }
 
 }

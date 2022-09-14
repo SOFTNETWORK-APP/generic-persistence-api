@@ -72,7 +72,7 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
             case r: ResourceLoaded =>
               r.resource.md5 shouldBe _md5
               for(size <- ImageSizes.values){
-                loadResource("load", None, Seq(SizeOption(size)): _*) match {
+                loadResource("load", None, None, Seq(SizeOption(size)): _*) match {
                   case Some(_) =>
                   case _ => fail()
                 }
@@ -100,6 +100,16 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       }
     }
 
+    "list resources" in {
+      val resources = listResources("/")
+      assert(resources.nonEmpty)
+      assert(resources.forall(!_.directory))
+      val files = resources.map(_.name)
+      assert(files.contains("create"))
+      assert(files.contains("update"))
+      assert(files.contains("load"))
+      assert(!files.contains("delete"))
+    }
   }
 
   "Resource tools" must {

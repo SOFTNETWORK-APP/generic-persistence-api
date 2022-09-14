@@ -1,6 +1,6 @@
 package app.softnetwork.resource.message
 
-import app.softnetwork.resource.model.{GenericResource, Resource}
+import app.softnetwork.resource.model.GenericResource
 import app.softnetwork.persistence.message._
 
 /**

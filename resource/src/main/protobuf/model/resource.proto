@@ -31,4 +31,5 @@ message Resource {
     required string content = 4;
     required string md5 = 5;
     optional string mimetype = 6;
+    optional string uri = 7;
 }

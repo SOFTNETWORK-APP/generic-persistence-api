@@ -6,7 +6,8 @@ import app.softnetwork.utils.ImageTools.ImageSize
 import app.softnetwork.utils.{Base64Tools, ImageTools, MimeTypeTools}
 import com.typesafe.scalalogging.StrictLogging
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, LinkOption, Path, Paths}
+import scala.util.matching.Regex
 import scala.util.{Failure, Success, Try}
 
 trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
@@ -18,16 +19,17 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     *
     * @param uuid - the uuid of the resource to upsert
     * @param data - the base64 encoded resource content
+    * @param uri - the optional uri of the resource
     * @return whether the resource has been upserted or not
     */
-  override def upsertResource(uuid: String, data: String): Boolean = {
+  override def upsertResource(uuid: String, data: String, uri: Option[String] = None): Boolean = {
     Try {
       val root = Paths.get(rootDir)
       if (!Files.exists(root)) {
         Files.createDirectories(root)
       }
       val decoded = Base64Tools.decodeBase64(data)
-      val path = Paths.get(rootDir, uuid)
+      val path = Paths.get(rootDir, uri.getOrElse(""), uuid)
       val fos = Files.newOutputStream(path)
       fos.write(decoded)
       fos.close()
@@ -45,12 +47,13 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
   /**
     *
     * @param uuid - the uuid of the resource to load
+    * @param uri - the optional uri of the resource
     * @param content - the optional base64 encoded resource content
     * @param option  - the list of resource options
     * @return the optional path associated with this resource
     */
-  override def loadResource(uuid: String, content: Option[String], option: ResourceOption*): Option[Path] = {
-    val path = Paths.get(rootDir, uuid)
+  override def loadResource(uuid: String, uri: Option[String], content: Option[String], option: ResourceOption*): Option[Path] = {
+    val path = Paths.get(rootDir, uri.getOrElse(""), uuid)
     if (Files.exists(path)) {
       if(ImageTools.isAnImage(path)){
         val size: Option[ResourceOption] = option.find {
@@ -84,8 +87,8 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     }
     else {
       content match {
-        case Some(data) if upsertResource(uuid, data) =>
-          loadResource(uuid, None, option:_*)
+        case Some(data) if upsertResource(uuid, data, uri) =>
+          loadResource(uuid, uri, None, option:_*)
         case _ => None
       }
     }
@@ -95,11 +98,12 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     * Deletes the underlying document referenced by its uuid to the external system
     *
     * @param uuid - the uuid of the resource to delete
+    * @param uri - the optional uri of the resource
     * @return whether the operation is successful or not
     */
-  override def deleteResource(uuid: String): Boolean = {
+  override def deleteResource(uuid: String, uri: Option[String] = None): Boolean = {
     Try {
-      val root = Paths.get(rootDir)
+      val root = Paths.get(rootDir, uri.getOrElse(""))
       import java.util.stream.Collectors
       import scala.collection.JavaConverters._
       val listFiles: List[Path] =
@@ -115,4 +119,34 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     }
   }
 
+  val generatedImage: Regex = ".*(\\.\\d*x\\d*).*".r
+
+  /**
+    *
+    * @param uri - the uri from which resources have to be listed
+    * @return the resources located at this uri
+    */
+  override def listResources(uri: String): List[SimpleResource] = {
+    Try {
+      val dir = Paths.get(rootDir, uri)
+      import java.util.stream.Collectors
+      import scala.collection.JavaConverters._
+      Files.list(dir)
+        .filter(path => (Files.isRegularFile(path) && generatedImage.unapplySeq(path.getFileName.toString).isEmpty) ||
+          Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)).collect(Collectors.toList[Path]()).asScala.toList
+    } match {
+      case Success(files) => files.map(file => {
+        val directory = Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)
+        SimpleResource(
+          uri,
+          file.getFileName.toString,
+          directory,
+          !directory && ImageTools.isAnImage(file)
+        )
+      })
+      case Failure(f) =>
+        logger.error(f.getMessage, f)
+        List.empty
+    }
+  }
 }
