@@ -47,4 +47,4 @@ protected[resource] trait ResourceOption
 
 case class SizeOption(size: ImageSize) extends ResourceOption
 
-case class SimpleResource(uri: String, name: String, directory: Boolean, image: Boolean)
+case class SimpleResource(uri: String, name: String, directory: Boolean, image: Boolean, url: String)

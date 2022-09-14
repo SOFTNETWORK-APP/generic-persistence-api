@@ -1,7 +1,7 @@
 package app.softnetwork.resource.spi
 
 import app.softnetwork.persistence.environment
-import app.softnetwork.resource.config.Settings.{ImageSizes, ResourceDirectory}
+import app.softnetwork.resource.config.Settings.{BaseUrl, ImageSizes, ResourceDirectory, ResourcePath}
 import app.softnetwork.utils.ImageTools.ImageSize
 import app.softnetwork.utils.{Base64Tools, ImageTools, MimeTypeTools}
 import com.typesafe.scalalogging.StrictLogging
@@ -137,11 +137,25 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     } match {
       case Success(files) => files.map(file => {
         val directory = Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)
+        val name: String = file.getFileName.toString
+        val image: Boolean = !directory && ImageTools.isAnImage(file)
+        val url: String = {
+          if(directory) {
+            s"$BaseUrl/$ResourcePath/library/$uri/$name"
+          }
+          else if(image) {
+            s"$BaseUrl/$ResourcePath/images/$uri/$name"
+          }
+          else {
+            s"$BaseUrl/$ResourcePath/$uri/$name"
+          }
+        }
         SimpleResource(
           uri,
-          file.getFileName.toString,
+          name,
           directory,
-          !directory && ImageTools.isAnImage(file)
+          image,
+          url
         )
       })
       case Failure(f) =>
