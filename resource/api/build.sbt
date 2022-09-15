@@ -2,7 +2,7 @@ import com.typesafe.sbt.packager.docker._
 
 mainClass in Compile := Some("app.softnetwork.resource.api.ResourceToLocalFileSystemPostgresLauncher")
 
-dockerBaseImage := "java:8"
+dockerBaseImage := "openjdk:8"
 
 dockerEntrypoint := Seq(s"${(defaultLinuxInstallLocation in Docker).value}/bin/entrypoint.sh")
 
@@ -17,6 +17,8 @@ dockerExposedPorts := Seq(
   8558,
   25520
 )
+
+dockerRepository := Some("softnetwork.jfrog.io/default-docker-local")
 
 scriptClasspath in bashScriptDefines ~= (cp => "../conf" +: cp)
 
