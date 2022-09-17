@@ -25,4 +25,4 @@ function clean() {
 
 export CLUSTER_IP=$(hostname -i | awk '{print $1}')
 
-/opt/docker/bin/persistence-scheduler-api -DCLUSTER_MANAGEMENT_HOST=$CLUSTER_IP
+/opt/docker/bin/persistence-resource-api -DCLUSTER_MANAGEMENT_HOST=$CLUSTER_IP

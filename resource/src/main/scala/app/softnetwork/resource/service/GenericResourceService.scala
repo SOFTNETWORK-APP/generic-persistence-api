@@ -62,7 +62,7 @@ trait GenericResourceService extends SessionService
   }
 
   def resource(fieldName: String = "file"): Route = {
-    path(Segments(3, 128)) { segments =>
+    path(Segments(2, 128)) { segments =>
       get {
         var uuid: String = segments.last
         var options: Seq[ResourceOption] = Seq.empty
@@ -75,10 +75,6 @@ trait GenericResourceService extends SessionService
             segments.dropRight(1)
         }).mkString("/")
         getResource(uuid, Some(uri), options)
-      }
-    } ~ path(Segments(2)) { segments =>
-      get {
-        getResource(segments.head, None, Seq(ImageSizes.get(segments(1).toLowerCase).map(SizeOption)).flatten)
       }
     } ~
       pathSuffix(Segment) { uuid =>
