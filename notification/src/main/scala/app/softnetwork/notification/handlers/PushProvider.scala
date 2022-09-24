@@ -1,6 +1,6 @@
 package app.softnetwork.notification.handlers
 
-import java.io.{File => JFile}
+import java.io.{FileInputStream, File => JFile}
 import java.time.Duration
 import java.util.Date
 import akka.actor.typed.ActorSystem
@@ -12,7 +12,7 @@ import com.google.firebase.{FirebaseApp, FirebaseOptions}
 import com.google.firebase.messaging._
 import com.typesafe.scalalogging.StrictLogging
 import app.softnetwork.config.{Settings => CommonSettings}
-import app.softnetwork.notification.config.{ApnsConfig, Settings}
+import app.softnetwork.notification.config.{ApnsConfig, FcmConfig, Settings}
 import org.softnetwork.notification.model._
 
 import scala.annotation.tailrec
@@ -61,7 +61,9 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
 
       val results =
         Future.sequence(for(to <- tos) yield {
-          toScala(apnsClient.sendNotification(new SimpleApnsPushNotification(to, apnsConfig.topic, notification)))
+          toScala(client(notification.from).sendNotification(
+            new SimpleApnsPushNotification(to, config(notification.from).topic, notification))
+          )
         }) complete() match {
           case Success(responses) =>
             for(response <- responses) yield {
@@ -102,7 +104,7 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
           devices
       val results: Seq[NotificationStatusResult] =
         Try(
-          FirebaseMessaging.getInstance(firebaseApp).sendMulticast(notification)
+          FirebaseMessaging.getInstance(app(notification.from)).sendMulticast(notification)
         ) match {
           case Success(s) =>
             val results: Seq[NotificationStatusResult] = s
@@ -129,19 +131,45 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
 
 object APNSPushProvider {
 
-  lazy val apnsConfig: ApnsConfig = Settings.NotificationConfig.push.apns
+  private[this] var clients: Map[String, ApnsClient] = Map.empty
 
-  lazy val apnsClient: ApnsClient =
-    clientCredentials(
-      new ApnsClientBuilder()
-        .setApnsServer(
-          if (apnsConfig.dryRun) {
-            ApnsClientBuilder.DEVELOPMENT_APNS_HOST
-          } else {
-            ApnsClientBuilder.PRODUCTION_APNS_HOST
-          }
-        )
-    ).setConnectionTimeout(Duration.ofSeconds(CommonSettings.DefaultTimeout.toSeconds)).build()
+  private[this] var configs: Map[String, ApnsConfig] = Map.empty
+
+  private[notification] def client(from: From): ApnsClient = {
+    val key = from.alias.getOrElse(from.value)
+    clients.get(key) match {
+      case Some(client) => client
+      case _ =>
+        val apnsConfig: ApnsConfig = config(from)
+        val client: ApnsClient =
+          clientCredentials(apnsConfig)(
+            new ApnsClientBuilder()
+              .setApnsServer(
+                if (apnsConfig.dryRun) {
+                  ApnsClientBuilder.DEVELOPMENT_APNS_HOST
+                } else {
+                  ApnsClientBuilder.PRODUCTION_APNS_HOST
+                }
+              )
+          ).setConnectionTimeout(Duration.ofSeconds(CommonSettings.DefaultTimeout.toSeconds)).build()
+        clients = clients + (key -> client)
+        client
+    }
+  }
+
+  private[notification] def config(from: From): ApnsConfig = {
+    val key = from.alias.getOrElse(from.value)
+    configs.get(key) match {
+      case Some(config) => config
+      case _ =>
+        val config: ApnsConfig = Settings.PushConfigs.get(key).map(_.apns) match {
+          case Some(apnsConfig) => apnsConfig
+          case _ => Settings.NotificationConfig.push.apns
+        }
+        configs = configs + (key -> config)
+        config
+    }
+  }
 
   implicit def toApnsPayload(notification: Push): String = {
     val apnsPayload = new SimpleApnsPayloadBuilder()
@@ -169,7 +197,7 @@ object APNSPushProvider {
     )
   }
 
-  def clientCredentials: ApnsClientBuilder => ApnsClientBuilder = builder => {
+  def clientCredentials(apnsConfig: ApnsConfig): ApnsClientBuilder => ApnsClientBuilder = builder => {
     val file = new JFile(apnsConfig.keystore.path)
     if(file.exists){
       builder.setClientCredentials(file, apnsConfig.keystore.password)
@@ -186,17 +214,35 @@ object APNSPushProvider {
 
 object FCMPushProvider{
 
-  lazy val firebaseApp: FirebaseApp = {
-    val databaseUrl = Settings.NotificationConfig.push.fcm.databaseUrl
-    val options = FirebaseOptions.builder().setCredentials(GoogleCredentials.getApplicationDefault())
-    if(databaseUrl.nonEmpty){
-      options.setDatabaseUrl(databaseUrl)
+  private[this] var apps: Map[String, FirebaseApp] = Map.empty
+
+  private[notification] def app(from: From): FirebaseApp = {
+    val key = from.alias.getOrElse(from.value)
+    apps.get(key) match {
+      case Some(app) => app
+      case _ =>
+        val config: FcmConfig = Settings.PushConfigs.get(key).map(_.fcm)
+          .getOrElse(Settings.NotificationConfig.push.fcm)
+        val options =
+          config.googleCredentials match {
+          case Some(googleCredentials) if googleCredentials.trim.nonEmpty =>
+            FirebaseOptions.builder().setCredentials(GoogleCredentials.fromStream(
+              new FileInputStream(new JFile(googleCredentials)))
+            )
+          case _ => FirebaseOptions.builder().setCredentials(GoogleCredentials.getApplicationDefault())
+        }
+        val databaseUrl = config.databaseUrl
+        if(databaseUrl.nonEmpty){
+          options.setDatabaseUrl(databaseUrl)
+        }
+        val app = FirebaseApp.initializeApp(options.build())
+        apps = apps + (key -> app)
+        app
     }
-    FirebaseApp.initializeApp(options.build())
   }
 
   implicit def toFcmPayload(notification: Push)(implicit tokens: Seq[String]): MulticastMessage = {
-    val androidNotification =  AndroidNotification.builder()
+    val androidNotification = AndroidNotification.builder()
       .setTitle(notification.subject)
       .setBody(notification.message)
       .setSound(notification.sound.getOrElse("default"))

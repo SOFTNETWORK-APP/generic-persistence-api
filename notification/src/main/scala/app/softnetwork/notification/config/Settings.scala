@@ -1,18 +1,26 @@
 package app.softnetwork.notification.config
 
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
 import configs.Configs
 
 object Settings extends StrictLogging {
 
-  lazy val NotificationConfig: NotificationConfig = Configs[NotificationConfig].get(ConfigFactory.load(), "notification").toEither match {
+  lazy val config: Config = ConfigFactory.load()
+
+  lazy val NotificationConfig: NotificationConfig = Configs[NotificationConfig].get(config, "notification").toEither match {
     case Left(configError) =>
       logger.error(s"Something went wrong with the provided arguments $configError")
       throw configError.configException
     case Right(r) => r
   }
 
+  import scala.language.implicitConversions
+  import scala.collection.JavaConverters._
+
+  lazy val PushConfigs: Map[String, PushConfig] = config.getStringList("notification.push.apps").asScala.toList.map(app =>
+    app -> Configs[PushConfig].get(config, s"notification.push.$app").value
+  ).toMap
 }
 
 case class MailConfig(host: String,
@@ -36,7 +44,7 @@ case class GcmConfig(apiKey: String)
 
 case class SMSConfig(mode: Option[SMSMode.Config] = None)
 
-case class FcmConfig(databaseUrl: String)
+case class FcmConfig(databaseUrl: String, googleCredentials: Option[String])
 
 case class EventStreams(externalToNotificationTag: String)
 
