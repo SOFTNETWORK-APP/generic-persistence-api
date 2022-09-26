@@ -19,19 +19,25 @@ trait NotificationTestKit extends SchedulerTestKit with NotificationGuardian {_:
     */
   override def roles: Seq[String] = super.roles :+ NotificationConfig.akkaNodeRole
 
-  override def notificationBehavior: ActorSystem[_] => NotificationBehavior[Notification] = _ => MockAllNotificationsBehavior
+  override def notificationBehavior: ActorSystem[_] => Option[NotificationBehavior[Notification]] = _ =>
+    Some(MockAllNotificationsBehavior)
 
-  override def scheduler2NotificationProcessorStream: ActorSystem[_] => Scheduler2NotificationProcessorStream = sys =>
-    new Scheduler2NotificationProcessorStream with MockNotificationHandler with InMemoryJournalProvider {
-      override val tag: String = s"${MockAllNotificationsBehavior.persistenceId}-scheduler"
-      override protected val forTests: Boolean = true
-      override implicit def system: ActorSystem[_] = sys
-    }
+  override def scheduler2NotificationProcessorStream: ActorSystem[_] => Option[Scheduler2NotificationProcessorStream] =
+    sys =>
+      Some(
+        new Scheduler2NotificationProcessorStream with MockNotificationHandler with InMemoryJournalProvider {
+          override val tag: String = s"${MockAllNotificationsBehavior.persistenceId}-scheduler"
+          override protected val forTests: Boolean = true
+          override implicit def system: ActorSystem[_] = sys
+        }
+      )
 
-  override def notificationCommandProcessorStream: ActorSystem[_] => NotificationCommandProcessorStream = sys => {
-    new NotificationCommandProcessorStream with MockNotificationHandler with InMemoryJournalProvider {
-      override val forTests: Boolean = true
-      override implicit def system: ActorSystem[_] = sys
-    }
-  }
+  override def notificationCommandProcessorStream: ActorSystem[_] => Option[NotificationCommandProcessorStream] =
+    sys =>
+      Some(
+        new NotificationCommandProcessorStream with MockNotificationHandler with InMemoryJournalProvider {
+          override val forTests: Boolean = true
+          override implicit def system: ActorSystem[_] = sys
+        }
+      )
 }
