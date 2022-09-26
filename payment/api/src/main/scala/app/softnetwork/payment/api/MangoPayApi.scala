@@ -28,20 +28,10 @@ trait MangoPayApi extends PaymentApplication with JdbcSchemaProvider {
       override def schemaType: JdbcSchema.SchemaType = jdbcSchemaType
     }
 
-  override def notificationBehavior : ActorSystem[_] => NotificationBehavior[Notification] = _ =>
-    AllNotificationsBehavior
-
   override def entity2SchedulerProcessorStream: ActorSystem[_] => Entity2SchedulerProcessorStream = sys =>
     new Entity2SchedulerProcessorStream() with SchedulerHandler with JdbcJournalProvider with JdbcSchemaProvider {
       override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
       override implicit def system: ActorSystem[_] = sys
-    }
-
-  override def scheduler2NotificationProcessorStream: ActorSystem[_] => Scheduler2NotificationProcessorStream = sys =>
-    new Scheduler2NotificationProcessorStream() with NotificationHandler with JdbcJournalProvider with JdbcSchemaProvider {
-      override val tag = s"${AllNotificationsBehavior.persistenceId}-scheduler"
-      override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
-      override implicit val system: ActorSystem[_] = sys
     }
 
   override def scheduler2PaymentProcessorStream: ActorSystem[_] => Scheduler2PaymentProcessorStream = sys =>
@@ -50,13 +40,6 @@ trait MangoPayApi extends PaymentApplication with JdbcSchemaProvider {
       override implicit def system: ActorSystem[_] = sys
       override def schemaType: JdbcSchema.SchemaType = jdbcSchemaType
     }
-
-  override def notificationCommandProcessorStream: ActorSystem[_] => NotificationCommandProcessorStream = sys => {
-    new NotificationCommandProcessorStream with NotificationHandler with JdbcJournalProvider with JdbcSchemaProvider {
-      override lazy val schemaType: JdbcSchema.SchemaType = jdbcSchemaType
-      override implicit def system: ActorSystem[_] = sys
-    }
-  }
 
   override def paymentService: ActorSystem[_] => GenericPaymentService = sys => MangoPayPaymentService(sys)
 

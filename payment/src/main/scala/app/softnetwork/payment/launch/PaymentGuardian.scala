@@ -43,10 +43,10 @@ trait PaymentGuardian extends NotificationGuardian with SessionGuardian {_: Sche
   def scheduler2PaymentProcessorStream: ActorSystem[_] => Scheduler2PaymentProcessorStream
 
   override def scheduler2EntityProcessorStreams: ActorSystem[_] => Seq[Scheduler2EntityProcessorStream[_, _]] = sys =>
-    Seq(
-      scheduler2NotificationProcessorStream(sys),
-      scheduler2PaymentProcessorStream(sys)
-    )
+    (scheduler2NotificationProcessorStream(sys) match {
+      case Some(value) => Seq(value)
+      case _ => Seq.empty
+    }) :+ scheduler2PaymentProcessorStream(sys)
 
   /**
     * initialize all event processor streams
