@@ -103,6 +103,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               assert(naturalUser.email == email)
               assert(naturalUser.userId.isDefined)
               assert(naturalUser.walletId.isDefined)
+              assert(naturalUser.paymentUserType.getOrElse(PaymentUser.PaymentUserType.COLLECTOR).isPayer)
             case other => fail(other.toString)
           }
         case other => fail(other.toString)
@@ -198,6 +199,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               assert(paymentAccount.documents.size == 1)
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
               sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
+              assert(paymentAccount.getNaturalUser.paymentUserType.getOrElse(PaymentUser.PaymentUserType.PAYER).isCollector)
             case other => fail(other.toString)
           }
         case other => fail(other.toString)
@@ -226,6 +228,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               val previousBankAccountId = sellerBankAccountId
               sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
               assert(sellerBankAccountId != previousBankAccountId)
+              assert(paymentAccount.getNaturalUser.paymentUserType.getOrElse(PaymentUser.PaymentUserType.PAYER).isCollector)
             case other => fail(other.toString)
           }
         case other => fail(other.toString)

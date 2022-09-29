@@ -4,12 +4,13 @@ import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.persistence.typed.scaladsl.Effect
 import app.softnetwork.kv.handlers.GenericKeyValueDao
-import app.softnetwork.payment.config.Settings.{PayInStatementDescriptor, AkkaNodeRole}
+import app.softnetwork.payment.config.Settings.{AkkaNodeRole, PayInStatementDescriptor}
 import app.softnetwork.payment.handlers.{GenericPaymentDao, MangoPayPaymentDao, MockPaymentDao, PaymentKvDao}
 import app.softnetwork.payment.message.PaymentEvents._
 import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.message.TransactionEvents._
 import app.softnetwork.payment.model.LegalUser.LegalUserType
+import app.softnetwork.payment.model.PaymentUser.PaymentUserType
 import app.softnetwork.payment.model._
 import app.softnetwork.payment.spi._
 import app.softnetwork.persistence._
@@ -172,7 +173,14 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
           case Some(paymentAccount) =>
             val lastUpdated = now()
             (paymentAccount.userId match {
-              case None => createOrUpdatePaymentAccount(Some(paymentAccount.withNaturalUser(user)))
+              case None =>
+                createOrUpdatePaymentAccount(
+                  Some(
+                    paymentAccount.withNaturalUser(
+                      user.withPaymentUserType(PaymentUserType.PAYER)
+                    )
+                  )
+                )
               case some => some
             }) match {
               case Some(userId) =>
@@ -191,7 +199,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           paymentAccount
                             .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.COMPTE_OK)
                             .copy(user = PaymentAccount.User.NaturalUser(
-                              user.withUserId(userId).withWalletId(walletId))
+                              user.withUserId(userId).withWalletId(walletId).withPaymentUserType(PaymentUserType.PAYER))
                             ).withLastUpdated(lastUpdated)
                         )
                         .withLastUpdated(lastUpdated)
@@ -253,7 +261,9 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       PaymentAccountUpsertedEvent.defaultInstance
                         .withDocument(
                           paymentAccount.copy(
-                            user = PaymentAccount.User.NaturalUser(user.withUserId(userId))
+                            user = PaymentAccount.User.NaturalUser(
+                              user.withUserId(userId).withPaymentUserType(PaymentUserType.PAYER)
+                            )
                           ).withLastUpdated(lastUpdated)
                         )
                         .withLastUpdated(lastUpdated)
@@ -262,7 +272,11 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
               case _ =>
                 Effect.persist(
                   PaymentAccountUpsertedEvent.defaultInstance
-                    .withDocument(paymentAccount.withNaturalUser(user).withLastUpdated(lastUpdated))
+                    .withDocument(
+                      paymentAccount.withNaturalUser(
+                        user.withPaymentUserType(PaymentUserType.PAYER)
+                      ).withLastUpdated(lastUpdated)
+                    )
                     .withLastUpdated(lastUpdated)
                 ).thenRun(_ => CardNotPreRegistered ~> replyTo)
             }
@@ -1258,7 +1272,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                 user match {
                   case None => paymentAccount.user
                   case Some(updatedUser) =>
-                    if(paymentAccount.user.isLegalUser && updatedUser.isLegalUser) {
+                    if (paymentAccount.user.isLegalUser && updatedUser.isLegalUser) {
                       val previousLegalUser = paymentAccount.getLegalUser
                       val updatedLegalUser = updatedUser.legalUser.get
                       PaymentAccount.User.LegalUser(
@@ -1272,17 +1286,23 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                         )
                       )
                     }
-                    else if(paymentAccount.user.isNaturalUser && updatedUser.isNaturalUser){
+                    else if (paymentAccount.user.isNaturalUser && updatedUser.isNaturalUser) {
                       val previousNaturalUser = paymentAccount.getNaturalUser
                       val updatedNaturalUser = updatedUser.naturalUser.get
                       PaymentAccount.User.NaturalUser(
                         updatedNaturalUser.copy(
                           userId = previousNaturalUser.userId,
                           walletId = previousNaturalUser.walletId
-                        )
+                        ).withPaymentUserType(PaymentUserType.COLLECTOR)
                       )
                     }
-                    else{
+                    else if (updatedUser.isNaturalUser) {
+                      val updatedNaturalUser = updatedUser.naturalUser.get
+                      PaymentAccount.User.NaturalUser(
+                        updatedNaturalUser.withPaymentUserType(PaymentUserType.COLLECTOR)
+                      )
+                    }
+                    else {
                       updatedUser
                     }
                 }
