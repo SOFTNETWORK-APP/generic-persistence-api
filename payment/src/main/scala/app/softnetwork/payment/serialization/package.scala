@@ -22,6 +22,7 @@ package object serialization {
           GeneratedEnumSerializer(KycDocument.KycDocumentType.enumCompanion),
           GeneratedEnumSerializer(UboDeclaration.UboDeclarationStatus.enumCompanion),
           GeneratedEnumSerializer(Transaction.PaymentType.enumCompanion),
+          GeneratedEnumSerializer(PaymentUser.PaymentUserType.enumCompanion),
           GeneratedEnumSerializer(LegalUser.LegalUserType.enumCompanion),
           GeneratedEnumSerializer(PaymentAccount.PaymentAccountStatus.enumCompanion),
           GeneratedEnumSerializer(BankAccount.MandateStatus.enumCompanion),
