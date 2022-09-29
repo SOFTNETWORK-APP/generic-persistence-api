@@ -10,6 +10,7 @@ import com.mangopay.entities.subentities._
 import app.softnetwork.payment.model.{RecurringPayment, _}
 import app.softnetwork.payment.config.Settings
 import Settings.MangoPayConfig._
+import app.softnetwork.payment.model.PaymentUser.PaymentUserType
 import app.softnetwork.payment.model.RecurringPayment.RecurringCardPaymentState
 
 import scala.util.{Failure, Success, Try}
@@ -53,6 +54,14 @@ trait MockMangoPayProvider extends MangoPayProvider {
             user.setTag(externalUuid)
             user.setNationality(CountryIso.valueOf(nationality))
             user.setCountryOfResidence(CountryIso.valueOf(countryOfResidence))
+            paymentUserType match {
+              case Some(value) =>
+                value match {
+                  case PaymentUserType.PAYER => user.setUserCategory(UserCategory.PAYER)
+                  case _ => user.setUserCategory(UserCategory.OWNER)
+                }
+              case _ => // FIXME
+            }
             if (userId.getOrElse("").trim.isEmpty) {
               Users.values.find(_.getTag == externalUuid) match {
                 case Some(u) => user.setId(u.getId)

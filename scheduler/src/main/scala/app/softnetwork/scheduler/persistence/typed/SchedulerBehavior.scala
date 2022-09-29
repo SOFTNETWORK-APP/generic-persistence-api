@@ -130,7 +130,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
             case Some(scheduler) =>
               scheduler.schedules.find(_.uuid == schedule.uuid) match {
                 case Some(s) => schedule.copy(lastTriggered = s.lastTriggered)
-                case _ => schedule
+                case _ => schedule.copy(lastTriggered = None)
               }
             case _ => schedule
           }
@@ -248,7 +248,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                 if(cmd.cronTab.nextTriggered.isEmpty){
                   cmd.cronTab.nextLocalDateTime() match {
                     case Some(ldt) =>
-                      val updatedCronTab = cmd.cronTab.withNextTriggered(Timestamp.valueOf(ldt))
+                      val updatedCronTab = cmd.cronTab.withNextTriggered(Timestamp.valueOf(ldt)).copy(lastTriggered = None)
                       context.log.info(s"$updatedCronTab added")
                       Some(updatedCronTab)
                     case _ => None
@@ -256,7 +256,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                 }
                 else{
                   context.log.info(s"${cmd.cronTab} added")
-                  Some(cmd.cronTab)
+                  Some(cmd.cronTab.copy(lastTriggered = None))
                 }
             }
           case _ => None

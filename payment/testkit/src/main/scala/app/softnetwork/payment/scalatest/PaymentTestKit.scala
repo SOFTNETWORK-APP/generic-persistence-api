@@ -15,7 +15,6 @@ import app.softnetwork.payment.persistence.query.{GenericPaymentCommandProcessor
 import app.softnetwork.payment.persistence.typed.{GenericPaymentBehavior, MockPaymentBehavior}
 import app.softnetwork.payment.service.{GenericPaymentService, MockPaymentService}
 import app.softnetwork.persistence.query.InMemoryJournalProvider
-import app.softnetwork.scheduler.persistence.query.Scheduler2EntityProcessorStream
 import app.softnetwork.session.scalatest.{SessionServiceRoute, SessionTestKit}
 import org.scalatest.Suite
 
@@ -44,12 +43,6 @@ trait PaymentTestKit extends NotificationTestKit with PaymentGuardian {_: Suite 
       override protected val forTests: Boolean = true
       override implicit def system: ActorSystem[_] = sys
     }
-
-  override def scheduler2EntityProcessorStreams: ActorSystem[_] => Seq[Scheduler2EntityProcessorStream[_, _]] = sys =>
-    Seq(
-      scheduler2NotificationProcessorStream(sys),
-      scheduler2PaymentProcessorStream(sys)
-    )
 
   def payInFor3DS(orderUuid: String, transactionId: String, registerCard: Boolean)(implicit system: ActorSystem[_]
   ): Future[Either[PayInFailed, Either[PaymentRedirection, PaidIn]]] = {

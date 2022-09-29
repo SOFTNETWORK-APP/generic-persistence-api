@@ -59,6 +59,10 @@ message BankAccount {
 }
 
 message PaymentUser {
+    enum PaymentUserType {
+        PAYER = 0;
+        COLLECTOR = 1;
+    }
     option (scalapb.message).extends = "ProtobufDomainObject";
     option (scalapb.message).extends = "PaymentUserDecorator";
     option (scalapb.message).companion_extends = "PaymentUserCompanion";
@@ -72,6 +76,7 @@ message PaymentUser {
     optional string walletId = 8;
     required string externalUuid = 9;
     optional string profile = 10;
+    optional PaymentUserType paymentUserType = 11;
     extensions 100 to max;
 }
 
