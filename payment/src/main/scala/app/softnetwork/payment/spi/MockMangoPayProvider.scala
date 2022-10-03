@@ -118,6 +118,14 @@ trait MockMangoPayProvider extends MangoPayProvider {
             user.setLegalRepresentativeNationality(CountryIso.valueOf(legalRepresentative.nationality))
             user.setEmail(legalRepresentative.email)
             user.setCompanyNumber(siret)
+            legalRepresentative.paymentUserType match {
+              case Some(value) =>
+                value match {
+                  case PaymentUserType.PAYER => user.setUserCategory(UserCategory.PAYER)
+                  case _ => user.setUserCategory(UserCategory.OWNER)
+                }
+              case _ => user.setUserCategory(UserCategory.OWNER)
+            }
             user.setTag(legalRepresentative.externalUuid)
             if (legalRepresentative.userId.trim.isEmpty) {
               LegalUsers.values.find(_.getTag == legalRepresentative.externalUuid) match {

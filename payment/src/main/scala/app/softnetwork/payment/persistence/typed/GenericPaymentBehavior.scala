@@ -1280,9 +1280,21 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                           legalRepresentative = updatedLegalUser.legalRepresentative.copy(
                             userId = previousLegalUser.legalRepresentative.userId,
                             walletId = previousLegalUser.legalRepresentative.walletId
+                          ).withPaymentUserType(
+                            updatedLegalUser.legalRepresentative.paymentUserType.getOrElse(PaymentUserType.COLLECTOR)
                           ),
                           uboDeclaration = previousLegalUser.uboDeclaration,
                           lastAcceptedTermsOfPSP = previousLegalUser.lastAcceptedTermsOfPSP
+                        )
+                      )
+                    }
+                    else if (updatedUser.isLegalUser) {
+                      val updatedLegalUser = updatedUser.legalUser.get
+                      PaymentAccount.User.LegalUser(
+                        updatedLegalUser.copy(
+                          legalRepresentative = updatedLegalUser.legalRepresentative.withPaymentUserType(
+                            updatedLegalUser.legalRepresentative.paymentUserType.getOrElse(PaymentUserType.COLLECTOR)
+                          )
                         )
                       )
                     }
@@ -1293,13 +1305,17 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                         updatedNaturalUser.copy(
                           userId = previousNaturalUser.userId,
                           walletId = previousNaturalUser.walletId
-                        ).withPaymentUserType(PaymentUserType.COLLECTOR)
+                        ).withPaymentUserType(
+                          updatedNaturalUser.paymentUserType.getOrElse(PaymentUserType.COLLECTOR)
+                        )
                       )
                     }
                     else if (updatedUser.isNaturalUser) {
                       val updatedNaturalUser = updatedUser.naturalUser.get
                       PaymentAccount.User.NaturalUser(
-                        updatedNaturalUser.withPaymentUserType(PaymentUserType.COLLECTOR)
+                        updatedNaturalUser.withPaymentUserType(
+                          updatedNaturalUser.paymentUserType.getOrElse(PaymentUserType.COLLECTOR)
+                        )
                       )
                     }
                     else {
@@ -1335,7 +1351,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                   Effect.none.thenRun(_ => UserRequired ~> replyTo)
                 case _ =>
 
-                  val shouldCreateUser = paymentAccount.emptyUser && !updatedPaymentAccount.emptyUser
+                  val shouldCreateUser = paymentAccount.userId.isEmpty
 
                   val shouldUpdateUserType = !shouldCreateUser && {
                     if(paymentAccount.legalUser){ // previous user is a legal user
@@ -1347,7 +1363,7 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                     }
                   }
 
-                  val shouldUpdateUser = {
+                  val shouldUpdateKYC =
                     shouldUpdateUserType ||
                       paymentAccount.maybeUser.map(_.firstName).getOrElse("") !=
                         updatedPaymentAccount.maybeUser.map(_.firstName).getOrElse("") ||
@@ -1355,30 +1371,52 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                         updatedPaymentAccount.maybeUser.map(_.lastName).getOrElse("") ||
                       paymentAccount.maybeUser.map(_.birthday).getOrElse("") !=
                         updatedPaymentAccount.maybeUser.map(_.birthday).getOrElse("")
-                  }
+
+                  val shouldUpdateUser = shouldUpdateKYC ||
+                    (updatedPaymentAccount.legalUser &&
+                      (updatedPaymentAccount.getLegalUser.legalName != paymentAccount.getLegalUser.legalName ||
+                        updatedPaymentAccount.getLegalUser.siret != paymentAccount.getLegalUser.siret ||
+                        !updatedPaymentAccount.getLegalUser.legalRepresentativeAddress.equals(
+                          paymentAccount.getLegalUser.legalRepresentativeAddress
+                        ) ||
+                        !updatedPaymentAccount.getLegalUser.headQuartersAddress.equals(
+                          paymentAccount.getLegalUser.headQuartersAddress
+                        ) ||
+                        updatedPaymentAccount.getLegalUser.legalRepresentative.email
+                          != paymentAccount.getLegalUser.legalRepresentative.email ||
+                        updatedPaymentAccount.getLegalUser.legalRepresentative.nationality
+                          != paymentAccount.getLegalUser.legalRepresentative.nationality ||
+                        updatedPaymentAccount.getLegalUser.legalRepresentative.countryOfResidence
+                          != paymentAccount.getLegalUser.legalRepresentative.countryOfResidence)) ||
+                    (!updatedPaymentAccount.legalUser && (
+                      updatedPaymentAccount.getNaturalUser.email != paymentAccount.getNaturalUser.email ||
+                        updatedPaymentAccount.getNaturalUser.nationality != paymentAccount.getNaturalUser.nationality ||
+                        updatedPaymentAccount.getNaturalUser.countryOfResidence
+                          != paymentAccount.getNaturalUser.countryOfResidence))
+
+                  //val shouldCreateOrUpdateUser = shouldCreateUser || shouldUpdateUser
 
                   val shouldCreateBankAccount = paymentAccount.bankAccount.isEmpty ||
                     paymentAccount.bankAccount.flatMap(_.id).isEmpty
 
                   val shouldUpdateBankAccount = !shouldCreateBankAccount && (
-                    paymentAccount.bankAccount.map(_.ownerName).getOrElse("") != bankAccount.ownerName || // TODO OwnerAddress
+                    paymentAccount.bankAccount.map(_.ownerName).getOrElse("") != bankAccount.ownerName ||
+                      !paymentAccount.getBankAccount.ownerAddress.equals(bankAccount.ownerAddress) ||
                       !paymentAccount.bankAccount.exists(_.checkIfSameIban(bankAccount.iban)) ||
-                      !paymentAccount.bankAccount.exists(_.checkIfSameBic(bankAccount.bic)) ||
-                      shouldUpdateUser
+                      !paymentAccount.bankAccount.exists(_.checkIfSameBic(bankAccount.bic)) /*||
+                      shouldUpdateUser*/
                     )
 
                   val shouldCreateOrUpdateBankAccount = shouldCreateBankAccount || shouldUpdateBankAccount
 
                   val documents: List[KycDocument] = initDocuments(updatedPaymentAccount)
 
-                  val shouldUpdateDocuments = shouldUpdateUser &&
-                    documents.exists(!_.status.isKycDocumentNotSpecified)
+                  val shouldUpdateDocuments = shouldUpdateKYC
 
                   val shouldCancelMandate = shouldUpdateBankAccount &&
                     paymentAccount.bankAccount.flatMap(_.mandateId).isDefined
 
                   val shouldCreateUboDeclaration = updatedPaymentAccount.legalUser &&
-                    shouldUpdateUser &&
                     updatedPaymentAccount.getLegalUser.uboDeclarationRequired &&
                     updatedPaymentAccount.getLegalUser.uboDeclaration.isEmpty
 
@@ -1484,17 +1522,21 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                 }
                               }
 
-                              if(shouldUpdateDocuments){
-                                updatedPaymentAccount = updatedPaymentAccount.withDocuments(
-                                  documents.map(
-                                    _.copy(
-                                      lastUpdated = Some(lastUpdated),
-                                      status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED,
-                                      refusedReasonType = None,
-                                      refusedReasonMessage = None
-                                    )
-                                  )
-                                ).withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.DOCUMENTS_KO)
+                              if(shouldUpdateDocuments){ // TODO we should rely on the payment provider to update document status
+                                updatedPaymentAccount =
+                                  updatedPaymentAccount
+                                    /*.withDocuments(
+                                      documents.map(
+                                        _.copy(
+                                          lastUpdated = Some(lastUpdated),
+                                          status = KycDocument.KycDocumentStatus.KYC_DOCUMENT_NOT_SPECIFIED,
+                                          refusedReasonType = None,
+                                          refusedReasonMessage = None
+                                        )
+                                      )
+                                    )*/
+                                    .withDocuments(documents)
+                                    .withPaymentAccountStatus(PaymentAccount.PaymentAccountStatus.DOCUMENTS_KO)
 
                                 // PaymentAccountStatusUpdatedEvent
                                 events = events ++
@@ -1540,15 +1582,27 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                                     .withDocuments(updatedPaymentAccount.documents)
                                 )
 
+                              val encodedPaymentAccount =
+                                updatedPaymentAccount.copy(
+                                  bankAccount = updatedPaymentAccount.bankAccount.map(_.encode())
+                                )
+
                               Effect.persist(events :+
                                 PaymentAccountUpsertedEvent.defaultInstance
-                                  .withDocument(
-                                    updatedPaymentAccount.copy(
-                                      bankAccount = updatedPaymentAccount.bankAccount.map(_.encode())
-                                    )
-                                  )
+                                  .withDocument(encodedPaymentAccount)
                                   .withLastUpdated(lastUpdated)
-                              )thenRun(_ => BankAccountCreatedOrUpdated ~> replyTo)
+                              )thenRun(_ => BankAccountCreatedOrUpdated(
+                                shouldCreateUser,
+                                shouldUpdateUserType,
+                                shouldUpdateKYC,
+                                shouldUpdateUser,
+                                shouldCreateBankAccount,
+                                shouldUpdateBankAccount,
+                                shouldUpdateDocuments,
+                                shouldCancelMandate,
+                                shouldCreateUboDeclaration,
+                                encodedPaymentAccount.view
+                              ) ~> replyTo)
 
                             case _ => Effect.none.thenRun(_ => BankAccountNotCreatedOrUpdated ~> replyTo)
                           }
@@ -1931,7 +1985,10 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
       case _: DeleteBankAccount =>
         state match {
           case Some(paymentAccount) =>
-            if(paymentAccount.mandateActivated /*&& paymentAccount.recurryingPayments.exists(_.`type`.isDirectDebit)*/){
+            if(paymentAccount.mandateActivated && (
+//              paymentAccount.transactions.exists(t => t.`type`.isDirectDebit) ||
+                paymentAccount.recurryingPayments.exists(r => r.`type`.isDirectDebit && r.nextPaymentDate.isDefined))
+            ){
               Effect.none.thenRun(_ => BankAccountNotDeleted ~> replyTo)
             }
             else{
@@ -1993,10 +2050,10 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
                       .withDocument(updatedPaymentAccount)
                       .withLastUpdated(lastUpdated)
                   ).thenRun(_ => BankAccountDeleted ~> replyTo)
-                case _ => Effect.none.thenRun(_ => BankAccountNotDeleted ~> replyTo)
+                case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
               }
             }
-          case _ => Effect.none.thenRun(_ => BankAccountNotFound ~> replyTo)
+          case _ => Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
         }
 
       case _: LoadCards =>

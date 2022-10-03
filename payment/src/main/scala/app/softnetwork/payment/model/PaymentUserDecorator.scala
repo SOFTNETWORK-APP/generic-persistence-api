@@ -14,7 +14,8 @@ case class PaymentUserView(userId: Option[String] = None,
                            birthday: String,
                            countryOfResidence: String,
                            externalUuid: String,
-                           profile: Option[String] = None)
+                           profile: Option[String] = None,
+                           paymentUserType: Option[PaymentUser.PaymentUserType] = None)
 
 object PaymentUserView{
   def apply(paymentUser: PaymentUser): PaymentUserView = {
@@ -28,7 +29,8 @@ object PaymentUserView{
       birthday,
       countryOfResidence,
       externalUuid,
-      profile
+      profile,
+      paymentUserType
     )
   }
 }

@@ -587,7 +587,7 @@ trait GenericPaymentService extends SessionService
                     acceptedTermsOfPSP
                   )
                 ) completeWith {
-                  case _: BankAccountCreatedOrUpdated.type => complete(HttpResponse(StatusCodes.OK))
+                  case r: BankAccountCreatedOrUpdated => complete(HttpResponse(StatusCodes.OK, entity = r))
                   case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                   case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                   case _ => complete(HttpResponse(StatusCodes.BadRequest))
@@ -597,8 +597,9 @@ trait GenericPaymentService extends SessionService
             delete {
               run(DeleteBankAccount(externalUuidWithProfile(session))) completeWith {
                 case _: BankAccountDeleted.type  => complete(HttpResponse(StatusCodes.OK))
+                case r: BankAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
                 case r: PaymentAccountNotFound.type => complete(HttpResponse(StatusCodes.NotFound, entity = r))
-                case r: PaymentError => complete(HttpResponse(StatusCodes.NotFound, entity = r))
+                case r: PaymentError => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
                 case _ => complete(HttpResponse(StatusCodes.BadRequest))
               }
             }

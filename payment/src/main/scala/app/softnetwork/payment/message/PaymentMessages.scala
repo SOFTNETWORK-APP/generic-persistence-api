@@ -505,7 +505,16 @@ object PaymentMessages {
 
   case class PaymentAccountLoaded(paymentAccount: PaymentAccount) extends PaymentResult
 
-  case object BankAccountCreatedOrUpdated extends PaymentResult
+  case class BankAccountCreatedOrUpdated(userCreated: Boolean,
+                                         userTypeUpdated: Boolean,
+                                         kycUpdated: Boolean,
+                                         userUpdated: Boolean,
+                                         bankAccountCreated: Boolean,
+                                         bankAccountUpdated: Boolean,
+                                         documentsUpdated: Boolean,
+                                         mandateCanceled: Boolean,
+                                         uboDeclarationCreated: Boolean,
+                                         paymentAccount: PaymentAccountView) extends PaymentResult
 
   case object MandateCreated extends PaymentResult
 

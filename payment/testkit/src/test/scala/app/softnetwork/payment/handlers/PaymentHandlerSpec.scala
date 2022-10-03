@@ -191,7 +191,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         BankAccount(None, ownerName, ownerAddress, iban, bic),
         Some(User.NaturalUser(naturalUser.withExternalUuid(sellerUuid).withProfile("seller")))
       )) await {
-        case BankAccountCreatedOrUpdated =>
+        case r: BankAccountCreatedOrUpdated =>
+          assert(r.userCreated)
           !? (LoadPaymentAccount(computeExternalUuidWithProfile(sellerUuid, Some("seller")))) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
@@ -207,6 +208,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
     }
 
     "update bank account with natural user" in {
+      // update first name
       !? (CreateOrUpdateBankAccount(
         computeExternalUuidWithProfile(sellerUuid, Some("seller")),
         BankAccount(
@@ -216,22 +218,128 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
           iban,
           bic
         ),
-        Some(User.NaturalUser(naturalUser.withLastName("anotherLastName").withExternalUuid(sellerUuid).withProfile("seller")))
+        Some(
+          User.NaturalUser(
+            naturalUser
+              .withFirstName("anotherFirstName")
+              .withExternalUuid(sellerUuid).withProfile("seller")
+          )
+        )
       )) await {
-        case BankAccountCreatedOrUpdated =>
+        case r: BankAccountCreatedOrUpdated =>
+          assert(r.kycUpdated && r.userUpdated && r.documentsUpdated)
           !? (LoadPaymentAccount(computeExternalUuidWithProfile(sellerUuid, Some("seller")))) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
               assert(paymentAccount.bankAccount.isDefined)
               assert(paymentAccount.documents.size == 1)
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
-              val previousBankAccountId = sellerBankAccountId
+//              val previousBankAccountId = sellerBankAccountId
               sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
-              assert(sellerBankAccountId != previousBankAccountId)
+//              assert(sellerBankAccountId != previousBankAccountId)
               assert(paymentAccount.getNaturalUser.paymentUserType.getOrElse(PaymentUser.PaymentUserType.PAYER).isCollector)
             case other => fail(other.toString)
           }
         case other => fail(other.toString)
+      }
+      // update last name
+      !? (CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        BankAccount(
+          Some(sellerBankAccountId),
+          ownerName,
+          ownerAddress,
+          iban,
+          bic
+        ),
+        Some(
+          User.NaturalUser(
+            naturalUser
+              .withFirstName("anotherFirstName")
+              .withLastName("anotherLastName")
+              .withExternalUuid(sellerUuid).withProfile("seller")
+          )
+        )
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(r.kycUpdated && r.userUpdated && r.documentsUpdated)
+        case other => fail(other.toString)
+      }
+      // update birthday
+      !? (CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        BankAccount(
+          Some(sellerBankAccountId),
+          ownerName,
+          ownerAddress,
+          iban,
+          bic
+        ),
+        Some(
+          User.NaturalUser(
+            naturalUser
+              .withFirstName("anotherFirstName")
+              .withLastName("anotherLastName")
+              .withBirthday("01/01/1980")
+              .withExternalUuid(sellerUuid).withProfile("seller")
+          )
+        )
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(r.kycUpdated && r.userUpdated && r.documentsUpdated)
+        case other => fail(other.toString)
+      }
+    }
+
+    "update bank account except kyc information with natural user" in {
+      // update country of residence
+      !?(CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        BankAccount(
+          Some(sellerBankAccountId),
+          ownerName,
+          ownerAddress,
+          iban,
+          bic
+        ),
+        Some(
+          User.NaturalUser(
+            naturalUser
+              .withFirstName("anotherFirstName")
+              .withLastName("anotherLastName")
+              .withBirthday("01/01/1980")
+              .withCountryOfResidence("GA")
+              .withExternalUuid(sellerUuid).withProfile("seller")
+          )
+        )
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(!r.kycUpdated && !r.documentsUpdated && r.userUpdated)
+      }
+      // update nationality
+      !?(CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        BankAccount(
+          Some(sellerBankAccountId),
+          ownerName,
+          ownerAddress,
+          iban,
+          bic
+        ),
+        Some(
+          User.NaturalUser(
+            naturalUser
+              .withFirstName("anotherFirstName")
+              .withLastName("anotherLastName")
+              .withBirthday("01/01/1980")
+              .withCountryOfResidence("GA")
+              .withNationality("GA")
+              .withExternalUuid(sellerUuid).withProfile("seller")
+          )
+        )
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(!r.kycUpdated && !r.documentsUpdated && r.userUpdated)
       }
     }
 
@@ -299,7 +407,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         Some(User.LegalUser(legalUser.withLegalRepresentative(legalUser.legalRepresentative.withProfile("seller")))),
         Some(true)
       )) await {
-        case BankAccountCreatedOrUpdated =>
+        case r: BankAccountCreatedOrUpdated =>
+          assert(r.userTypeUpdated && r.kycUpdated && r.documentsUpdated && r.userUpdated)
           !? (LoadPaymentAccount(computeExternalUuidWithProfile(sellerUuid, Some("seller")))) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
@@ -307,9 +416,9 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               assert(paymentAccount.documents.size == 2)
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_IDENTITY_PROOF))
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_REGISTRATION_PROOF))
-              val previousBankAccountId = sellerBankAccountId
+//              val previousBankAccountId = sellerBankAccountId
               sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
-              assert(sellerBankAccountId != previousBankAccountId)
+//              assert(sellerBankAccountId != previousBankAccountId)
             case other => fail(other.toString)
           }
         case other => fail(other.toString)
@@ -326,10 +435,20 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
           iban,
           bic
         ),
-        Some(User.LegalUser(legalUser.withLegalUserType(LegalUser.LegalUserType.BUSINESS).withLegalRepresentative(legalUser.legalRepresentative.withProfile("seller")))),
+        Some(
+          User.LegalUser(
+            legalUser
+              .withLegalUserType(LegalUser.LegalUserType.BUSINESS)
+              .withLegalRepresentative(
+                legalUser.legalRepresentative
+                  .withProfile("seller")
+              )
+          )
+        ),
         Some(true)
       )) await {
-        case BankAccountCreatedOrUpdated =>
+        case r: BankAccountCreatedOrUpdated =>
+          assert(r.userTypeUpdated && r.kycUpdated && r.documentsUpdated && r.userUpdated)
           !? (LoadPaymentAccount(computeExternalUuidWithProfile(sellerUuid, Some("seller")))) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount
@@ -341,12 +460,90 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
               assert(paymentAccount.documents.exists(_.`type` == KycDocument.KycDocumentType.KYC_SHAREHOLDER_DECLARATION))
               assert(paymentAccount.getLegalUser.uboDeclarationRequired)
               assert(paymentAccount.getLegalUser.uboDeclaration.map(_.id).isDefined)
-              val previousBankAccountId = sellerBankAccountId
+//              val previousBankAccountId = sellerBankAccountId
               sellerBankAccountId = paymentAccount.bankAccount.flatMap(_.id).getOrElse("")
-              assert(sellerBankAccountId != previousBankAccountId)
+//              assert(sellerBankAccountId != previousBankAccountId)
               uboDeclarationId = paymentAccount.getLegalUser.uboDeclaration.map(_.id).getOrElse("")
             case other => fail(other.toString)
           }
+        case other => fail(other.toString)
+      }
+    }
+
+    "update bank account except kyc information with business legal user" in {
+      var updatedBankAccount =
+        BankAccount(
+          Some(sellerBankAccountId),
+          ownerName,
+          ownerAddress,
+          iban,
+          bic
+        )
+      var updatedLegalUser =
+        legalUser
+          .withLegalUserType(LegalUser.LegalUserType.BUSINESS)
+          .withLegalRepresentative(
+            legalUser.legalRepresentative
+              .withProfile("seller")
+          )
+      // update bank account owner name
+      updatedBankAccount = updatedBankAccount.withOwnerName("anotherOwnerName")
+      !? (CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        updatedBankAccount,
+        Some(User.LegalUser(updatedLegalUser)),
+        Some(true)
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(!r.userTypeUpdated && !r.kycUpdated && !r.documentsUpdated && !r.userUpdated && r.bankAccountUpdated)
+        case other => fail(other.toString)
+      }
+      // update bank account owner address
+      updatedBankAccount = updatedBankAccount.withOwnerAddress(ownerAddress.withAddressLine("anotherAddressLine"))
+      !? (CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        updatedBankAccount,
+        Some(User.LegalUser(updatedLegalUser)),
+        Some(true)
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(!r.userTypeUpdated && !r.kycUpdated && !r.documentsUpdated && !r.userUpdated && r.bankAccountUpdated)
+        case other => fail(other.toString)
+      }
+      // update bank account iban
+      updatedBankAccount = updatedBankAccount.withIban("FR8914508000308185764223C20")
+      !? (CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        updatedBankAccount,
+        Some(User.LegalUser(updatedLegalUser)),
+        Some(true)
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(!r.userTypeUpdated && !r.kycUpdated && !r.documentsUpdated && !r.userUpdated && r.bankAccountUpdated)
+        case other => fail(other.toString)
+      }
+      // update bank account bic
+      updatedBankAccount = updatedBankAccount.withBic("AGFBFRCC")
+      !? (CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        updatedBankAccount,
+        Some(User.LegalUser(updatedLegalUser)),
+        Some(true)
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(!r.userTypeUpdated && !r.kycUpdated && !r.documentsUpdated && !r.userUpdated && r.bankAccountUpdated)
+        case other => fail(other.toString)
+      }
+      // update siret
+      updatedLegalUser = updatedLegalUser.withSiret("12345678912345")
+      !? (CreateOrUpdateBankAccount(
+        computeExternalUuidWithProfile(sellerUuid, Some("seller")),
+        updatedBankAccount,
+        Some(User.LegalUser(updatedLegalUser)),
+        Some(true)
+      )) await {
+        case r: BankAccountCreatedOrUpdated =>
+          assert(!r.userTypeUpdated && !r.documentsUpdated && r.userUpdated && !r.bankAccountUpdated)
         case other => fail(other.toString)
       }
     }
@@ -532,7 +729,8 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         BankAccount(None, ownerName, ownerAddress, iban, bic),
         Some(User.NaturalUser(naturalUser.withExternalUuid(vendorUuid).withProfile("vendor")))
       )) await {
-        case BankAccountCreatedOrUpdated =>
+        case r: BankAccountCreatedOrUpdated =>
+          assert(r.userCreated)
           !? (LoadPaymentAccount(computeExternalUuidWithProfile(vendorUuid, Some("vendor")))) await {
             case result: PaymentAccountLoaded =>
               val paymentAccount = result.paymentAccount

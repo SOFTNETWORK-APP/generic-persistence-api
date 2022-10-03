@@ -9,6 +9,15 @@ trait AddressDecorator {self: Address =>
       postalCode.trim.isEmpty
 
   lazy val view: AddressView = AddressView(self)
+
+  override def equals(obj: Any): Boolean = obj match {
+    case address: Address =>
+      address.addressLine.equals(addressLine) &&
+        address.city.equals(city) &&
+        address.country.equals(country) &&
+        address.postalCode.equals(postalCode)
+    case _ => super.equals(obj)
+  }
 }
 
 case class AddressView(addressLine: String,
