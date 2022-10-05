@@ -9,4 +9,4 @@ libraryDependencies ++= Seq(
   "app.softnetwork.protobuf" %% "scalapb-extensions" % "0.1.5"
 )
 
-unmanagedResourceDirectories in Compile += baseDirectory.value / "src/main/protobuf"
+Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"

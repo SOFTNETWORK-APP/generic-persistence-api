@@ -1,6 +1,6 @@
 app.softnetwork.sbt.build.Publication.settings
 
-parallelExecution in Test := false
+Test / parallelExecution := false
 
 organization := "app.softnetwork.persistence"
 

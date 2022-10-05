@@ -1,22 +1,20 @@
 package app.softnetwork.api.server
 
+import akka.{Done, actor => classic}
 import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
 import akka.grpc.scaladsl.ServiceHandler
 import akka.http.scaladsl.Http
-import akka.{Done, actor => classic}
-import app.softnetwork.api.server.config.Settings._
+import app.softnetwork.api.server.config.Settings.{Interface, Port}
 import app.softnetwork.config.Settings
 import app.softnetwork.persistence.launch.PersistenceGuardian
 import app.softnetwork.persistence.query.SchemaProvider
+import com.typesafe.scalalogging.StrictLogging
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
-/**
-  * Created by smanciot on 25/04/2020.
-  */
-trait ApiServer extends PersistenceGuardian {_: ApiRoutes with GrpcServices with SchemaProvider =>
+trait GrpcServer extends PersistenceGuardian with StrictLogging {_: GrpcServices with SchemaProvider =>
 
   lazy val interface: String = Interface
 
@@ -31,14 +29,7 @@ trait ApiServer extends PersistenceGuardian {_: ApiRoutes with GrpcServices with
 
     implicit val ec: ExecutionContextExecutor = classicSystem.dispatcher
 
-    Http().newServerAt(interface, port).bind(
-      mainRoutes(system) ~
-        handle(
-          ServiceHandler.concatOrNotFound(
-            mainServices(system):_*
-          )
-        )
-    ).onComplete {
+    Http().newServerAt(interface, port).bind(ServiceHandler.concatOrNotFound(mainServices(system):_*)).onComplete {
       case Success(binding) =>
         val address = binding.localAddress
         classicSystem.log.info(
@@ -63,3 +54,4 @@ trait ApiServer extends PersistenceGuardian {_: ApiRoutes with GrpcServices with
     }
   }
 }
+

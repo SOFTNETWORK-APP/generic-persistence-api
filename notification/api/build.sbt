@@ -1,14 +1,14 @@
 import com.typesafe.sbt.packager.docker._
 
-mainClass in Compile := Some("app.softnetwork.notification.api.NotificationPostgresLauncher")
+Compile / mainClass := Some("app.softnetwork.notification.api.NotificationPostgresLauncher")
 
 dockerBaseImage := "openjdk:8"
 
-dockerEntrypoint := Seq(s"${(defaultLinuxInstallLocation in Docker).value}/bin/entrypoint.sh")
+dockerEntrypoint := Seq(s"${(Docker / defaultLinuxInstallLocation).value}/bin/entrypoint.sh")
 
 dockerExposedVolumes := Seq(
-  s"${(defaultLinuxInstallLocation in Docker).value}/conf",
-  s"${(defaultLinuxInstallLocation in Docker).value}/logs"
+  s"${(Docker / defaultLinuxInstallLocation).value}/conf",
+  s"${(Docker / defaultLinuxInstallLocation).value}/logs"
 )
 
 dockerExposedPorts := Seq(
@@ -20,7 +20,7 @@ dockerExposedPorts := Seq(
 
 dockerRepository := Some("softnetwork.jfrog.io/default-docker-local")
 
-scriptClasspath in bashScriptDefines ~= (cp => "../conf" +: cp)
+bashScriptDefines / scriptClasspath ~= (cp => "../conf" +: cp)
 
 organization := "app.softnetwork.persistence"
 

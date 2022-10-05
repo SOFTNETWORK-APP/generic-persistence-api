@@ -112,7 +112,13 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |
                 |""".stripMargin
 
-  lazy val akkaConfig: Config = ConfigFactory.parseString(akka)
+  /**
+    *
+    * @return additional configuration
+    */
+  def additionalConfig: String = ""
+
+  lazy val akkaConfig: Config = ConfigFactory.parseString(akka + additionalConfig)
 
   lazy val config: Config = akkaConfig.withFallback(ConfigFactory.load())
 

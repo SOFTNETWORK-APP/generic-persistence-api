@@ -30,7 +30,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.2.3.18"
+ThisBuild / version := "0.2.4.0"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -51,15 +51,16 @@ ThisBuild / libraryDependencies ++= Seq(
 
 Test / parallelExecution := false
 
-val pbSettings = Seq(
+/*val pbSettings = Seq(
   Compile / PB.targets := Seq(
     scalapb.gen() -> crossTarget.value / "protobuf_managed/main"
   )
-)
+)*/
 
 lazy val common = project.in(file("common"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
 
 lazy val commonTestkit = project.in(file("common/testkit"))
   .configs(IntegrationTest)
@@ -119,7 +120,8 @@ lazy val akkaJdbc = project.in(file("akka-jdbc"))
 
 lazy val counter = project.in(file("counter"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -129,7 +131,8 @@ lazy val counter = project.in(file("counter"))
 
 lazy val scheduler = project.in(file("scheduler"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -152,8 +155,8 @@ lazy val schedulerTestkit = project.in(file("scheduler/testkit"))
 
 lazy val schedulerApi = project.in(file("scheduler/api"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
-  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings/*, pbSettings*/)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin, AkkaGrpcPlugin)
   .dependsOn(
     scheduler % "compile->compile;test->test;it->it"
   )
@@ -163,7 +166,8 @@ lazy val schedulerApi = project.in(file("scheduler/api"))
 
 lazy val session = project.in(file("session"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -173,7 +177,8 @@ lazy val session = project.in(file("session"))
 
 lazy val notification = project.in(file("notification"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     scheduler % "compile->compile;test->test;it->it"
   )
@@ -190,8 +195,8 @@ lazy val notificationTestkit = project.in(file("notification/testkit"))
 
 lazy val notificationApi = project.in(file("notification/api"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
-  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings/*, pbSettings*/)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin, AkkaGrpcPlugin)
   .dependsOn(
     notification % "compile->compile;test->test;it->it"
   )
@@ -201,7 +206,8 @@ lazy val notificationApi = project.in(file("notification/api"))
 
 lazy val elasticTestkit = project.in(file("elastic/testkit"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     common % "compile->compile;test->test;it->it"
   )
@@ -211,7 +217,8 @@ lazy val elasticTestkit = project.in(file("elastic/testkit"))
 
 lazy val elastic = project.in(file("elastic"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -225,6 +232,7 @@ lazy val elastic = project.in(file("elastic"))
 lazy val server = project.in(file("server"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -241,7 +249,8 @@ lazy val serverTestkit = project.in(file("server/testkit"))
 
 lazy val sequence = project.in(file("sequence"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     server % "compile->compile;test->test;it->it"
   )
@@ -251,7 +260,8 @@ lazy val sequence = project.in(file("sequence"))
 
 lazy val kv = project.in(file("kv"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -261,7 +271,8 @@ lazy val kv = project.in(file("kv"))
 
 lazy val auth = project.in(file("auth"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, pbSettings)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     kv % "compile->compile;test->test;it->it"
   )
@@ -296,8 +307,8 @@ lazy val authTestkit = project.in(file("auth/testkit"))
 
 lazy val authApi = project.in(file("auth/api"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
-  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings/*, pbSettings*/)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin, AkkaGrpcPlugin)
   .dependsOn(
     auth % "compile->compile;test->test;it->it"
   )
@@ -307,8 +318,8 @@ lazy val authApi = project.in(file("auth/api"))
 
 lazy val resource = project.in(file("resource"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
-  .enablePlugins(BuildInfoPlugin)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings/*, pbSettings*/)
+  .enablePlugins(BuildInfoPlugin, AkkaGrpcPlugin)
   .dependsOn(
     session % "compile->compile;test->test;it->it"
   )
@@ -331,8 +342,8 @@ lazy val resourceTestkit = project.in(file("resource/testkit"))
 
 lazy val resourceApi = project.in(file("resource/api"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
-  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings/*, pbSettings*/)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin, AkkaGrpcPlugin)
   .dependsOn(
     resource % "compile->compile;test->test;it->it"
   )
@@ -352,8 +363,8 @@ lazy val sessionTestkit = project.in(file("session/testkit"))
 
 lazy val payment = project.in(file("payment"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
-  .enablePlugins(BuildInfoPlugin)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings/*, pbSettings*/)
+  .enablePlugins(BuildInfoPlugin, AkkaGrpcPlugin)
   .dependsOn(
     kv % "compile->compile;test->test;it->it"
   )
@@ -385,8 +396,8 @@ lazy val paymentTestkit = project.in(file("payment/testkit"))
 
 lazy val paymentApi = project.in(file("payment/api"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings, pbSettings)
-  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings/*, pbSettings*/)
+  .enablePlugins(DockerComposePlugin, DockerPlugin, JavaAppPackaging, BuildInfoPlugin, AkkaGrpcPlugin)
   .dependsOn(
     payment % "compile->compile;test->test;it->it"
   )
@@ -432,7 +443,7 @@ lazy val root = project.in(file("."))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
 
-envVars in Test := Map(
+Test / envVars := Map(
   "POSTGRES_USER" -> "admin",
   "POSTGRES_PASSWORD" -> "changeit",
   "POSTGRES_5432" -> "15432"
