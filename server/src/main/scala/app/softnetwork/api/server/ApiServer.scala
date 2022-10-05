@@ -2,7 +2,6 @@ package app.softnetwork.api.server
 
 import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
-import akka.grpc.scaladsl.ServiceHandler
 import akka.http.scaladsl.Http
 import akka.{Done, actor => classic}
 import app.softnetwork.api.server.config.Settings._
@@ -16,7 +15,7 @@ import scala.util.{Failure, Success}
 /**
   * Created by smanciot on 25/04/2020.
   */
-trait ApiServer extends PersistenceGuardian {_: ApiRoutes with GrpcServices with SchemaProvider =>
+trait ApiServer extends PersistenceGuardian {_: ApiRoutes with SchemaProvider =>
 
   lazy val interface: String = Interface
 
@@ -31,14 +30,7 @@ trait ApiServer extends PersistenceGuardian {_: ApiRoutes with GrpcServices with
 
     implicit val ec: ExecutionContextExecutor = classicSystem.dispatcher
 
-    Http().newServerAt(interface, port).bind(
-      mainRoutes(system) ~
-        handle(
-          ServiceHandler.concatOrNotFound(
-            mainServices(system):_*
-          )
-        )
-    ).onComplete {
+    Http().newServerAt(interface, port).bind(mainRoutes(system)).onComplete {
       case Success(binding) =>
         val address = binding.localAddress
         classicSystem.log.info(

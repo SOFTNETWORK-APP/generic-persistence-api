@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 /**
   * Created by smanciot on 19/04/2021.
   */
-trait ApiRoutes extends Directives with DefaultComplete with StrictLogging {
+trait ApiRoutes extends Directives with GrpcServices with DefaultComplete with StrictLogging {
 
   override implicit def formats: Formats = commonFormats
 
@@ -49,7 +49,7 @@ trait ApiRoutes extends Directives with DefaultComplete with StrictLogging {
           }
         }
       }
-    }
+    } ~ grpcRoutes(system)
   }
 
   def apiRoutes(system: ActorSystem[_]): Route

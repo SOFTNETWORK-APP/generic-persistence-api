@@ -3,7 +3,6 @@ package app.softnetwork.api.server
 import akka.{Done, actor => classic}
 import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
-import akka.grpc.scaladsl.ServiceHandler
 import akka.http.scaladsl.Http
 import app.softnetwork.api.server.config.Settings.{Interface, Port}
 import app.softnetwork.config.Settings
@@ -29,7 +28,7 @@ trait GrpcServer extends PersistenceGuardian with StrictLogging {_: GrpcServices
 
     implicit val ec: ExecutionContextExecutor = classicSystem.dispatcher
 
-    Http().newServerAt(interface, port).bind(ServiceHandler.concatOrNotFound(mainServices(system):_*)).onComplete {
+    Http().newServerAt(interface, port).bind(grpcRoutes(system)).onComplete {
       case Success(binding) =>
         val address = binding.localAddress
         classicSystem.log.info(

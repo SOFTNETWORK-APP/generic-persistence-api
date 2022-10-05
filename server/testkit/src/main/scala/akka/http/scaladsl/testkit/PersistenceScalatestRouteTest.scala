@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.headers.{Cookie, RawHeader}
 import akka.http.scaladsl.server.directives.RouteDirectives
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
-import app.softnetwork.api.server.{ApiRoutes, ApiServer, GrpcServices}
+import app.softnetwork.api.server.{ApiRoutes, ApiServer}
 import app.softnetwork.config.Settings
 import app.softnetwork.persistence.query.SchemaProvider
 import app.softnetwork.persistence.scalatest.{InMemoryPersistenceTestKit, PersistenceTestKit}
@@ -22,7 +22,7 @@ trait PersistenceScalatestRouteTest extends ApiServer
   with RouteTest
   with TestFrameworkInterface
   with ScalatestUtils
-  with Json4sSupport { this: Suite with ApiRoutes with GrpcServices with SchemaProvider =>
+  with Json4sSupport { this: Suite with ApiRoutes with SchemaProvider =>
 
   override protected def createActorSystem(): ActorSystem = {
     import app.softnetwork.persistence.typed._
@@ -66,5 +66,5 @@ trait PersistenceScalatestRouteTest extends ApiServer
 }
 
 trait InMemoryPersistenceScalatestRouteTest extends PersistenceScalatestRouteTest with InMemoryPersistenceTestKit {
-  _: Suite with ApiRoutes with GrpcServices =>
+  _: Suite with ApiRoutes =>
 }

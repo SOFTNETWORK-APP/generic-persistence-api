@@ -1,7 +1,6 @@
 package app.softnetwork.sequence.launch
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.api.server.GrpcServices
 import app.softnetwork.api.server.launch.Application
 import app.softnetwork.persistence.launch.{PersistenceGuardian, PersistentEntity}
 import app.softnetwork.persistence.query.SchemaProvider
@@ -13,8 +12,8 @@ import scala.util.{Failure, Success, Try}
 /**
   * Created by smanciot on 07/04/2022.
   */
-trait SequenceApplication extends Application with PersistenceGuardian with SequenceRoutes
-  with GrpcServices with StrictLogging {_: SchemaProvider =>
+trait SequenceApplication extends Application with PersistenceGuardian with SequenceRoutes with StrictLogging {
+  _: SchemaProvider =>
 
   import app.softnetwork.persistence.launch.PersistenceGuardian._
 

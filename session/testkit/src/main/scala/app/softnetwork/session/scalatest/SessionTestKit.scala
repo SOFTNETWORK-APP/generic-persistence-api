@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.{HttpHeader, HttpMessage, HttpResponse, StatusCo
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.testkit.InMemoryPersistenceScalatestRouteTest
 import app.softnetwork.api.server.config.Settings.RootPath
-import app.softnetwork.api.server.{ApiRoutes, DefaultComplete, GrpcServices}
+import app.softnetwork.api.server.{ApiRoutes, DefaultComplete}
 import app.softnetwork.session.launch.SessionGuardian
 import app.softnetwork.session.service.SessionService
 import com.softwaremill.session.CsrfDirectives.{randomTokenCsrfProtection, setNewCsrfToken}
@@ -45,7 +45,7 @@ trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalat
   }
 }
 
-trait SessionServiceRoutes extends ApiRoutes with GrpcServices {
+trait SessionServiceRoutes extends ApiRoutes {
   override def apiRoutes(system: ActorSystem[_]): Route = SessionServiceRoute(system).route
 }
 
