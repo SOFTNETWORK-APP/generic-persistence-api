@@ -3,7 +3,6 @@ package app.softnetwork.api.server
 import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server._
 import akka.{Done, actor => classic}
 import app.softnetwork.api.server.config.Settings._
 import app.softnetwork.config.Settings
@@ -18,12 +17,9 @@ import scala.util.{Failure, Success}
   */
 trait ApiServer extends PersistenceGuardian {_: ApiRoutes with SchemaProvider =>
 
-  /**
-    *
-    * initialize all server routes
-    *
-    */
-  def routes: ActorSystem[_] => Route = system => mainRoutes(system)
+  lazy val interface: String = Interface
+
+  lazy val port: Int = Port
 
   override def startSystem: ActorSystem[_] => Unit = system => {
     import app.softnetwork.persistence.typed._
@@ -34,7 +30,7 @@ trait ApiServer extends PersistenceGuardian {_: ApiRoutes with SchemaProvider =>
 
     implicit val ec: ExecutionContextExecutor = classicSystem.dispatcher
 
-    Http().bindAndHandle(mainRoutes(system), Interface, Port).onComplete {
+    Http().newServerAt(interface, port).bind(mainRoutes(system)).onComplete {
       case Success(binding) =>
         val address = binding.localAddress
         classicSystem.log.info(

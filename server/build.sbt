@@ -8,6 +8,7 @@ name := "generic-server-api"
 
 val akkaHttp: Seq[ModuleID] = Seq(
   "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
+  "com.typesafe.akka" %% "akka-http2-support" % Versions.akkaHttp, // required for akka-grpc
   "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp,
   "de.heikoseeberger" %% "akka-http-json4s" % Versions.akkaHttpJson4s
 )

@@ -5,12 +5,11 @@ import akka.http.scaladsl.model.HttpHeader
 import akka.http.scaladsl.model.headers.{Cookie, RawHeader}
 import akka.http.scaladsl.server.directives.RouteDirectives
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
-import app.softnetwork.api.server.ApiRoutes
-import app.softnetwork.api.server.config.Settings.RootPath
+import app.softnetwork.api.server.{ApiRoutes, ApiServer}
 import app.softnetwork.config.Settings
 import app.softnetwork.persistence.query.SchemaProvider
 import app.softnetwork.persistence.scalatest.{InMemoryPersistenceTestKit, PersistenceTestKit}
-import app.softnetwork.persistence.version
+import com.typesafe.config.{Config, ConfigFactory}
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.Suite
@@ -19,7 +18,8 @@ import org.scalatest.Suite
   * Created by smanciot on 24/04/2020.
   *
   */
-trait PersistenceScalatestRouteTest extends PersistenceTestKit
+trait PersistenceScalatestRouteTest extends ApiServer
+  with PersistenceTestKit
   with RouteTest
   with TestFrameworkInterface
   with ScalatestUtils
@@ -29,6 +29,27 @@ trait PersistenceScalatestRouteTest extends PersistenceTestKit
     import app.softnetwork.persistence.typed._
     typedSystem()
   }
+
+  override lazy val interface: String = hostname
+
+  override lazy val port: Int = {
+    import java.net.ServerSocket
+    new ServerSocket(0).getLocalPort
+  }
+
+  lazy val server: String =
+    s"""
+      |softnetwork.api.server.port = $port
+      |""".stripMargin
+
+  lazy val serverConfig: Config = ConfigFactory.parseString(server)
+
+  override lazy val config: Config =
+    serverConfig.withFallback(
+      akkaConfig
+        .withFallback(ConfigFactory.load("softnetwork-in-memory-persistence.conf"))
+        .withFallback(ConfigFactory.load())
+    )
 
   implicit lazy val timeout: RouteTestTimeout = RouteTestTimeout(Settings.DefaultTimeout)
 
@@ -40,14 +61,7 @@ trait PersistenceScalatestRouteTest extends PersistenceTestKit
     override def apply(t: Throwable): Route = RouteDirectives.failWith(t)
   })
 
-  lazy val routes: Route =
-    handleExceptions(timeoutExceptionHandler) {
-      pathPrefix(RootPath) {
-        respondWithHeaders(RawHeader("Api-Version", version)) {
-          apiRoutes(typedSystem())
-        }
-      }
-    }
+  lazy val routes: Route = mainRoutes(typedSystem())
 
   def extractCookies(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
     headers.filter(header => {

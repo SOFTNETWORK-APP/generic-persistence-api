@@ -163,7 +163,9 @@ trait MangoPayProvider extends PaymentProvider {
               case Some(value) =>
                 value match {
                   case PaymentUserType.PAYER => user.setUserCategory(UserCategory.PAYER)
-                  case _ => user.setUserCategory(UserCategory.OWNER)
+                  case _ =>
+                    user.setUserCategory(UserCategory.OWNER)
+                    user.setTermsAndConditionsAccepted(true)
                 }
               case _ => // FIXME
             }
@@ -242,9 +244,13 @@ trait MangoPayProvider extends PaymentProvider {
               case Some(value) =>
                 value match {
                   case PaymentUserType.PAYER => user.setUserCategory(UserCategory.PAYER)
-                  case _ => user.setUserCategory(UserCategory.OWNER)
+                  case _ =>
+                    user.setUserCategory(UserCategory.OWNER)
+                    user.setTermsAndConditionsAccepted(true)
                 }
-              case _ => user.setUserCategory(UserCategory.OWNER)
+              case _ =>
+                user.setUserCategory(UserCategory.OWNER)
+                user.setTermsAndConditionsAccepted(true)
             }
             user.setTag(legalRepresentative.externalUuid)
             (if(legalRepresentative.userId.trim.isEmpty)

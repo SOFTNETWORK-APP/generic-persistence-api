@@ -1,13 +1,13 @@
 package app.softnetwork.api.server
 
 import java.util.concurrent.TimeoutException
-
 import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.http.scaladsl.server.{ExceptionHandler, Directives, Route}
+import akka.http.scaladsl.server.{Directives, ExceptionHandler, Route}
+import app.softnetwork.persistence.version
 import com.typesafe.scalalogging.StrictLogging
 import org.json4s.Formats
-
 import app.softnetwork.serialization._
 
 import scala.util.{Failure, Success, Try}
@@ -33,7 +33,9 @@ trait ApiRoutes extends Directives with DefaultComplete with StrictLogging {
       logRequestResult("RestAll") {
         pathPrefix(config.Settings.RootPath) {
           Try(
-            HealthCheckService.route ~ apiRoutes(system)
+            respondWithHeaders(RawHeader("Api-Version", version)){
+              HealthCheckService.route ~ apiRoutes(system)
+            }
           ) match {
             case Success(s) => s
             case Failure(f) =>
