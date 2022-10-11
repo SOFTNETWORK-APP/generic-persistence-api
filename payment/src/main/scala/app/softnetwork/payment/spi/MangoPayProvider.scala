@@ -133,10 +133,6 @@ trait MangoPayProvider extends PaymentProvider {
       )
   }
 
-  def createHooks(): Unit = MangoPay.createHooks()
-
-  createHooks()
-
   /**
     *
     * @param maybeNaturalUser - natural user to create

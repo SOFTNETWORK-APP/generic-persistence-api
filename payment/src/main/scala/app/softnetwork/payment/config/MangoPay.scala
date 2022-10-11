@@ -14,8 +14,6 @@ import scala.util.{Failure, Success, Try}
   */
 object MangoPay extends StrictLogging{
 
-  var hooksInitialized = false
-
   case class Config(
                      clientId: String,
                      apiKey: String,
@@ -40,45 +38,47 @@ object MangoPay extends StrictLogging{
     lazy val mandateReturnUrl = s"""$BaseUrl/$mandatePath/$MandateRoute"""
   }
 
-  def apply(): MangoPayApi = {
-    import Settings.MangoPayConfig._
-    val mangoPayApi = new MangoPayApi
-    mangoPayApi.getConfig.setBaseUrl(baseUrl)
-    mangoPayApi.getConfig.setClientId(clientId)
-    mangoPayApi.getConfig.setClientPassword(apiKey)
-    mangoPayApi.getConfig.setDebugMode(debug)
-    mangoPayApi
-  }
+  var maybeMangoPayApi: Option[MangoPayApi] = None
 
-  def createHooks(): Unit = {
-    if(!hooksInitialized){
-      import scala.collection.JavaConverters._
-      val hooks: List[Hook] =
-        Try(MangoPay().getHookApi.getAll) match {
-          case Success(s) => s.asScala.toList
-          case Failure(f) =>
-            logger.error(f.getMessage, f.getCause)
-            List.empty
-        }
-      createOrUpdateHook(EventType.KYC_SUCCEEDED, hooks)
-      createOrUpdateHook(EventType.KYC_FAILED, hooks)
-      createOrUpdateHook(EventType.KYC_OUTDATED, hooks)
-      createOrUpdateHook(EventType.TRANSFER_NORMAL_SUCCEEDED, hooks)
-      createOrUpdateHook(EventType.TRANSFER_NORMAL_FAILED, hooks)
-      createOrUpdateHook(EventType.UBO_DECLARATION_REFUSED, hooks)
-      createOrUpdateHook(EventType.UBO_DECLARATION_VALIDATED, hooks)
-      createOrUpdateHook(EventType.UBO_DECLARATION_INCOMPLETE, hooks)
-      createOrUpdateHook(EventType.USER_KYC_REGULAR, hooks)
-      createOrUpdateHook(EventType.MANDATE_FAILED, hooks)
-      createOrUpdateHook(EventType.MANDATE_SUBMITTED, hooks)
-      createOrUpdateHook(EventType.MANDATE_CREATED, hooks)
-      createOrUpdateHook(EventType.MANDATE_ACTIVATED, hooks)
-      createOrUpdateHook(EventType.MANDATE_EXPIRED, hooks)
-      hooksInitialized = true
+  def apply(): MangoPayApi = {
+    maybeMangoPayApi match {
+      case Some(mangoPayApi) => mangoPayApi
+      case _ =>
+        // init MangoPay api
+        import Settings.MangoPayConfig._
+        val mangoPayApi = new MangoPayApi
+        mangoPayApi.getConfig.setBaseUrl(baseUrl)
+        mangoPayApi.getConfig.setClientId(clientId)
+        mangoPayApi.getConfig.setClientPassword(apiKey)
+        mangoPayApi.getConfig.setDebugMode(debug)
+        // init MangoPay hooks
+        import scala.collection.JavaConverters._
+        val hooks: List[Hook] =
+          Try(mangoPayApi.getHookApi.getAll) match {
+            case Success(s) => s.asScala.toList
+            case Failure(f) =>
+              logger.error(f.getMessage, f.getCause)
+              List.empty
+          }
+        createOrUpdateHook(mangoPayApi, EventType.KYC_SUCCEEDED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.KYC_FAILED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.KYC_OUTDATED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.TRANSFER_NORMAL_SUCCEEDED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.TRANSFER_NORMAL_FAILED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.UBO_DECLARATION_REFUSED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.UBO_DECLARATION_VALIDATED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.UBO_DECLARATION_INCOMPLETE, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.USER_KYC_REGULAR, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.MANDATE_FAILED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.MANDATE_SUBMITTED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.MANDATE_CREATED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.MANDATE_ACTIVATED, hooks)
+        createOrUpdateHook(mangoPayApi, EventType.MANDATE_EXPIRED, hooks)
+        mangoPayApi
     }
   }
 
-  def createOrUpdateHook(eventType: EventType, hooks: List[Hook]): Unit = {
+  private[payment] def createOrUpdateHook(mangoPayApi: MangoPayApi, eventType: EventType, hooks: List[Hook]): Unit = {
     import Settings.MangoPayConfig._
     Try {
       hooks.find(_.getEventType == eventType) match {
@@ -86,13 +86,13 @@ object MangoPay extends StrictLogging{
           previousHook.setStatus(HookStatus.ENABLED)
           previousHook.setUrl(s"$hooksBaseUrl")
           logger.info(s"Updating Mangopay Hook ${previousHook.getId}")
-          MangoPay().getHookApi.update(previousHook)
+          mangoPayApi.getHookApi.update(previousHook)
         case _ =>
           val hook = new Hook()
           hook.setEventType(eventType)
           hook.setStatus(HookStatus.ENABLED)
           hook.setUrl(s"$hooksBaseUrl")
-          MangoPay().getHookApi.create(hook)
+          mangoPayApi.getHookApi.create(hook)
       }
     } match {
       case Success(_) =>
