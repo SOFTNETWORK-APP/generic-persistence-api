@@ -164,26 +164,30 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
   lazy val login: Route = path("login" | "signIn") {
     post {
       entity(as[Login]) { login =>
-        // execute Login
-        run(login.login, login) completeWith {
-          case r: LoginSucceededResult =>
-            val account = r.account
-            // create a new session
-            val session = Session(account.uuid/** FIXME login.refreshable **/)
-            session += (Session.adminKey, account.isAdmin)
-            account.currentProfile match {
-              case Some(profile) =>
-                session += (profileKey, profile.name)
-              case _ =>
-            }
-            sessionToDirective(session)(ec) {
-              // create a new anti csrf token
-              setNewCsrfToken(checkHeader) {
-                complete(HttpResponse(StatusCodes.OK, entity = account.view))
+        _optionalSession(ec) {maybeSession =>
+          // execute Login
+          run(login.login, login
+            .copy(anonymous = maybeSession.flatMap(session => if(session.anonymous) Some(session.id) else None))
+          ) completeWith {
+            case r: LoginSucceededResult =>
+              val account = r.account
+              // create a new session
+              val session = Session(account.uuid/** FIXME login.refreshable **/)
+              session += (Session.adminKey, account.isAdmin)
+              account.currentProfile match {
+                case Some(profile) =>
+                  session += (profileKey, profile.name)
+                case _ =>
               }
-            }
-          case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.Unauthorized, entity = error))
-          case _                          => complete(HttpResponse(StatusCodes.BadRequest))
+              sessionToDirective(session)(ec) {
+                // create a new anti csrf token
+                setNewCsrfToken(checkHeader) {
+                  complete(HttpResponse(StatusCodes.OK, entity = account.view))
+                }
+              }
+            case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.Unauthorized, entity = error))
+            case _                          => complete(HttpResponse(StatusCodes.BadRequest))
+          }
         }
       }
     }

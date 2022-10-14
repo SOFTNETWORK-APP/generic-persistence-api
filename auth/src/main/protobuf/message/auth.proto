@@ -94,6 +94,7 @@ message LoginSucceeded {
     option (scalapb.message).extends = "AccountEvent";
     required string uuid = 1;
     required google.protobuf.Timestamp lastLogin = 2 [(scalapb.field).type = "java.util.Date"];
+    optional string anonymous = 3;
 }
 
 message LoginFailed {

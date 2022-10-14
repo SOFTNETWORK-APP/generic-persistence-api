@@ -38,7 +38,8 @@ package object message {
   case class BasicAuth(credentials: Credentials.Provided) extends LookupAccountCommand
 
   @SerialVersionUID(0L)
-  case class Login(login: String, password: String, refreshable: Boolean = false) extends LookupAccountCommand
+  case class Login(login: String, password: String, refreshable: Boolean = false, anonymous: Option[String] = None)
+    extends LookupAccountCommand
 
   case object Logout extends AccountCommand
 

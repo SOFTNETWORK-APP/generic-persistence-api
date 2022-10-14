@@ -241,12 +241,12 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
 
       case cmd: BasicAuth =>
         import cmd._
-        authenticate(credentials.identifier, encrypted => credentials.verify(encrypted, Sha512Encryption.hash(encrypted)), entityId, state, replyTo)
+        authenticate(credentials.identifier, None, encrypted => credentials.verify(encrypted, Sha512Encryption.hash(encrypted)), entityId, state, replyTo)
 
       /** handle login **/
       case cmd: Login =>
         import cmd._
-        authenticate(login, encrypted => checkEncryption(encrypted, password), entityId, state, replyTo)
+        authenticate(login, anonymous, encrypted => checkEncryption(encrypted, password), entityId, state, replyTo)
 
       /** handle send verification code **/
       case cmd: SendVerificationCode =>
@@ -626,7 +626,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
     }
   }
 
-  private def authenticate(login: String, verify: String => Boolean, entityId: String, state: Option[T], replyTo: Option[ActorRef[AccountCommandResult]])(implicit log: Logger, system: ActorSystem[_]): Effect[AccountEvent, Option[T]] = {
+  private def authenticate(login: String, anonymous: Option[String], verify: String => Boolean, entityId: String, state: Option[T], replyTo: Option[ActorRef[AccountCommandResult]])(implicit log: Logger, system: ActorSystem[_]): Effect[AccountEvent, Option[T]] = {
     state match {
       case Some(account) if account.status.isActive || account.status.isDeleted =>
         val checkLogin = account.principals.exists(_.value == login) //check login against account principal
@@ -634,7 +634,8 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
           Effect.persist[AccountEvent, Option[T]](
             LoginSucceeded(
               entityId,
-              now()
+              now(),
+              anonymous
             )
           ).thenRun(state => LoginSucceededResult(state.get) ~> replyTo)
         }

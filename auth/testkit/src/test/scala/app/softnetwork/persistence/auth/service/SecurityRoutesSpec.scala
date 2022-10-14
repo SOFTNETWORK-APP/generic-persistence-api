@@ -114,8 +114,8 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
   }
 
   "Login" should {
-    "work with matching username and password" in {
-      Post(s"/$RootPath/${Settings.Path}/login", Login(username, password)) ~> mainRoutes(typedSystem()) ~> check {
+    "work with matching username and password within an anonymous session" in {
+      withCookies(Post(s"/$RootPath/${Settings.Path}/login", Login(username, password))) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[AccountView].status shouldBe AccountStatus.Active
       }
