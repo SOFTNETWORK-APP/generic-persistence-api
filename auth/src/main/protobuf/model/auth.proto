@@ -112,6 +112,7 @@ message BasicAccount {
     optional BasicAccountDetails details = 15 [(scalapb.field).type = "AccountDetails"];
     repeated DeviceRegistration registrations = 16;
     optional google.protobuf.Timestamp lastLogout = 17 [(scalapb.field).type = "java.util.Date"];
+    optional bool anonymous = 18;
     extensions 100 to max;
 }
 

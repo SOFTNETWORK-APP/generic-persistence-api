@@ -1,7 +1,7 @@
 package app.softnetwork.persistence.auth.service
 
 import akka.http.scaladsl.model.headers.BasicHttpCredentials
-import akka.http.scaladsl.model.{HttpHeader, StatusCodes}
+import akka.http.scaladsl.model.StatusCodes
 import org.scalatest.wordspec.AnyWordSpecLike
 import app.softnetwork.serialization._
 import app.softnetwork.persistence.auth.config.Settings
@@ -15,6 +15,8 @@ import app.softnetwork.persistence.auth.scalatest.BasicAccountRouteTestKit
   * Created by smanciot on 22/03/2018.
   */
 class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
+
+  private val anonymous = "anonymous"
 
   private val username = "smanciot"
 
@@ -36,7 +38,27 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     }
   }
 
+  "Anonymous SignUp" should {
+    "work" in {
+      Post(s"/$RootPath/${Settings.Path}/anonymous") ~> mainRoutes(typedSystem()) ~> check {
+        status shouldEqual StatusCodes.Created
+        val account = responseAs[AccountView]
+        account.status shouldBe AccountStatus.Active
+        account.anonymous.getOrElse(false) shouldBe true
+        cookies = extractCookies(headers)
+      }
+    }
+  }
+
   "SignUp" should {
+    "work with anonymous account" in {
+      withCookies(Post(s"/$RootPath/${Settings.Path}/signUp", SignUp(anonymous, password, None, firstName, lastName)))  ~> mainRoutes(typedSystem()) ~> check {
+        status shouldEqual StatusCodes.Created
+        val account = responseAs[AccountView]
+        account.status shouldBe AccountStatus.Active
+        account.anonymous.getOrElse(true) shouldBe false
+      }
+    }
     "fail if confirmed password does not match password" in {
       Post(s"/$RootPath/${Settings.Path}/signUp", SignUp(username, password, Some("fake"))) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.BadRequest
@@ -164,13 +186,11 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
 
   "ResetPassword" should {
     "work" in {
-      var _headers: Seq[HttpHeader] = Seq.empty
       Post(s"/$RootPath/${Settings.Path}/verificationCode", SendVerificationCode(gsm)) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.OK
-        _headers = headers
+        cookies = extractCookies(headers)
       }
-      Post(s"/$RootPath/${Settings.Path}/resetPassword", ResetPassword(MockGenerator.code, password))
-        .withHeaders(extractCookies(_headers):_*)  ~> mainRoutes(typedSystem()) ~> check {
+      withCookies(Post(s"/$RootPath/${Settings.Path}/resetPassword", ResetPassword(MockGenerator.code, password))) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.OK
       }
     }
@@ -178,12 +198,11 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
 
   "Logout" should {
     "work" in {
-      var _headers: Seq[HttpHeader] = Seq.empty
       Post(s"/$RootPath/${Settings.Path}/login", Login(gsm, password, refreshable = true)) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.OK
-        _headers = headers
+        cookies = extractCookies(headers)
       }
-      Post(s"/$RootPath/${Settings.Path}/logout").withHeaders(extractCookies(_headers):_*) ~> mainRoutes(typedSystem()) ~> check {
+      withCookies(Post(s"/$RootPath/${Settings.Path}/logout")) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.OK
       }
     }
@@ -191,12 +210,11 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
 
   "Unsubscribe" should {
     "work" in {
-      var _headers: Seq[HttpHeader] = Seq.empty
       Post(s"/$RootPath/${Settings.Path}/login", Login(gsm, password, refreshable = true)) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.OK
-        _headers = headers
+        cookies = extractCookies(headers)
       }
-      Post(s"/$RootPath/${Settings.Path}/unsubscribe").withHeaders(extractCookies(_headers):_*) ~> mainRoutes(typedSystem()) ~> check {
+      withCookies(Post(s"/$RootPath/${Settings.Path}/unsubscribe")) ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[AccountView].status shouldEqual AccountStatus.Deleted
       }

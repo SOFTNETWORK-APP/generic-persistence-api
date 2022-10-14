@@ -26,6 +26,8 @@ package object message {
                      userName: Option[String] = None
                    ) extends AccountCommand
 
+  case object SignUpAnonymous extends AccountCommand
+
   @SerialVersionUID(0L)
   case class Unsubscribe(uuid: String) extends AccountCommand
 

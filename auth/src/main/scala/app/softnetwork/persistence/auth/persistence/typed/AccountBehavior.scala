@@ -122,7 +122,7 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
       /** handle signUp **/
       case cmd: SignUp =>
         state match {
-          case Some(_) =>
+          case Some(account) if !account.anonymous.getOrElse(false) =>
             Effect.none.thenRun(_ => AccountAlreadyExists ~> replyTo)
           case _ =>
             import cmd._
@@ -148,10 +148,13 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                             accountKeyDao.addAccountKey(activationToken.token, entityId)
                             account
                               .copyWithVerificationToken(Some(activationToken))
+                              .copyWithAnonymous(false)
                               .asInstanceOf[T]
                           }
                           else{
                             account
+                              .copyWithAnonymous(false)
+                              .asInstanceOf[T]
                           }
                         val notifications: Seq[AccountToNotificationCommandEvent] = {
                           updatedAccount.verificationToken match {
@@ -176,6 +179,27 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                     case _             => Effect.none.thenRun(_ => LoginUnaccepted ~> replyTo)
                   }
               }
+            }
+        }
+
+      case SignUpAnonymous =>
+        state match {
+          case Some(_) =>
+            Effect.none.thenRun(_ => AccountAlreadyExists ~> replyTo)
+          case _ =>
+            createAccount(entityId, SignUp(entityId, AnonymousPassword)) match {
+              case Some(account) =>
+                import account._
+                if(!secondaryPrincipals.exists(principal => lookupAccount(principal.value).isDefined)){
+                  val updatedAccount = account.copyWithAnonymous(true).asInstanceOf[T]
+                  Effect.persist[AccountEvent, Option[T]](
+                    createAccountCreatedEvent(updatedAccount)
+                  ).thenRun(_ => AccountCreated(updatedAccount) ~> replyTo)
+                }
+                else {
+                  Effect.none.thenRun(_ => LoginAlreadyExists ~> replyTo)
+                }
+              case _ => Effect.none.thenRun(_ => LoginUnaccepted ~> replyTo)
             }
         }
 

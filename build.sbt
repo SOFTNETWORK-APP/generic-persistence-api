@@ -30,7 +30,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.2.4.2"
+ThisBuild / version := "0.2.5.0"
 
 ThisBuild / scalaVersion := "2.12.11"
 

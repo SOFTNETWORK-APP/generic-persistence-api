@@ -14,6 +14,8 @@ class AccountHandlerSpec extends MockBasicAccountHandler with AnyWordSpecLike wi
 
   import MockGenerator._
 
+  private val anonymous = "anonymous"
+
   private val username = "test"
 
   private val username2 = "test2"
@@ -49,6 +51,23 @@ class AccountHandlerSpec extends MockBasicAccountHandler with AnyWordSpecLike wi
   private val gsmUuid: String = generateUUID(Some(gsm))
 
   private val gsmUuid2: String = generateUUID(Some(gsm2))
+
+  private val anonymousUuid: String = generateUUID(Some(anonymous))
+
+  "Anonymous SignUp" should {
+    "work" in {
+      this ?? (anonymousUuid, SignUpAnonymous) await {
+        case r: AccountCreated =>
+          import r._
+          account.anonymous.getOrElse(false) shouldBe true
+          account.status shouldBe AccountStatus.Active
+          account.email.isDefined shouldBe false
+          account.gsm.isDefined shouldBe false
+          account.username.isDefined shouldBe true
+        case other => fail(other.getClass)
+      }
+    }
+  }
 
   "SignUp" should {
     "fail if confirmed password does not match password" in {
@@ -119,6 +138,20 @@ class AccountHandlerSpec extends MockBasicAccountHandler with AnyWordSpecLike wi
       this ?? (gsmUuid2, SignUp(gsm, password)) await {
         case LoginAlreadyExists => succeed
         case _ => fail()
+      }
+    }
+
+    "work with anonymous account" in {
+      this ?? (anonymousUuid, SignUp(anonymous, password)) await {
+        case r: AccountCreated =>
+          import r._
+          account.anonymous.getOrElse(true) shouldBe false
+          account.status shouldBe AccountStatus.Active
+          account.email.isDefined shouldBe false
+          account.gsm.isDefined shouldBe false
+          account.username.isDefined shouldBe true
+          account.username.get shouldBe anonymous
+        case other => fail(other.getClass)
       }
     }
 

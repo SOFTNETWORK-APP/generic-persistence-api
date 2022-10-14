@@ -46,7 +46,8 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
 
   val route: Route = {
     pathPrefix(Settings.Path){
-      signUp ~
+      anonymous ~
+        signUp ~
         principal ~
         basic ~
         login ~
@@ -61,28 +62,63 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
     }
   }
 
+  lazy val anonymous: Route = path("anonymous") {
+    post {
+      pathEnd {
+        _optionalSession(ec) { maybeSession =>
+          val uuid = maybeSession match {
+            case Some(session) => session.id
+            case _ => generateUUID()
+          }
+          // execute anonymous signUp
+          run(uuid, SignUpAnonymous) completeWith {
+            case r: AccountCreated =>
+              val account = r.account
+              // create a new session
+              val session = Session(account.uuid)
+              session += (Session.anonymousKey, true)
+              sessionToDirective(session)(ec) {
+                // create a new anti csrf token
+                setNewCsrfToken(checkHeader) {
+                  complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
+                }
+              }
+            case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = error))
+            case _ => complete(HttpResponse(StatusCodes.BadRequest))
+          }
+        }
+      }
+    }
+  }
+
   lazy val signUp: Route = path("signUp") {
     post {
       entity(as[SignUp]) { signUp =>
-        // execute signUp
-        run(generateUUID()/**#MOSA-454**/, signUp) completeWith {
-          case r: AccountCreated =>
-            lazy val completion = complete(HttpResponse(status = StatusCodes.Created, entity = r.account.view))
-            if(!Settings.ActivationEnabled){
+        _optionalSession(ec) { maybeSession =>
+          val uuid = maybeSession match {
+            case Some(session) => session.id
+            case _ => generateUUID()
+          }
+          // execute signUp
+          run(uuid/** #MOSA-454* */, signUp) completeWith {
+            case r: AccountCreated =>
               val account = r.account
-              // create a new session
-              sessionToDirective(Session(account.uuid))(ec) {
-                // create a new anti csrf token
-                setNewCsrfToken(checkHeader) {
-                  completion
+              lazy val completion = complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
+              if (!Settings.ActivationEnabled) {
+                // create a new session
+                sessionToDirective(Session(account.uuid))(ec) {
+                  // create a new anti csrf token
+                  setNewCsrfToken(checkHeader) {
+                    completion
+                  }
                 }
               }
-            }
-            else{
-              completion
-            }
-          case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = error))
-          case _                          => complete(HttpResponse(StatusCodes.BadRequest))
+              else {
+                completion
+              }
+            case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = error))
+            case _ => complete(HttpResponse(StatusCodes.BadRequest))
+          }
         }
       }
     }

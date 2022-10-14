@@ -72,5 +72,7 @@ object Settings extends StrictLogging {
   val VerificationGsmEnabled: Boolean = config.getBoolean("auth.verification.gsm.enabled")
 
   val VerificationEmailEnabled: Boolean = config.getBoolean("auth.verification.email.enabled")
+
+  val AnonymousPassword: String = config.getString("auth.anonymous.password")
 }
 
