@@ -77,10 +77,12 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
               // create a new session
               val session = Session(account.uuid)
               session += (Session.anonymousKey, true)
-              sessionToDirective(session)(ec) {
-                // create a new anti csrf token
-                setNewCsrfToken(checkHeader) {
-                  complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
+              _invalidateSession(ec){
+                sessionToDirective(session)(ec) {
+                  // create a new anti csrf token
+                  setNewCsrfToken(checkHeader) {
+                    complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
+                  }
                 }
               }
             case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = error))
@@ -100,16 +102,20 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
             case _ => generateUUID()
           }
           // execute signUp
-          run(uuid/** #MOSA-454* */, signUp) completeWith {
+          run(uuid/** #MOSA-454* */, signUp
+            .copy(anonymous = maybeSession.flatMap(session => if(session.anonymous) Some(session.id) else None))
+          ) completeWith {
             case r: AccountCreated =>
               val account = r.account
               lazy val completion = complete(HttpResponse(status = StatusCodes.Created, entity = account.view))
               if (!Settings.ActivationEnabled) {
-                // create a new session
-                sessionToDirective(Session(account.uuid))(ec) {
-                  // create a new anti csrf token
-                  setNewCsrfToken(checkHeader) {
-                    completion
+                _invalidateSession(ec){
+                  // create a new session
+                  sessionToDirective(Session(account.uuid))(ec) {
+                    // create a new anti csrf token
+                    setNewCsrfToken(checkHeader) {
+                      completion
+                    }
                   }
                 }
               }
@@ -131,11 +137,13 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
         run(activate.token, activate) completeWith {
           case r: AccountActivated =>
             val account = r.account
-            // create a new session
-            sessionToDirective(Session(account.uuid))(ec) {
-              // create a new anti csrf token
-              setNewCsrfToken(checkHeader) {
-                complete(HttpResponse(StatusCodes.OK, entity = account.view))
+            _invalidateSession(ec){
+              // create a new session
+              sessionToDirective(Session(account.uuid))(ec) {
+                // create a new anti csrf token
+                setNewCsrfToken(checkHeader) {
+                  complete(HttpResponse(StatusCodes.OK, entity = account.view))
+                }
               }
             }
           case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = error))
@@ -151,10 +159,12 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
         // create a new session
         val session = Session(account.uuid)
         session += (Session.adminKey, account.isAdmin)
-        sessionToDirective(session)(ec) {
-          // create a new anti csrf token
-          setNewCsrfToken(checkHeader) {
-            complete(HttpResponse(StatusCodes.OK, entity = account.view))
+        _invalidateSession(ec){
+          sessionToDirective(session)(ec) {
+            // create a new anti csrf token
+            setNewCsrfToken(checkHeader) {
+              complete(HttpResponse(StatusCodes.OK, entity = account.view))
+            }
           }
         }
       }
@@ -179,10 +189,12 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
                   session += (profileKey, profile.name)
                 case _ =>
               }
-              sessionToDirective(session)(ec) {
-                // create a new anti csrf token
-                setNewCsrfToken(checkHeader) {
-                  complete(HttpResponse(StatusCodes.OK, entity = account.view))
+              _invalidateSession(ec){
+                sessionToDirective(session)(ec) {
+                  // create a new anti csrf token
+                  setNewCsrfToken(checkHeader) {
+                    complete(HttpResponse(StatusCodes.OK, entity = account.view))
+                  }
                 }
               }
             case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.Unauthorized, entity = error))
@@ -280,9 +292,11 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
         entity(as[ResetPassword]) { reset =>
           run(reset.token, reset) completeWith {
             case r: PasswordReseted         =>
-              // create a new session
-              sessionToDirective(Session(r.uuid))(ec) {
-                complete(HttpResponse(status = StatusCodes.OK))
+              _invalidateSession(ec){
+                // create a new session
+                sessionToDirective(Session(r.uuid))(ec) {
+                  complete(HttpResponse(status = StatusCodes.OK))
+                }
               }
             case error: AccountErrorMessage => complete(HttpResponse(StatusCodes.BadRequest, entity = error))
             case _                          => complete(HttpResponse(StatusCodes.BadRequest))

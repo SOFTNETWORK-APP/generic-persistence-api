@@ -80,7 +80,13 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
     "work with email" in {
       Post(s"/$RootPath/${Settings.Path}/signUp", SignUp(email, password, None, firstName, lastName))  ~> mainRoutes(typedSystem()) ~> check {
         status shouldEqual StatusCodes.Created
-        responseAs[AccountView].status shouldBe AccountStatus.Inactive
+        val account = responseAs[AccountView]
+        if(Settings.ActivationEnabled){
+          account.status shouldBe AccountStatus.Inactive
+        }
+        else{
+          account.status shouldBe AccountStatus.Active
+        }
       }
     }
     "fail if email already exists" in {

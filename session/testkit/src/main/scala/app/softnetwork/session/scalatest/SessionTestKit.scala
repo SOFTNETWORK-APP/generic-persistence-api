@@ -28,7 +28,7 @@ trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalat
   }
 
   def createSession(id: String, profile: Option[String] = None): Unit = {
-    invalidateSession()
+//    invalidateSession()
     Post(s"/$RootPath/session", CreateSession(id, profile)) ~> routes ~> check{
       status shouldEqual StatusCodes.OK
       cookies = extractCookies(headers)
@@ -74,11 +74,13 @@ trait SessionServiceRoute extends SessionService with Directives with DefaultCom
                 case Some(p) => s += (profileKey, p)
                 case _ =>
               }
-              // create a new session
-              sessionToDirective(s)(ec) {
-                // create a new anti csrf token
-                setNewCsrfToken(checkHeader) {
-                  complete(HttpResponse(StatusCodes.OK))
+              _invalidateSession(ec){
+                // create a new session
+                sessionToDirective(s)(ec) {
+                  // create a new anti csrf token
+                  setNewCsrfToken(checkHeader) {
+                    complete(HttpResponse(StatusCodes.OK))
+                  }
                 }
               }
             }

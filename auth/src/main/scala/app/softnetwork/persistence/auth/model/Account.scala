@@ -297,7 +297,7 @@ trait AccountDecorator {account: Account =>
   def copyWithRegistrations(registrations: Seq[DeviceRegistration]): Account = withRegistrations(registrations)
   def copyWithAnonymous(anonymous: Boolean): Account = withAnonymous(anonymous)
 
-  val view: AccountView =
+  def view: AccountView =
     new AccountView(
       account.lastLogin,
       account.status,
@@ -350,7 +350,7 @@ trait ProfileDecorator { profile: Profile =>
     }
   }
 
-  val view: ProfileView =
+  def view: ProfileView =
     new ProfileView(
       uuid = profile.uuid,
       createdDate = profile.createdDate,

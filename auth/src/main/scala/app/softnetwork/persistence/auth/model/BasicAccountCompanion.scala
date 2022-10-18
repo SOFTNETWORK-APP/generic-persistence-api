@@ -1,7 +1,5 @@
 package app.softnetwork.persistence.auth.model
 
-import app.softnetwork._
-import app.softnetwork.persistence._
 import app.softnetwork.security.Sha512Encryption
 import app.softnetwork.persistence.auth.config.Settings
 import app.softnetwork.persistence.auth.message.{InitAdminAccount, SignUp}

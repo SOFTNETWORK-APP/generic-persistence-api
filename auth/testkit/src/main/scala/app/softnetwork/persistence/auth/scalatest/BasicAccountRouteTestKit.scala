@@ -34,7 +34,7 @@ trait BasicAccountRouteTestKit extends AccountRouteTestKit[BasicAccount, BasicAc
   }
 
   def signIn(login: String, password: String): Unit = {
-    if(cookies.nonEmpty) signOut()
+    signOut()
     Post(s"/$RootPath/$Path/signIn", Login(login, password)) ~> routes ~> check {
       status shouldEqual StatusCodes.OK
       cookies = extractCookies(headers)
@@ -42,9 +42,11 @@ trait BasicAccountRouteTestKit extends AccountRouteTestKit[BasicAccount, BasicAc
   }
 
   def signOut(): Unit = {
-    Post(s"/$RootPath/$Path/signOut", Logout) ~> routes ~> check {
-      status shouldEqual StatusCodes.OK
-      cookies = Seq.empty
+    if(cookies.nonEmpty){
+      withCookies(Post(s"/$RootPath/$Path/signOut", Logout)) ~> routes ~> check {
+        status shouldEqual StatusCodes.OK
+        cookies = Seq.empty
+      }
     }
   }
 
