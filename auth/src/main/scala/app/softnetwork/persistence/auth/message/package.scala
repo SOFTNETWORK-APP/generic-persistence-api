@@ -23,8 +23,7 @@ package object message {
                      confirmPassword: Option[String] = None,
                      firstName: Option[String] = None,
                      lastName: Option[String] = None,
-                     userName: Option[String] = None,
-                     anonymous: Option[String] = None
+                     userName: Option[String] = None
                    ) extends AccountCommand
 
   case object SignUpAnonymous extends AccountCommand

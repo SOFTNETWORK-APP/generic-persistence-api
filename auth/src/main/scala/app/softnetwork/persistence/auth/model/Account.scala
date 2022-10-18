@@ -43,6 +43,8 @@ trait Account extends Principals with AccountDecorator with Timestamped {
   def newProfile(name: String): Profile
 
   def anonymous: Option[Boolean]
+
+  def fromAnonymous: Option[Boolean]
 }
 
 trait AccountDetails extends Timestamped {
@@ -60,7 +62,8 @@ class AccountView(val lastLogin: Option[Date],
                   val lastUpdated: Date,
                   val currentProfile: Option[Profile],
                   val details: Option[AccountDetails],
-                  val anonymous: Option[Boolean])
+                  val anonymous: Option[Boolean],
+                  val fromAnonymous: Option[Boolean])
 
 /**
   * A collection of all principals associated with a corresponding Subject.
@@ -260,6 +263,7 @@ trait AccountDecorator {account: Account =>
   def withDetails(details: AccountDetails): Account
   def withRegistrations(registrations: Seq[DeviceRegistration]): Account
   def withAnonymous(anonymous: Boolean): Account
+  def withFromAnonymous(fromAnonymous: Boolean): Account
 
   def copyWithCredentials(credentials: String): Account = withCredentials(credentials)
   def copyWithLastLogin(lastLogin: Option[Date]): Account = withLastLogin(lastLogin.orNull)
@@ -296,6 +300,7 @@ trait AccountDecorator {account: Account =>
   }
   def copyWithRegistrations(registrations: Seq[DeviceRegistration]): Account = withRegistrations(registrations)
   def copyWithAnonymous(anonymous: Boolean): Account = withAnonymous(anonymous)
+  def copyWithFromAnonymous(fromAnonymous: Boolean): Account = withFromAnonymous(fromAnonymous)
 
   def view: AccountView =
     new AccountView(
@@ -305,7 +310,8 @@ trait AccountDecorator {account: Account =>
       account.lastUpdated,
       account.currentProfile,
       account.details,
-      account.anonymous
+      account.anonymous,
+      account.fromAnonymous
     )
 }
 

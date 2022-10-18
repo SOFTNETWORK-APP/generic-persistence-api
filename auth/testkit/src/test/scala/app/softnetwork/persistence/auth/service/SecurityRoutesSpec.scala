@@ -57,6 +57,7 @@ class SecurityRoutesSpec extends AnyWordSpecLike with BasicAccountRouteTestKit {
         val account = responseAs[AccountView]
         account.status shouldBe AccountStatus.Active
         account.anonymous.getOrElse(true) shouldBe false
+        account.fromAnonymous.getOrElse(false) shouldBe true
       }
     }
     "fail if confirmed password does not match password" in {

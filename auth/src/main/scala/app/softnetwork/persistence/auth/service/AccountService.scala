@@ -102,9 +102,7 @@ trait AccountService extends Service[AccountCommand, AccountCommandResult]
             case _ => generateUUID()
           }
           // execute signUp
-          run(uuid/** #MOSA-454* */, signUp
-            .copy(anonymous = maybeSession.flatMap(session => if(session.anonymous) Some(session.id) else None))
-          ) completeWith {
+          run(uuid/** #MOSA-454* */, signUp) completeWith {
             case r: AccountCreated =>
               val account = r.account
               lazy val completion = complete(HttpResponse(status = StatusCodes.Created, entity = account.view))

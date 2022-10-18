@@ -148,11 +148,13 @@ trait AccountBehavior[T <: Account with AccountDecorator, P <: Profile]
                             accountKeyDao.addAccountKey(activationToken.token, entityId)
                             account
                               .copyWithVerificationToken(Some(activationToken))
+                              .copyWithFromAnonymous(state.flatMap(_.anonymous).getOrElse(false))
                               .copyWithAnonymous(false)
                               .asInstanceOf[T]
                           }
                           else{
                             account
+                              .copyWithFromAnonymous(state.flatMap(_.anonymous).getOrElse(false))
                               .copyWithAnonymous(false)
                               .asInstanceOf[T]
                           }
