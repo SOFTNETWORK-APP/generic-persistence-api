@@ -6,7 +6,9 @@ import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.testkit.InMemoryPersistenceScalatestRouteTest
 import app.softnetwork.api.server.config.Settings.RootPath
 import app.softnetwork.api.server.{ApiRoutes, DefaultComplete}
+import app.softnetwork.session.config.Settings
 import app.softnetwork.session.launch.SessionGuardian
+import app.softnetwork.session.model.SessionCompanion
 import app.softnetwork.session.service.SessionService
 import com.softwaremill.session.CsrfDirectives.{randomTokenCsrfProtection, setNewCsrfToken}
 import com.softwaremill.session.CsrfOptions.checkHeader
@@ -17,7 +19,7 @@ import org.softnetwork.session.model.Session
 
 import scala.concurrent.ExecutionContext
 
-trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalatestRouteTest with SessionGuardian { _: Suite =>
+trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalatestRouteTest with SessionGuardian with SessionCompanion { _: Suite =>
 
   import app.softnetwork.serialization._
 
@@ -28,10 +30,17 @@ trait SessionTestKit extends SessionServiceRoutes with InMemoryPersistenceScalat
   }
 
   def createSession(id: String, profile: Option[String] = None): Unit = {
-//    invalidateSession()
+    invalidateSession()
     Post(s"/$RootPath/session", CreateSession(id, profile)) ~> routes ~> check{
       status shouldEqual StatusCodes.OK
       cookies = extractCookies(headers)
+    }
+  }
+
+  def extractSession(): Option[Session] = {
+    cookies.flatMap(findCookie(Settings.Session.CookieName)(_)).headOption match {
+      case Some(cookie) => sessionManager.clientSessionManager.decode(cookie.value).toOption
+      case _ => None
     }
   }
 
@@ -74,13 +83,11 @@ trait SessionServiceRoute extends SessionService with Directives with DefaultCom
                 case Some(p) => s += (profileKey, p)
                 case _ =>
               }
-              _invalidateSession(ec){
-                // create a new session
-                sessionToDirective(s)(ec) {
-                  // create a new anti csrf token
-                  setNewCsrfToken(checkHeader) {
-                    complete(HttpResponse(StatusCodes.OK))
-                  }
+              // create a new session
+              sessionToDirective(s)(ec) {
+                // create a new anti csrf token
+                setNewCsrfToken(checkHeader) {
+                  complete(HttpResponse(StatusCodes.OK))
                 }
               }
             }

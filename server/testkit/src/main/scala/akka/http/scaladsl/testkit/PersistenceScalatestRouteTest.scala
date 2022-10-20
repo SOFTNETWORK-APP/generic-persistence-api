@@ -2,7 +2,7 @@ package akka.http.scaladsl.testkit
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.headers.{Cookie, RawHeader}
+import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader}
 import akka.http.scaladsl.server.directives.RouteDirectives
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import app.softnetwork.api.server.{ApiRoutes, ApiServer}
@@ -63,6 +63,12 @@ trait PersistenceScalatestRouteTest extends ApiServer
       ret
     })
   }
+
+  def findCookie(name: String): HttpHeader => Option[HttpCookiePair] = {
+    case Cookie(cookies) => cookies.find(_.name == name)
+    case _               => None
+  }
+
 }
 
 trait InMemoryPersistenceScalatestRouteTest extends PersistenceScalatestRouteTest with InMemoryPersistenceTestKit {

@@ -10,6 +10,11 @@ class SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
     "be created" in {
       createSession(id)
     }
+    "be extracted" in {
+      val session = extractSession()
+      assert(session.isDefined)
+      assert(session.get.id == id)
+    }
     "be invalidated" in {
       invalidateSession()
     }
