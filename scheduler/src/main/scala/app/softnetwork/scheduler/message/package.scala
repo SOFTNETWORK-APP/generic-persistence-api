@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.TimerScheduler
 import app.softnetwork.persistence.message.{Command, CommandResult, EntityCommand, ErrorMessage}
 import app.softnetwork.scheduler.config.Settings
 import app.softnetwork.scheduler.model.{CronTabItem, SchedulerItem}
-import org.softnetwork.akka.model.Scheduler
+import org.softnetwork.akka.model.{CronTab, Schedule, Scheduler}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -89,17 +89,17 @@ package object message {
 
   case object CronTabsAndSchedulesReseted extends SchedulerCommandResult
 
-  case object ScheduleAdded extends SchedulerCommandResult
+  case class ScheduleAdded(schedule: Schedule) extends SchedulerCommandResult
 
-  case object ScheduleTriggered extends SchedulerCommandResult
+  case class ScheduleTriggered(schedule: Schedule) extends SchedulerCommandResult
 
-  case object ScheduleRemoved extends SchedulerCommandResult
+  case class ScheduleRemoved(schedule: Schedule) extends SchedulerCommandResult
 
-  case object CronTabAdded extends SchedulerCommandResult
+  case class CronTabAdded(cronTab: CronTab) extends SchedulerCommandResult
 
-  case object CronTabTriggered extends SchedulerCommandResult
+  case class CronTabTriggered(cronTab: CronTab) extends SchedulerCommandResult
 
-  case object CronTabRemoved extends SchedulerCommandResult
+  case class CronTabRemoved(cronTab: CronTab) extends SchedulerCommandResult
 
   case class SchedulerLoaded(scheduler: Scheduler) extends SchedulerCommandResult
 

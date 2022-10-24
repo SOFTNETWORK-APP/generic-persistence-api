@@ -22,11 +22,11 @@ class SchedulerHandlerSpec extends SchedulerHandler with AnyWordSpecLike with Sc
     "add Cron Tab" in {
       val cronTab = CronTab("p", ALL_KEY, "add", "* * * * *")
       this !? AddCronTab(cronTab) assert {
-        case CronTabAdded => succeed
+        case _: CronTabAdded => succeed
         case other => fail(other.getClass)
       }
       this !? AddCronTab(cronTab) assert {
-        case CronTabAdded => succeed
+        case _: CronTabAdded => succeed
         case other => fail(other.getClass)
       }
       this !? LoadScheduler assert {
@@ -44,14 +44,14 @@ class SchedulerHandlerSpec extends SchedulerHandler with AnyWordSpecLike with Sc
     "add schedule that is repeatable" in {
       val schedule = Schedule("p", "1", "add", 1, Some(true), None, Some(now()))
       this !? AddSchedule(schedule) assert {
-        case ScheduleAdded => succeed
+        case _: ScheduleAdded => succeed
         case other => fail(other.getClass)
       }
     }
     "add schedule that is not repeatable and has never been triggered" in {
       val schedule = Schedule("p", "2", "add", 1)
       this !? AddSchedule(schedule) assert {
-        case ScheduleAdded => succeed
+        case _: ScheduleAdded => succeed
         case other => fail(other.getClass)
       }
     }

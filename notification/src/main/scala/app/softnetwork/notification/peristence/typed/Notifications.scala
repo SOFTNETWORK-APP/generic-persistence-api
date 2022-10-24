@@ -204,7 +204,7 @@ sealed trait NotificationBehavior[T <: Notification] extends EntityBehavior[
         import cmd.schedule._
         if(key == notificationTimerKey){
           context.self ! ScheduleNotification
-          Effect.none.thenRun(_ => Schedule4NotificationTriggered ~> replyTo)
+          Effect.none.thenRun(_ => Schedule4NotificationTriggered(cmd.schedule) ~> replyTo)
         }
         else{
           Effect.none.thenRun(_ => Schedule4NotificationNotTriggered ~> replyTo)

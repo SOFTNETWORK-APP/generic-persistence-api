@@ -501,7 +501,7 @@ object PaymentMessages {
 
   case class PreAuthorizationCanceled(preAuthorizationCanceled: Boolean) extends PaymentResult
 
-  case object Schedule4PaymentTriggered extends PaymentResult
+  case class Schedule4PaymentTriggered(schedule: Schedule) extends PaymentResult
 
   case class PaymentAccountLoaded(paymentAccount: PaymentAccount) extends PaymentResult
 
@@ -658,4 +658,5 @@ object PaymentMessages {
 
   case class NextRecurringPaymentFailed(reason: String) extends PaymentError(s"NextRecurringPaymentFailed: $reason")
 
+  case object Schedule4PaymentNotTriggered extends PaymentError("Schedule4PaymentNotTriggered")
 }

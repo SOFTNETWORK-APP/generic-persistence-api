@@ -20,9 +20,9 @@ trait Scheduler2NotificationProcessorStream
 
   override protected def triggerSchedule(schedule: Schedule): Future[Boolean] = {
     !? (TriggerSchedule4Notification(schedule)) map {
-      case Schedule4NotificationTriggered =>
+      case result: Schedule4NotificationTriggered =>
         if(forTests){
-          system.eventStream.tell(Publish(Schedule4NotificationTriggered))
+          system.eventStream.tell(Publish(result))
         }
         true
       case _ => false

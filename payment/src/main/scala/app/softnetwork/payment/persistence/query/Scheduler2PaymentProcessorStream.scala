@@ -9,8 +9,6 @@ import org.softnetwork.akka.model.Schedule
 
 import scala.concurrent.Future
 
-case class ProbeSchedule4PaymentTriggered(entityId: String, key: String) extends PaymentResult
-
 trait Scheduler2PaymentProcessorStream  extends Scheduler2EntityProcessorStream[PaymentCommand, PaymentResult] {
   _: GenericPaymentHandler with JournalProvider =>
 
@@ -23,9 +21,9 @@ trait Scheduler2PaymentProcessorStream  extends Scheduler2EntityProcessorStream[
     */
   override protected def triggerSchedule(schedule: Schedule): Future[Boolean] = {
     !? (TriggerSchedule4Payment(schedule)) map {
-      case Schedule4PaymentTriggered =>
+      case result: Schedule4PaymentTriggered =>
         if(forTests){
-          system.eventStream.tell(Publish(ProbeSchedule4PaymentTriggered(schedule.entityId, schedule.key)))
+          system.eventStream.tell(Publish(result))
         }
         true
       case other =>

@@ -53,7 +53,7 @@ package object message {
   @SerialVersionUID(0L)
   case class NotificationPending(uuid: String) extends NotificationCommandResult
 
-  case object Schedule4NotificationTriggered extends NotificationCommandResult
+  case class Schedule4NotificationTriggered(schedule: Schedule) extends NotificationCommandResult
 
   @SerialVersionUID(0L)
   class NotificationErrorMessage (override val message: String) extends ErrorMessage(message) with NotificationCommandResult

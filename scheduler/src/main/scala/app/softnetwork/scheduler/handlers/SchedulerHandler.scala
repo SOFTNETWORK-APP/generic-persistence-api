@@ -60,7 +60,7 @@ trait SchedulerDao extends Completion { _: SchedulerHandler =>
   private[scheduler] def addSchedule(schedule: Schedule)(implicit system: ActorSystem[_]): Future[Boolean] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
     !? (AddSchedule(schedule)).map {
-      case ScheduleAdded => true
+      case _: ScheduleAdded => true
       case _ => false
     }
   }
@@ -68,7 +68,7 @@ trait SchedulerDao extends Completion { _: SchedulerHandler =>
   private[scheduler] def addCronTab(cronTab: CronTab)(implicit system: ActorSystem[_]): Future[Boolean] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
     !? (AddCronTab(cronTab)).map {
-      case CronTabAdded => true
+      case _: CronTabAdded => true
       case _ => false
     }
   }

@@ -1126,14 +1126,14 @@ trait GenericPaymentBehavior extends TimeStampedBehavior[PaymentCommand, Payment
               val recurringPaymentRegistrationId = key.split("#").last
               Effect.none.thenRun(_ => {
                 context.self ! PayNextRecurring(recurringPaymentRegistrationId, paymentAccount.externalUuid)
-                Schedule4PaymentTriggered ~> replyTo
+                Schedule4PaymentTriggered(cmd.schedule) ~> replyTo
               })
             case _ =>
               Effect.none.thenRun(_ => PaymentAccountNotFound ~> replyTo)
           }
         }
         else{
-          Effect.none.thenRun(_ => Schedule4PaymentTriggered ~> replyTo)
+          Effect.none.thenRun(_ => Schedule4PaymentNotTriggered ~> replyTo)
         }
 
       case cmd: PayNextRecurring =>

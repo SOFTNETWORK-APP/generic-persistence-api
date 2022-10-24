@@ -9,7 +9,6 @@ import app.softnetwork.payment.message.PaymentMessages._
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner.BirthPlace
 import app.softnetwork.payment.model._
-import app.softnetwork.payment.persistence.query.ProbeSchedule4PaymentTriggered
 import app.softnetwork.payment.scalatest.PaymentRouteTestKit
 import app.softnetwork.time.{now => _, _}
 import app.softnetwork.persistence.now
@@ -419,7 +418,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       }
     }
 
-    val probe = createTestProbe[ProbeSchedule4PaymentTriggered]()
+    val probe = createTestProbe[PaymentResult]()
     subscribeProbe(probe)
 
     "register recurring direct debit payment" in {
@@ -459,7 +458,7 @@ class PaymentServiceSpec extends AnyWordSpecLike with PaymentRouteTestKit{
       ) ~> routes ~> check {
         status shouldEqual StatusCodes.BadRequest
       }
-      probe.expectMessageType[ProbeSchedule4PaymentTriggered]
+      probe.expectMessageType[Schedule4PaymentTriggered]
       withCookies(
         Get(s"/$RootPath/$PaymentPath/$RecurringPaymentRoute/$recurringPaymentRegistrationId")
       ) ~> routes ~> check {

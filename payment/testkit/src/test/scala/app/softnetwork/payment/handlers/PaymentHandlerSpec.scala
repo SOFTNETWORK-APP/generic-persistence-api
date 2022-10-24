@@ -6,7 +6,6 @@ import app.softnetwork.payment.model.PaymentAccount.User
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner
 import app.softnetwork.payment.model.UboDeclaration.UltimateBeneficialOwner.BirthPlace
 import app.softnetwork.payment.model._
-import app.softnetwork.payment.persistence.query.ProbeSchedule4PaymentTriggered
 import app.softnetwork.payment.scalatest.PaymentTestKit
 import app.softnetwork.time.{now => _, _}
 import app.softnetwork.persistence.now
@@ -819,7 +818,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
       }
     }
 
-    val probe = createTestProbe[ProbeSchedule4PaymentTriggered]()
+    val probe = createTestProbe[PaymentResult]()
     subscribeProbe(probe)
 
     "register recurring direct debit payment" in {
@@ -858,7 +857,7 @@ class PaymentHandlerSpec extends MockPaymentHandler with AnyWordSpecLike with Pa
         case MandateNotCanceled =>
         case other => fail(other.toString)
       }
-      probe.expectMessageType[ProbeSchedule4PaymentTriggered]
+      probe.expectMessageType[Schedule4PaymentTriggered]
       !? (LoadRecurringPayment(computeExternalUuidWithProfile(vendorUuid, Some("vendor")),
         recurringPaymentRegistrationId
       )) await {

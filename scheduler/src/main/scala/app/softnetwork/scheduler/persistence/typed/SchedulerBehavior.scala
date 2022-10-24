@@ -150,7 +150,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
               context.log.warn(s"Schedule $updatedSchedule has not been triggered")
             }
             context.log.debug(s"$schedule added")
-            ScheduleAdded ~> replyTo
+            ScheduleAdded(updatedSchedule) ~> replyTo
           }
         )
       case cmd: TriggerSchedule => // effectively trigger the schedule
@@ -182,7 +182,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                   } :+ ScheduleTriggeredEvent(updatedSchedule)
                 ).thenRun(_ => {
                   context.log.info(s"$schedule triggered at ${updatedSchedule.getLastTriggered}")
-                  ScheduleTriggered ~> replyTo
+                  ScheduleTriggered(updatedSchedule) ~> replyTo
                 })
               case _ => Effect.none.thenRun(_ => ScheduleNotFound ~> replyTo)
             }
@@ -209,7 +209,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                 ).thenRun(_ => {
                   timers.cancel(schedule.uuid)
                   context.log.debug(s"$schedule removed")
-                  ScheduleRemoved ~> replyTo
+                  ScheduleRemoved(schedule) ~> replyTo
                 })
               case _ => Effect.none.thenRun(_ => ScheduleNotFound ~> replyTo)
             }
@@ -285,7 +285,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
               else{
                 context.log.debug(s"CronTab $cronTab will not be triggered")
               }
-              CronTabAdded ~> replyTo
+              CronTabAdded(cronTab) ~> replyTo
             }
             Effect.persist(
               CronTabAddedEvent(cronTab)
@@ -316,7 +316,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                   )
                 ).thenRun(_ => {
                   context.log.info(s"$cronTab triggered at ${updatedCronTab.getLastTriggered}")
-                  CronTabTriggered ~> replyTo
+                  CronTabTriggered(updatedCronTab) ~> replyTo
                 })
               case _ => Effect.none.thenRun(_ => CronTabNotFound ~> replyTo)
             }
@@ -343,7 +343,7 @@ private[scheduler] trait SchedulerBehavior extends EntityBehavior[SchedulerComma
                 ).thenRun(_ => {
                   timers.cancel(cronTab.uuid)
                   context.log.info(s"$cronTab removed")
-                  CronTabRemoved ~> replyTo
+                  CronTabRemoved(cronTab) ~> replyTo
                 })
               case _ => Effect.none.thenRun(_ => CronTabNotFound ~> replyTo)
             }
