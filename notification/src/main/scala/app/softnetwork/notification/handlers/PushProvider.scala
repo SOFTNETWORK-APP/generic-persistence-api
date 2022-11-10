@@ -59,10 +59,23 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
         else
           devices
 
+      val from = notification.from
+      val key = from.alias.getOrElse(from.value)
+      val _config = config(key)
+      val _client = client(key, _config)
+
+      logger.info(
+        s"""APNS -> about to send notification ${notification.subject}
+           |\tfrom ${notification.from.value}
+           |\tvia topic ${_config.topic}
+           |\tto token(s) [${tos.mkString(",")}]
+           |\tusing keystore ${_config.keystore.path}""".stripMargin
+      )
+
       val results =
         Future.sequence(for(to <- tos) yield {
-          toScala(client(notification.from).sendNotification(
-            new SimpleApnsPushNotification(to, config(notification.from).topic, notification))
+          toScala(_client.sendNotification(
+            new SimpleApnsPushNotification(to, _config.topic, notification))
           )
         }) complete() match {
           case Success(responses) =>
@@ -102,9 +115,24 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
           devices.take(maxDevices)
         else
           devices
+
+      val from = notification.from
+      val key = from.alias.getOrElse(from.value)
+      val _config = config(key)
+      val _app = app(key, _config)
+
+      logger.info(
+        s"""FCM -> about to send notification ${notification.subject}
+           |\tfrom $key
+           |\tvia url ${_config.databaseUrl}
+           |\tto token(s) [${notification.to.mkString(",")}]
+           |\tusing credentials ${_config.googleCredentials.getOrElse(sys.env.get("GOOGLE_APPLICATION_CREDENTIALS"))}"""
+          .stripMargin
+      )
+
       val results: Seq[NotificationStatusResult] =
         Try(
-          FirebaseMessaging.getInstance(app(notification.from)).sendMulticast(notification)
+          FirebaseMessaging.getInstance(_app).sendMulticast(notification)
         ) match {
           case Success(s) =>
             val results: Seq[NotificationStatusResult] = s
@@ -135,12 +163,10 @@ object APNSPushProvider {
 
   private[this] var configs: Map[String, ApnsConfig] = Map.empty
 
-  private[notification] def client(from: From): ApnsClient = {
-    val key = from.alias.getOrElse(from.value)
+  private[notification] def client(key: String, apnsConfig: ApnsConfig): ApnsClient = {
     clients.get(key) match {
       case Some(client) => client
       case _ =>
-        val apnsConfig: ApnsConfig = config(from)
         val client: ApnsClient =
           clientCredentials(apnsConfig)(
             new ApnsClientBuilder()
@@ -157,8 +183,7 @@ object APNSPushProvider {
     }
   }
 
-  private[notification] def config(from: From): ApnsConfig = {
-    val key = from.alias.getOrElse(from.value)
+  private[notification] def config(key: String): ApnsConfig = {
     configs.get(key) match {
       case Some(config) => config
       case _ =>
@@ -216,28 +241,27 @@ object FCMPushProvider{
 
   private[this] var apps: Map[String, FirebaseApp] = Map.empty
 
-  private[notification] def app(from: From): FirebaseApp = {
-    val key = from.alias.getOrElse(from.value)
+  private[notification] def app(key: String, fcmConfig: FcmConfig): FirebaseApp = {
     apps.get(key) match {
       case Some(app) => app
       case _ =>
-        val config: FcmConfig = Settings.PushConfigs.get(key).map(_.fcm)
-          .getOrElse(Settings.NotificationConfig.push.fcm)
-        val options =
-          config.googleCredentials match {
-          case Some(googleCredentials) if googleCredentials.trim.nonEmpty =>
-            FirebaseOptions.builder().setCredentials(GoogleCredentials.fromStream(
-              new FileInputStream(new JFile(googleCredentials)))
-            )
-          case _ => FirebaseOptions.builder().setCredentials(GoogleCredentials.getApplicationDefault())
-        }
-        val databaseUrl = config.databaseUrl
-        if(databaseUrl.nonEmpty){
-          options.setDatabaseUrl(databaseUrl)
-        }
-        val app = FirebaseApp.initializeApp(options.build(), key)
+        val app = FirebaseApp.initializeApp(
+          clientCredentials(fcmConfig)(FirebaseOptions.builder()).setDatabaseUrl(fcmConfig.databaseUrl).build(), key
+        )
         apps = apps + (key -> app)
         app
+    }
+  }
+
+  private[notification] def config(key: String): FcmConfig = {
+    Settings.PushConfigs.get(key).map(_.fcm).getOrElse(Settings.NotificationConfig.push.fcm)
+  }
+
+  def clientCredentials(fcmConfig: FcmConfig): FirebaseOptions.Builder => FirebaseOptions.Builder = builder => {
+    fcmConfig.googleCredentials match {
+      case Some(googleCredentials) if googleCredentials.trim.nonEmpty =>
+        builder.setCredentials(GoogleCredentials.fromStream(new FileInputStream(new JFile(googleCredentials))))
+      case _ => builder.setCredentials(GoogleCredentials.getApplicationDefault())
     }
   }
 
