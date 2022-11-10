@@ -125,7 +125,7 @@ trait PushProvider extends NotificationProvider[Push] with Completion with Stric
         s"""FCM -> about to send notification ${notification.subject}
            |\tfrom $key
            |\tvia url ${_config.databaseUrl}
-           |\tto token(s) [${notification.to.mkString(",")}]
+           |\tto token(s) [${tokens.mkString(",")}]
            |\tusing credentials ${_config.googleCredentials.getOrElse(sys.env.get("GOOGLE_APPLICATION_CREDENTIALS"))}"""
           .stripMargin
       )
