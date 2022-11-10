@@ -235,7 +235,7 @@ object FCMPushProvider{
         if(databaseUrl.nonEmpty){
           options.setDatabaseUrl(databaseUrl)
         }
-        val app = FirebaseApp.initializeApp(options.build())
+        val app = FirebaseApp.initializeApp(options.build(), key)
         apps = apps + (key -> app)
         app
     }
