@@ -237,19 +237,18 @@ object APNSPushProvider {
 
 }
 
-object FCMPushProvider{
-
-  private[this] var apps: Map[String, FirebaseApp] = Map.empty
+object FCMPushProvider extends StrictLogging{
 
   private[notification] def app(key: String, fcmConfig: FcmConfig): FirebaseApp = {
-    apps.get(key) match {
-      case Some(app) => app
-      case _ =>
-        val app = FirebaseApp.initializeApp(
+    Try(
+      FirebaseApp.getInstance(key)
+    ) match {
+      case Success(app) => app
+      case Failure(f) =>
+        logger.info(s"${f.getMessage} -> initializing Firebase Application for $key with $fcmConfig")
+        FirebaseApp.initializeApp(
           clientCredentials(fcmConfig)(FirebaseOptions.builder()).setDatabaseUrl(fcmConfig.databaseUrl).build(), key
         )
-        apps = apps + (key -> app)
-        app
     }
   }
 
