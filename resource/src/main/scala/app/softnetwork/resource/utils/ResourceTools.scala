@@ -9,7 +9,8 @@ import java.net.URLEncoder
   */
 object ResourceTools {
 
-  def resourceUri(uuid: String*): String = s"$BaseUrl/$ResourcePath/${uuid.mkString("/")}"
+  def resourceUri(uuid: String*): String =
+    s"$BaseUrl/$ResourcePath/${uuid.map(URLEncoder.encode(_, "UTF-8")).mkString("/")}"
 
   def imageUri(uuid: String*): String = resourceUri((Seq("images") ++ uuid): _*)
 

@@ -118,7 +118,7 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
 
   "Resource tools" must {
     "compute resource uri" in {
-      assert(ResourceTools.resourceUri("first", "second") == s"$BaseUrl/$ResourcePath/first/second")
+      assert(ResourceTools.resourceUri("first", "second", "third#forth") == s"$BaseUrl/$ResourcePath/first/second/third%23forth")
     }
   }
   private[this] def createOrUpdateResource(entityId: String, update: Boolean = false): Future[ResourceResult] = {
