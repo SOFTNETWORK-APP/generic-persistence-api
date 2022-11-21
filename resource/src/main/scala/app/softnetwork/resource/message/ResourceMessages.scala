@@ -9,9 +9,9 @@ import app.softnetwork.persistence.message._
 object ResourceMessages {
   sealed trait ResourceCommand extends Command
 
-  case class CreateResource(uuid: String, bytes: Array[Byte]) extends ResourceCommand
+  case class CreateResource(uuid: String, bytes: Array[Byte], uri: Option[String]) extends ResourceCommand
 
-  case class UpdateResource(uuid: String, bytes: Array[Byte]) extends ResourceCommand
+  case class UpdateResource(uuid: String, bytes: Array[Byte], uri: Option[String]) extends ResourceCommand
 
   case class LoadResource(uuid: String) extends ResourceCommand
 

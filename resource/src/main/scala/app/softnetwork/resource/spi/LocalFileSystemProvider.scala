@@ -1,7 +1,7 @@
 package app.softnetwork.resource.spi
 
 import app.softnetwork.persistence.environment
-import app.softnetwork.resource.config.Settings.{BaseUrl, ImageSizes, ResourceDirectory, ResourcePath}
+import app.softnetwork.resource.config.Settings.{BaseUrl, ImageSizes, LibraryDirectory, ResourceDirectory, ResourcePath}
 import app.softnetwork.utils.ImageTools.ImageSize
 import app.softnetwork.utils.{Base64Tools, ImageTools, MimeTypeTools}
 import com.typesafe.scalalogging.StrictLogging
@@ -14,6 +14,8 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
 
   lazy val rootDir = s"$ResourceDirectory/$environment"
 
+  lazy val libraryRootDir = s"$rootDir/$LibraryDirectory"
+
   /**
     * Upsert the underlying resource referenced by its uuid to the resource provider
     *
@@ -24,7 +26,7 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     */
   override def upsertResource(uuid: String, data: String, uri: Option[String] = None): Boolean = {
     Try {
-      val root = Paths.get(rootDir)
+      val root = Paths.get(rootDir, uri.getOrElse(""))
       if (!Files.exists(root)) {
         Files.createDirectories(root)
       }
@@ -128,7 +130,7 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     */
   override def listResources(uri: String): List[SimpleResource] = {
     Try {
-      val dir = Paths.get(rootDir, uri)
+      val dir = Paths.get(libraryRootDir, uri)
       import java.util.stream.Collectors
       import scala.collection.JavaConverters._
       Files.list(dir)

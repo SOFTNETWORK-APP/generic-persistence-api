@@ -14,6 +14,7 @@ import app.softnetwork.resource.utils.ResourceTools
 
 import java.nio.file.{Files, Paths}
 import scala.concurrent.Future
+import scala.reflect.io.Directory
 
 /**
   * Created by smanciot on 27/04/2020.
@@ -27,6 +28,8 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
 
   var _md5: String = _
 
+  val uri: Option[String] = Some("/resources")
+
   override def beforeAll(): Unit = {
     super.beforeAll()
     val path = Paths.get(Thread.currentThread().getContextClassLoader.getResource("avatar.png").getPath)
@@ -34,7 +37,8 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
     _md5 = HashTools.hashStream(
       new ByteArrayInputStream(_bytes)
     ).getOrElse("")
-    new File(rootDir).delete()
+    val dir = new Directory(new File(rootDir))
+    dir.deleteRecursively()
   }
 
   "Resource handler" must {
@@ -45,7 +49,7 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("create") await {
         case ResourceCreated =>
           probe.expectMessageType[ResourceCreatedEvent]
-          assert(Files.exists(Paths.get(s"$rootDir/create")))
+          assert(Files.exists(Paths.get(s"$rootDir${uri.getOrElse("")}/create")))
         case _ => fail()
       }
     }
@@ -56,7 +60,7 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("update", update = true) await {
         case ResourceUpdated =>
           probe.expectMessageType[ResourceUpdatedEvent]
-          assert(Files.exists(Paths.get(s"$rootDir/update")))
+          assert(Files.exists(Paths.get(s"$rootDir${uri.getOrElse("")}/update")))
         case _ => fail()
       }
     }
@@ -67,12 +71,12 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("load") await {
         case ResourceCreated =>
           probe.expectMessageType[ResourceCreatedEvent]
-          assert(Files.exists(Paths.get(s"$rootDir/load")))
+          assert(Files.exists(Paths.get(s"$rootDir${uri.getOrElse("")}/load")))
           ? ("load", LoadResource("load")) await {
             case r: ResourceLoaded =>
               r.resource.md5 shouldBe _md5
               for(size <- ImageSizes.values){
-                loadResource("load", None, None, Seq(SizeOption(size)): _*) match {
+                loadResource("load", uri, None, Seq(SizeOption(size)): _*) match {
                   case Some(_) =>
                   case _ => fail()
                 }
@@ -89,11 +93,11 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
       createOrUpdateResource("delete") await {
         case ResourceCreated =>
           probe.expectMessageType[ResourceCreatedEvent]
-          assert(Files.exists(Paths.get(s"$rootDir/delete")))
+          assert(Files.exists(Paths.get(s"$rootDir${uri.getOrElse("")}/delete")))
           ? ("delete", DeleteResource("delete")) await {
             case ResourceDeleted =>
               probe.expectMessageType[ResourceDeletedEvent]
-              assert(!Files.exists(Paths.get(s"$rootDir/delete")))
+              assert(!Files.exists(Paths.get(s"$rootDir${uri.getOrElse("")}/delete")))
             case _ => fail()
           }
         case _ => fail()
@@ -101,7 +105,7 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
     }
 
     "list resources" in {
-      val resources = listResources("/")
+      val resources = listResources(uri.getOrElse("/"))
       assert(resources.nonEmpty)
       assert(resources.forall(!_.directory))
       val files = resources.map(_.name)
@@ -114,16 +118,16 @@ class ResourceHandlerSpec extends ResourceHandler with LocalFileSystemProvider w
 
   "Resource tools" must {
     "compute resource uri" in {
-      assert(ResourceTools.resourceUri("first", "second") == s"$BaseUrl/$ResourcePath/first%23second")
+      assert(ResourceTools.resourceUri("first", "second") == s"$BaseUrl/$ResourcePath/first/second")
     }
   }
   private[this] def createOrUpdateResource(entityId: String, update: Boolean = false): Future[ResourceResult] = {
     ? (entityId,
       if(update){
-        UpdateResource(entityId, _bytes)
+        UpdateResource(entityId, _bytes, uri)
       }
       else {
-        CreateResource(entityId, _bytes)
+        CreateResource(entityId, _bytes, uri)
       }
     )
   }

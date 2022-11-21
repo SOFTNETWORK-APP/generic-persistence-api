@@ -43,7 +43,14 @@ protected[resource] trait GenericResourceProvider[Resource <: GenericResource] e
     * @return whether the operation is successful or not
     */
   override def upsertDocument(uuid: String, data: String): Boolean = {
-    upsertResource(uuid, data)
+    val segments = uuid.split("/")
+    val uri = {
+      if(segments.size > 1)
+        Some(segments.dropRight(1).mkString("/"))
+      else
+        None
+    }
+    upsertResource(segments.last, data, uri)
   }
 
   /**
@@ -53,7 +60,14 @@ protected[resource] trait GenericResourceProvider[Resource <: GenericResource] e
     * @return whether the operation is successful or not
     */
   override def deleteDocument(uuid: String): Boolean = {
-    deleteResource(uuid)
+    val segments = uuid.split("/")
+    val uri = {
+      if(segments.size > 1)
+        Some(segments.dropRight(1).mkString("/"))
+      else
+        None
+    }
+    deleteResource(segments.last, uri)
   }
 
 }

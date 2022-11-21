@@ -68,7 +68,7 @@ sealed trait ResourceBehavior extends TimeStampedBehavior[ResourceCommand, Resou
         val createdDate = now()
         Effect.persist(
           ResourceCreatedEvent(
-            asResource(uuid, bytes)
+            asResource(uuid, bytes, uri)
               .withCreatedDate(createdDate)
               .withLastUpdated(createdDate)
           )
@@ -85,7 +85,7 @@ sealed trait ResourceBehavior extends TimeStampedBehavior[ResourceCommand, Resou
         }
         Effect.persist(
           ResourceUpdatedEvent(
-            asResource(uuid, bytes)
+            asResource(uuid, bytes, uri)
               .withCreatedDate(createdDate)
               .withLastUpdated(lastUpdated)
           )
@@ -98,18 +98,27 @@ sealed trait ResourceBehavior extends TimeStampedBehavior[ResourceCommand, Resou
         }
 
       case _: DeleteResource =>
-        Effect.persist[ResourceEvent, Option[Resource]](
-          ResourceDeletedEvent(
-            entityId
-          )
-        ).thenRun(_ => {
-          ResourceDeleted ~> replyTo
-        }).thenStop()
+        state match {
+          case Some(resource) =>
+            val uuid =
+              resource.uri match {
+                case Some(uri) => s"$uri/$entityId"
+                case _ => entityId
+              }
+            Effect.persist[ResourceEvent, Option[Resource]](
+              ResourceDeletedEvent(
+                uuid
+              )
+            ).thenRun(_ => {
+              ResourceDeleted ~> replyTo
+            }).thenStop()
+          case _ => Effect.none.thenRun(_ => ResourceNotFound ~> replyTo)
+        }
 
       case _ => super.handleCommand(entityId, state, command, replyTo, timers)
     }
 
-  private[this] def asResource(uuid: String, bytes: Array[Byte]) : Resource = {
+  private[this] def asResource(uuid: String, bytes: Array[Byte], uri: Option[String]) : Resource = {
     val mimetype =
       Try(new Tika().detect(bytes)) match {
         case Success(s) => Some(s)
@@ -125,7 +134,7 @@ sealed trait ResourceBehavior extends TimeStampedBehavior[ResourceCommand, Resou
       .withUuid(uuid)
       .withContent(content)
       .withMd5(md5)
-      .copy(mimetype = mimetype)
+      .copy(mimetype = mimetype, uri = uri)
   }
 }
 

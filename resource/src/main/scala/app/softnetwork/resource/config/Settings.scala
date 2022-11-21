@@ -17,6 +17,8 @@ object Settings  extends StrictLogging {
 
   val ResourceDirectory: String = config.getString("resource.directory")
 
+  val LibraryDirectory: String = config.getString("resource.library-directory")
+
   import scala.collection.JavaConverters._
 
   val ImageSizes: Map[String, ImageSize] = config.getStringList("resource.images.sizes").asScala.toList.map(size =>
