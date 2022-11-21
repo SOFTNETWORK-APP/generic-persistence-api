@@ -14,8 +14,6 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
 
   lazy val rootDir = s"$ResourceDirectory/$environment"
 
-  lazy val libraryRootDir = s"$rootDir/$LibraryDirectory"
-
   /**
     * Upsert the underlying resource referenced by its uuid to the resource provider
     *
@@ -26,9 +24,12 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     */
   override def upsertResource(uuid: String, data: String, uri: Option[String] = None): Boolean = {
     Try {
-      val root = Paths.get(rootDir, uri.getOrElse(""))
-      if (!Files.exists(root)) {
-        Files.createDirectories(root)
+      val dir = Paths.get(rootDir, uri.getOrElse(""))
+      if(!Files.exists(dir)){
+        Try(Files.createDirectories(dir)) match {
+          case Success(_) => logger.info(s"$dir created successfully")
+          case Failure(f) => logger.error(s"$dir can not be created -> ${f.getMessage}", f)
+        }
       }
       val decoded = Base64Tools.decodeBase64(data)
       val path = Paths.get(rootDir, uri.getOrElse(""), uuid)
@@ -105,11 +106,11 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     */
   override def deleteResource(uuid: String, uri: Option[String] = None): Boolean = {
     Try {
-      val root = Paths.get(rootDir, uri.getOrElse(""))
+      val dir = Paths.get(rootDir, uri.getOrElse(""))
       import java.util.stream.Collectors
       import scala.collection.JavaConverters._
       val listFiles: List[Path] =
-        Files.list(root).filter(Files.isRegularFile(_)).filter { file =>
+        Files.list(dir).filter(Files.isRegularFile(_)).filter { file =>
           file.getFileName.toString.startsWith(uuid)
         }.collect(Collectors.toList[Path]()).asScala.toList
       listFiles.foreach(path => Files.delete(path))
@@ -130,7 +131,7 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
     */
   override def listResources(uri: String): List[SimpleResource] = {
     Try {
-      val dir = Paths.get(libraryRootDir, uri)
+      val dir = Paths.get(rootDir, LibraryDirectory, uri)
       import java.util.stream.Collectors
       import scala.collection.JavaConverters._
       Files.list(dir)
@@ -146,7 +147,9 @@ trait LocalFileSystemProvider extends ResourceProvider with StrictLogging {
             s"$BaseUrl/$ResourcePath/library/$uri/$name"
           }
           else if(image) {
-            s"$BaseUrl/$ResourcePath/images/$uri/$name"
+            val segments = (Seq(LibraryDirectory) ++ uri.split("/"))
+              .flatMap(s => if(s.trim.isEmpty) None else Some(s))
+            s"$BaseUrl/$ResourcePath/images/${segments.mkString("/")}/$name"
           }
           else {
             s"$BaseUrl/$ResourcePath/$uri/$name"
