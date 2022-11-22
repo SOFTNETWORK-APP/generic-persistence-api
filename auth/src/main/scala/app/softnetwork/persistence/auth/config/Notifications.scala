@@ -13,6 +13,7 @@ object Notifications {
                      passwordUpdated: String,
                      principalUpdated: String,
                      resetPasswordCode: Boolean,
+                     signature: String,
                      channels: Channels
                    )
 

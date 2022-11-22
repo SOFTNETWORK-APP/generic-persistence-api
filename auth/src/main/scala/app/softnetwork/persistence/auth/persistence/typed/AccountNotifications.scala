@@ -156,7 +156,8 @@ trait AccountNotifications[T <: Account] extends Completion {
           case Some(s) => StringEscapeUtils.escapeHtml4(s.firstName)
           case _       => "customer"
         }),
-        "activationUrl" -> s"$BaseUrl/$Path/activate/${activationToken.token}"
+        "activationUrl" -> s"$BaseUrl/$Path/activate/${activationToken.token}",
+        "signature" -> NotificationsConfig.signature
       )
     )
 
@@ -183,7 +184,8 @@ trait AccountNotifications[T <: Account] extends Completion {
         "firstName" -> (account.details match {
           case Some(s) => StringEscapeUtils.escapeHtml4(s.firstName)
           case _       => "customer"
-        })
+        }),
+        "signature" -> NotificationsConfig.signature
       )
     )
 
@@ -212,7 +214,8 @@ trait AccountNotifications[T <: Account] extends Completion {
           case Some(s) => StringEscapeUtils.escapeHtml4(s.firstName)
           case _       => "customer"
         }),
-        "code" -> verificationCode.code
+        "code" -> verificationCode.code,
+        "signature" -> NotificationsConfig.signature
       )
     )
 
@@ -241,7 +244,8 @@ trait AccountNotifications[T <: Account] extends Completion {
           case _       => "customer"
         }),
         "resetPasswordUrl" -> ResetPasswordUrl,
-        "loginFailures" -> (maxLoginFailures + 1)
+        "loginFailures" -> (maxLoginFailures + 1),
+        "signature" -> NotificationsConfig.signature
       )
     )
 
@@ -272,7 +276,8 @@ trait AccountNotifications[T <: Account] extends Completion {
         }),
         "token" -> verificationToken.token,
         "principal" -> account.principal.value,
-        "resetPasswordUrl" -> ResetPasswordUrl
+        "resetPasswordUrl" -> ResetPasswordUrl,
+        "signature" -> NotificationsConfig.signature
       )
     )
 
@@ -299,7 +304,8 @@ trait AccountNotifications[T <: Account] extends Completion {
         "firstName" -> (account.details match {
           case Some(s) => StringEscapeUtils.escapeHtml4(s.firstName)
           case _       => "customer"
-        })
+        }),
+        "signature" -> NotificationsConfig.signature
       )
     )
 
@@ -326,7 +332,8 @@ trait AccountNotifications[T <: Account] extends Completion {
         "firstName" -> (account.details match {
           case Some(s) => StringEscapeUtils.escapeHtml4(s.firstName)
           case _       => "customer"
-        })
+        }),
+        "signature" -> NotificationsConfig.signature
       )
     )
 
