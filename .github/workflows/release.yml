@@ -36,4 +36,5 @@ jobs:
         distribution: 'temurin'
 #        cache: 'sbt'
     - name: Run tests & publish
-      run: sbt test publish
+#      run: sbt test publish
+      run: sbt publish

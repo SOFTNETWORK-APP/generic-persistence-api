@@ -4,13 +4,9 @@ object Versions {
 
   val akka = "2.6.20"
 
-  val akkaHttp = "10.2.10" //10.1.15 -> 10.2.10
-
-  val akkaHttpJson4s = "1.37.0" //1.33.0 -> 1.39.2
+  val akkaHttp = "10.2.10"
 
   val akkaPersistenceJdbc = "3.5.2"
-
-  val akkaHttpSession = "0.5.11" // 0.5.11 -> 0.7.0
 
   val akkaManagement = "1.1.4" // 1.0.10 -> 1.1.4
 
@@ -22,7 +18,7 @@ object Versions {
 
   val kxbmap = "0.4.4"
 
-  val jackson = "2.11.4" //2.10.1 -> 2.11.4
+  val jackson = "2.11.4"
 
   val json4s = "3.6.12" // 3.6.7 -> 3.6.12
 

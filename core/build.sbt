@@ -22,13 +22,19 @@ val akkaPersistence: Seq[ModuleID] = Seq(
   "com.typesafe.akka" %% "akka-serialization-jackson" % Versions.akka
 )
 
+val akkaHttp: Seq[ModuleID] = Seq(
+  "com.typesafe.akka" %% "akka-http" % Versions.akkaHttp,
+  "com.typesafe.akka" %% "akka-http2-support" % Versions.akkaHttp, // required for akka-grpc
+  "com.typesafe.akka" %% "akka-http-spray-json" % Versions.akkaHttp
+)
+
 val akkaManagement: Seq[ModuleID] = Seq(
   // This provides HTTP management endpoints as well as a cluster health check
-  "com.lightbend.akka.management" %% "akka-management-cluster-http" % Versions.akkaManagement,
+  "com.lightbend.akka.management" %% "akka-management-cluster-http" % Versions.akkaManagement excludeAll ExclusionRule(organization = "com.typesafe.akka"),
   // This bootstraps the cluster from nodes discovered via the Kubernetes API
-  "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % Versions.akkaManagement,
+  "com.lightbend.akka.management" %% "akka-management-cluster-bootstrap" % Versions.akkaManagement excludeAll ExclusionRule(organization = "com.typesafe.akka"),
   // This provides a discovery mechanism that queries the Kubernetes API
-  "com.lightbend.akka.discovery" %% "akka-discovery-kubernetes-api" % Versions.akkaManagement
+  "com.lightbend.akka.discovery" %% "akka-discovery-kubernetes-api" % Versions.akkaManagement excludeAll ExclusionRule(organization = "com.typesafe.akka")
 )
 
 val kryo = Seq(
@@ -50,4 +56,4 @@ val akkaTestKit = Seq(
 
 libraryDependencies ++= Seq(
   "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.15.2"  excludeAll ExclusionRule(organization = "com.typesafe.akka")
-) ++ akka ++ akkaPersistence ++ kryo ++ chill ++ logback ++ akkaTestKit ++ akkaManagement
+) ++ akka ++ akkaPersistence ++ akkaHttp ++ kryo ++ chill ++ logback ++ akkaTestKit ++ akkaManagement

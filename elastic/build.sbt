@@ -29,6 +29,8 @@ val jest = Seq(
   "io.searchbox" % "jest" % Versions.jest
 ).map(_.excludeAll(httpComponentsExclusions ++ Seq(guavaExclusion): _*))
 
-libraryDependencies ++= elastic ++ jest
+libraryDependencies ++= elastic ++ jest ++ Seq(
+  "javax.activation" % "activation" % "1.1.1" % Test
+)
 
 Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"
