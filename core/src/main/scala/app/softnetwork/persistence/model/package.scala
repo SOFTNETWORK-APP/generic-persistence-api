@@ -2,8 +2,7 @@ package app.softnetwork.persistence
 
 import java.util.Date
 
-/**
-  * Created by smanciot on 27/05/2020.
+/** Created by smanciot on 27/05/2020.
   */
 package object model {
 
@@ -11,8 +10,8 @@ package object model {
     final val ALL_KEY = "*"
   }
 
-  /** State objects **/
-  trait State{
+  /** State objects * */
+  trait State {
     def uuid: String
   }
 

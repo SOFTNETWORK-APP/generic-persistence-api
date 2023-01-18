@@ -6,14 +6,13 @@ import app.softnetwork.persistence.model.Timestamped
 
 import org.softnetwork.elastic.message._
 
-/**
-  * Created by smanciot on 01/07/2018.
+/** Created by smanciot on 01/07/2018.
   */
 package object message {
 
   sealed trait ElasticCommand extends EntityCommand
 
-  /** Entity Commands **/
+  /** Entity Commands * */
 
   @SerialVersionUID(0L)
   case class LoadDocument(id: String) extends ElasticCommand
@@ -37,10 +36,14 @@ package object message {
   case class UpsertDocument(id: String, data: String) extends ElasticCommand
 
   @SerialVersionUID(0L)
-  case class BulkUpdateDocuments(documents: List[Map[String, Any]]) extends ElasticCommand with AllEntities
+  case class BulkUpdateDocuments(documents: List[Map[String, Any]])
+      extends ElasticCommand
+      with AllEntities
 
   @SerialVersionUID(0L)
-  case class BulkDeleteDocuments(documents: List[Map[String, Any]]) extends ElasticCommand with AllEntities
+  case class BulkDeleteDocuments(documents: List[Map[String, Any]])
+      extends ElasticCommand
+      with AllEntities
 
   @SerialVersionUID(0L)
   case class RefreshIndex(index: Option[String]) extends ElasticCommand with AllEntities
@@ -51,7 +54,7 @@ package object message {
   @SerialVersionUID(0L)
   case class Count(sqlQuery: SQLQuery) extends ElasticCommand with AllEntities
 
-  /** Crud Commands **/
+  /** Crud Commands * */
 
   sealed trait ElasticCrudCommand[T <: Timestamped] extends ElasticCommand {
     val document: T
@@ -59,36 +62,42 @@ package object message {
   }
 
   @SerialVersionUID(0L)
-  case class CreateDocument[T <: Timestamped:Manifest](document: T) extends ElasticCrudCommand[T]
+  case class CreateDocument[T <: Timestamped: Manifest](document: T) extends ElasticCrudCommand[T]
 
   @SerialVersionUID(0L)
-  case class CreateDocumentAsync[T <: Timestamped:Manifest](document: T) extends ElasticCrudCommand[T]
+  case class CreateDocumentAsync[T <: Timestamped: Manifest](document: T)
+      extends ElasticCrudCommand[T]
 
   @SerialVersionUID(0L)
-  case class UpdateDocument[T <: Timestamped:Manifest](document: T, upsert: Boolean = true)
-    extends ElasticCrudCommand[T]
+  case class UpdateDocument[T <: Timestamped: Manifest](document: T, upsert: Boolean = true)
+      extends ElasticCrudCommand[T]
 
   @SerialVersionUID(0L)
-  case class UpdateDocumentAsync[T <: Timestamped:Manifest](document: T, upsert: Boolean = true)
-    extends ElasticCrudCommand[T]
+  case class UpdateDocumentAsync[T <: Timestamped: Manifest](document: T, upsert: Boolean = true)
+      extends ElasticCrudCommand[T]
 
-  /** Crud events **/
-  case class DocumentCreatedEvent[T <: Timestamped: Manifest](document: T) extends Created[T] with ElasticEvent
+  /** Crud events * */
+  case class DocumentCreatedEvent[T <: Timestamped: Manifest](document: T)
+      extends Created[T]
+      with ElasticEvent
 
-  case class DocumentUpdatedEvent[T <: Timestamped: Manifest](document: T, override val upsert: Boolean)
-    extends Updated[T] with ElasticEvent
+  case class DocumentUpdatedEvent[T <: Timestamped: Manifest](
+    document: T,
+    override val upsert: Boolean
+  ) extends Updated[T]
+      with ElasticEvent
 
   case class DocumentDeletedEvent(uuid: String) extends Deleted with ElasticEvent
 
-  /** Command results **/
+  /** Command results * */
 
   trait ElasticResult extends CommandResult
 
   @SerialVersionUID(0L)
-  case class DocumentLoaded[T <: Timestamped:Manifest](document: T) extends ElasticResult
+  case class DocumentLoaded[T <: Timestamped: Manifest](document: T) extends ElasticResult
 
   @SerialVersionUID(0L)
-  case class DocumentsFound[T <: Timestamped:Manifest](documents: List[T]) extends ElasticResult
+  case class DocumentsFound[T <: Timestamped: Manifest](documents: List[T]) extends ElasticResult
 
   @SerialVersionUID(0L)
   case class DocumentCreated(id: String) extends ElasticResult
@@ -109,7 +118,9 @@ package object message {
   case object DocumentsBulkDeleted extends ElasticResult
 
   @SerialVersionUID(0L)
-  case class ElasticCountResult(results: Seq[CountResponse]) extends CountResult(results) with ElasticResult
+  case class ElasticCountResult(results: Seq[CountResponse])
+      extends CountResult(results)
+      with ElasticResult
 
   @SerialVersionUID(0L)
   case object DocumentDeleted extends ElasticResult
@@ -129,7 +140,8 @@ package object message {
   case object ElasticUnknownEvent extends ElasticError("ElasticUnknownEvent")
 
   @SerialVersionUID(0L)
-  case object DocumentNotFound extends ElasticError("DocumentNotFound") // TODO add document type and uuid
+  case object DocumentNotFound
+      extends ElasticError("DocumentNotFound") // TODO add document type and uuid
 
   @SerialVersionUID(0L)
   case object DocumentNotCreated extends ElasticError("DocumentNotCreated")

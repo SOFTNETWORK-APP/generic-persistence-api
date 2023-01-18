@@ -4,8 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 
 import java.util
 
-/**
-  * Created by smanciot on 04/05/2021.
+/** Created by smanciot on 04/05/2021.
   */
 object Settings {
 

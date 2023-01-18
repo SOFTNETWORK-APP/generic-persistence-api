@@ -27,11 +27,15 @@ trait ClasspathResources extends StrictLogging {
 
   def streamToString(is: InputStream): String = ScalaIOSource.fromInputStream(is).mkString
 
-  def fromClasspathAsString(fileName: String): String = streamToString(fromClasspathAsStream(fileName))
+  def fromClasspathAsString(fileName: String): String = streamToString(
+    fromClasspathAsStream(fileName)
+  )
 
-  def fromClasspathAsStream(fileName: String): InputStream = Option(getClass.getClassLoader.getResourceAsStream(fileName)) match {
+  def fromClasspathAsStream(fileName: String): InputStream = Option(
+    getClass.getClassLoader.getResourceAsStream(fileName)
+  ) match {
     case Some(i) => i
-    case _ => 
+    case _ =>
       logger.error(s"file $fileName not found in the classpath")
       null
   }

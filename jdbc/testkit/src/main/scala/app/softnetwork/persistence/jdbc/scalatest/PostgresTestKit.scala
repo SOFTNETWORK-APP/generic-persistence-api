@@ -3,7 +3,10 @@ package app.softnetwork.persistence.jdbc.scalatest
 import app.softnetwork.persistence.jdbc.docker.PostgresService
 import app.softnetwork.persistence.jdbc.query.PostgresSchemaProvider
 
-trait PostgresTestKit extends PostgresService with PostgresSchemaProvider with JdbcPersistenceTestKit {
+trait PostgresTestKit
+    extends PostgresService
+    with PostgresSchemaProvider
+    with JdbcPersistenceTestKit {
 
   override lazy val slick: String = s"""
                       |slick {

@@ -21,10 +21,14 @@ import java.net.InetAddress
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
-/**
-  * Created by smanciot on 04/01/2020.
+/** Created by smanciot on 04/01/2020.
   */
-trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with Eventually with CompletionTestKit with Matchers {
+trait PersistenceTestKit
+    extends PersistenceGuardian
+    with BeforeAndAfterAll
+    with Eventually
+    with CompletionTestKit
+    with Matchers {
   _: Suite with SchemaProvider =>
 
   import app.softnetwork.persistence._
@@ -33,9 +37,8 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 
   lazy val hostname: String = InetAddress.getLocalHost.getHostAddress
 
-  /**
-    *
-    * @return roles associated with this node
+  /** @return
+    *   roles associated with this node
     */
   def roles: Seq[String] = Seq.empty
 
@@ -112,9 +115,8 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
                 |
                 |""".stripMargin
 
-  /**
-    *
-    * @return additional configuration
+  /** @return
+    *   additional configuration
     */
   def additionalConfig: String = ""
 
@@ -128,8 +130,7 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
 
   def typedSystem(): ActorSystem[Nothing] = system
 
-  /**
-    * `PatienceConfig` from [[_root_.akka.actor.testkit.typed.TestKitSettings#DefaultTimeout]]
+  /** `PatienceConfig` from [[_root_.akka.actor.testkit.typed.TestKitSettings#DefaultTimeout]]
     */
   implicit val patience: PatienceConfig =
     PatienceConfig(Settings.DefaultTimeout, Span(100, org.scalatest.time.Millis))
@@ -142,13 +143,14 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
     testKit.shutdownTestKit()
   }
 
-  /**
-    * init and join cluster
+  /** init and join cluster
     */
   final def initAndJoinCluster(): Unit = {
     testKit.spawn(setup(), "guardian")
     // let the nodes join and become Up
-    blockUntil("let the nodes join and become Up", 30, 2000)(() => Cluster(system).selfMember.status == MemberStatus.Up)
+    blockUntil("let the nodes join and become Up", 30, 2000)(() =>
+      Cluster(system).selfMember.status == MemberStatus.Up
+    )
   }
 
   def createTestProbe[M](): TestProbe[M] = testKit.createTestProbe()
@@ -163,7 +165,8 @@ trait PersistenceTestKit extends PersistenceGuardian with BeforeAndAfterAll with
     ClusterSharding(system).entityRefFor(typeKey, entityId)
 }
 
-trait InMemoryPersistenceTestKit extends PersistenceTestKit with InMemorySchemaProvider { _: Suite =>
+trait InMemoryPersistenceTestKit extends PersistenceTestKit with InMemorySchemaProvider {
+  _: Suite =>
   override lazy val config: Config =
     akkaConfig
       .withFallback(ConfigFactory.load("softnetwork-in-memory-persistence.conf"))

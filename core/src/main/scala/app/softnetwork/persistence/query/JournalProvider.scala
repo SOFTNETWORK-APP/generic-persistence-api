@@ -1,6 +1,6 @@
 package app.softnetwork.persistence.query
 
-import akka.{NotUsed, Done}
+import akka.{Done, NotUsed}
 
 import akka.persistence.query.{EventEnvelope, Offset}
 import akka.persistence.query.scaladsl.ReadJournal
@@ -15,10 +15,9 @@ import akka.{actor => classic}
 
 import scala.concurrent.Future
 
-/**
-  * Created by smanciot on 07/05/2021.
+/** Created by smanciot on 07/05/2021.
   */
-trait JournalProvider extends ReadJournal with EventStream {_: SchemaProvider =>
+trait JournalProvider extends ReadJournal with EventStream { _: SchemaProvider =>
 
   implicit def classicSystem: classic.ActorSystem
 
@@ -32,25 +31,24 @@ trait JournalProvider extends ReadJournal with EventStream {_: SchemaProvider =>
 
   protected def initJournalProvider(): Unit = {}
 
-  /**
-    *
-    * @param tag - tag
-    * @param offset - offset
+  /** @param tag
+    *   - tag
+    * @param offset
+    *   - offset
     * @return
     */
   protected def eventsByTag(tag: String, offset: Offset): Source[EventEnvelope, NotUsed]
 
-  /**
-    * Read current offset
+  /** Read current offset
     *
     * @return
     */
   protected def readOffset(): Future[Offset] = Future.successful(Offset.sequence(0L))
 
-  /**
-    * Persist current offset
+  /** Persist current offset
     *
-    * @param offset - current offset
+    * @param offset
+    *   - current offset
     * @return
     */
   protected def writeOffset(offset: Offset): Future[Done] = Future.successful(Done)

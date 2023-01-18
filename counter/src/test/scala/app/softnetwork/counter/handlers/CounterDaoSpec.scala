@@ -8,8 +8,7 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.ExecutionContextExecutor
 
-/**
-  * Created by smanciot on 29/03/2021.
+/** Created by smanciot on 29/03/2021.
   */
 class CounterDaoSpec extends AnyWordSpecLike with InMemoryPersistenceTestKit with Matchers {
 
@@ -19,9 +18,7 @@ class CounterDaoSpec extends AnyWordSpecLike with InMemoryPersistenceTestKit wit
 
   implicit lazy val ec: ExecutionContextExecutor = system.executionContext
 
-  /**
-    *
-    * initialize all singletons
+  /** initialize all singletons
     */
   override def singletons: ActorSystem[_] => Seq[Singleton[_]] = _ => Seq(counterDao)
 

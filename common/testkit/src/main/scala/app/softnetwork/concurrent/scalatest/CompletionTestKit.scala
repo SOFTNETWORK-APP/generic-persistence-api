@@ -10,12 +10,11 @@ import scala.concurrent.{Await, Future}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 12/04/2021.
+/** Created by smanciot on 12/04/2021.
   */
 trait CompletionTestKit extends Completion with Assertions {
 
-  implicit class AwaitAssertion[T](future: Future[T])(implicit atMost: Duration = defaultTimeout){
+  implicit class AwaitAssertion[T](future: Future[T])(implicit atMost: Duration = defaultTimeout) {
     def assert(fun: T => Assertion): Assertion =
       Try(Await.result(future, atMost)) match {
         case Success(s) => fun(s)
@@ -36,10 +35,12 @@ trait CompletionTestKit extends Completion with Assertions {
 
   def log: Logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
-  def blockUntil(explain: String, maxTries: Int = 20, sleep: Int = 1000)(predicate: () => Boolean): Unit = {
+  def blockUntil(explain: String, maxTries: Int = 20, sleep: Int = 1000)(
+    predicate: () => Boolean
+  ): Unit = {
 
     var tries = 0
-    var done  = false
+    var done = false
 
     while (tries <= maxTries && !done) {
       if (tries > 0) Thread.sleep(sleep * tries)

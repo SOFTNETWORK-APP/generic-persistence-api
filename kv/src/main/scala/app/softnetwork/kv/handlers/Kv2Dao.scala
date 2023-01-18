@@ -10,11 +10,11 @@ import app.softnetwork.persistence.typed.scaladsl.SingletonPattern
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
 
-/**
-  * Created by smanciot on 02/06/2020.
+/** Created by smanciot on 02/06/2020.
   */
 trait Kv2Dao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKeyValueDao {
-  override implicit def command2Request(command: KvCommand): Request = replyTo => KvCommandWrapper(command, replyTo)
+  override implicit def command2Request(command: KvCommand): Request = replyTo =>
+    KvCommandWrapper(command, replyTo)
 
   override lazy val behavior: Behavior[KvCommand] = Kv(name)
 
@@ -24,7 +24,7 @@ trait Kv2Dao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKe
     implicit val ec: ExecutionContextExecutor = system.executionContext
     this ? Lookup(key) map {
       case r: KvFound => Some(r.value)
-      case _ => None
+      case _          => None
     }
   }
 

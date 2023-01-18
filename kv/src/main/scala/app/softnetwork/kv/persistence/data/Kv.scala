@@ -19,22 +19,31 @@ trait Kv {
         LWWMapKey[String, String](s"$namespace-" + math.abs(entryKey.hashCode % 100))
 
       def handleCommand(command: KvCommand, maybeReplyTo: Option[ActorRef[KvCommandResult]])(
-        implicit system: ActorSystem[_]): Behavior[KvCommand] = {
+        implicit system: ActorSystem[_]
+      ): Behavior[KvCommand] = {
         command match {
           case Put(key, value) =>
             replicator.askUpdate(
-              askReplyTo => Update(
-                dataKey(key), LWWMap.empty[String, String], WriteLocal, askReplyTo
-              )(_ :+ (key -> value)),
+              askReplyTo =>
+                Update(
+                  dataKey(key),
+                  LWWMap.empty[String, String],
+                  WriteLocal,
+                  askReplyTo
+                )(_ :+ (key -> value)),
               InternalUpdateResponse.apply
             )
             Behaviors.same
 
           case Remove(key) =>
             replicator.askUpdate(
-              askReplyTo => Update(
-                dataKey(key), LWWMap.empty[String, String], WriteLocal, askReplyTo
-              )(_.remove(node, key)),
+              askReplyTo =>
+                Update(
+                  dataKey(key),
+                  LWWMap.empty[String, String],
+                  WriteLocal,
+                  askReplyTo
+                )(_.remove(node, key)),
               InternalUpdateResponse.apply
             )
             Behaviors.same
@@ -42,13 +51,14 @@ trait Kv {
           case Lookup(key) =>
             replicator.askGet(
               askReplyTo => Get(dataKey(key), ReadLocal, askReplyTo),
-              rsp => InternalGetResponse(key, maybeReplyTo, rsp))
+              rsp => InternalGetResponse(key, maybeReplyTo, rsp)
+            )
             Behaviors.same
 
           case InternalGetResponse(key, replyTo, g @ GetSuccess(_, _)) =>
             g.dataValue.get(key) match {
               case Some(value) => replyTo.foreach(_ ! KvFound(value))
-              case _ => replyTo.foreach(_ ! KvNotFound)
+              case _           => replyTo.foreach(_ ! KvNotFound)
             }
             Behaviors.same
 
@@ -57,16 +67,16 @@ trait Kv {
             Behaviors.same
 
           case InternalSubscribeResponse(Replicator.Deleted(_)) => Behaviors.same // no deletes
-          case _: InternalGetResponse    => Behaviors.same // ok
-          case _: InternalUpdateResponse => Behaviors.same // ok
+          case _: InternalGetResponse                           => Behaviors.same // ok
+          case _: InternalUpdateResponse                        => Behaviors.same // ok
         }
       }
 
       Behaviors.receive[KvCommand] { (context, command) =>
         command match {
           case w: KvCommandWrapper => handleCommand(w.command, Some(w.replyTo))(context.system)
-          case c: KvCommand => handleCommand(c, None)(context.system)
-          case _ => Behaviors.same
+          case c: KvCommand        => handleCommand(c, None)(context.system)
+          case _                   => Behaviors.same
         }
       }
     }
@@ -77,7 +87,8 @@ object Kv extends Kv {
   sealed trait KvCommand extends Command
 
   case class KvCommandWrapper(command: KvCommand, replyTo: ActorRef[KvCommandResult])
-    extends CommandWrapper[KvCommand, KvCommandResult] with KvCommand
+      extends CommandWrapper[KvCommand, KvCommandResult]
+      with KvCommand
 
   trait InternalKvCommand extends KvCommand
 
@@ -86,10 +97,13 @@ object Kv extends Kv {
   case class Lookup(key: String) extends KvCommand
 
   private case class InternalUpdateResponse(rsp: Replicator.UpdateResponse[LWWMap[String, String]])
-    extends InternalKvCommand
-  private case class InternalGetResponse(key: String,
-                                         replyTo: Option[ActorRef[KvCommandResult]],
-                                         rsp: GetResponse[LWWMap[String, String]]) extends InternalKvCommand
-  private case class InternalSubscribeResponse(chg: Replicator.SubscribeResponse[LWWMap[String, String]]) 
-    extends InternalKvCommand
+      extends InternalKvCommand
+  private case class InternalGetResponse(
+    key: String,
+    replyTo: Option[ActorRef[KvCommandResult]],
+    rsp: GetResponse[LWWMap[String, String]]
+  ) extends InternalKvCommand
+  private case class InternalSubscribeResponse(
+    chg: Replicator.SubscribeResponse[LWWMap[String, String]]
+  ) extends InternalKvCommand
 }

@@ -18,12 +18,11 @@ import scala.language.implicitConversions
 
 import scala.reflect.ClassTag
 
-/**
-  * Created by smanciot on 12/04/2020.
+/** Created by smanciot on 12/04/2020.
   */
 trait MockElasticClientApi extends ElasticClientApi with StrictLogging {
 
-  protected val elasticDocuments: ElasticDocuments = new ElasticDocuments(){}
+  protected val elasticDocuments: ElasticDocuments = new ElasticDocuments() {}
 
   override def toggleRefresh(index: String, enable: Boolean): Unit = {}
 
@@ -43,41 +42,60 @@ trait MockElasticClientApi extends ElasticClientApi with StrictLogging {
 
   override def openIndex(index: String): Boolean = true
 
-  override def countAsync(jsonQuery: JSONQuery)(implicit ec: ExecutionContext): Future[Option[Double]] =
+  override def countAsync(jsonQuery: JSONQuery)(implicit
+    ec: ExecutionContext
+  ): Future[Option[Double]] =
     throw new UnsupportedOperationException
 
   override def count(jsonQuery: JSONQuery): Option[Double] =
     throw new UnsupportedOperationException
 
-  override def get[U <: Timestamped](id: String, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit m: Manifest[U], formats: Formats): Option[U] =
+  override def get[U <: Timestamped](
+    id: String,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit m: Manifest[U], formats: Formats): Option[U] =
     elasticDocuments.get(id).asInstanceOf[Option[U]]
 
-  override def getAsync[U <: Timestamped](id: String, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]] =
+  override def getAsync[U <: Timestamped](
+    id: String,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]] =
     Future.successful(elasticDocuments.get(id).asInstanceOf[Option[U]])
 
   override def search[U](sqlQuery: SQLQuery)(implicit m: Manifest[U], formats: Formats): List[U] =
     elasticDocuments.getAll.toList.asInstanceOf[List[U]]
 
-  override def searchAsync[U](sqlQuery: SQLQuery)(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats
-  ): Future[List[U]] =
+  override def searchAsync[U](
+    sqlQuery: SQLQuery
+  )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[List[U]] =
     Future.successful(search(sqlQuery))
 
-  override def multiSearch[U](sqlQueries: SQLQueries)(implicit m: Manifest[U], formats: Formats): List[List[U]] =
+  override def multiSearch[U](
+    sqlQueries: SQLQueries
+  )(implicit m: Manifest[U], formats: Formats): List[List[U]] =
     throw new UnsupportedOperationException
 
-  override def multiSearch[U](jsonQueries: JSONQueries)(implicit m: Manifest[U], formats: Formats): List[List[U]] =
+  override def multiSearch[U](
+    jsonQueries: JSONQueries
+  )(implicit m: Manifest[U], formats: Formats): List[List[U]] =
     throw new UnsupportedOperationException
 
-  override def index[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit u: ClassTag[U], formats: Formats): Boolean = {
+  override def index[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit u: ClassTag[U], formats: Formats): Boolean = {
     elasticDocuments.createOrUpdate(entity)
     true
   }
 
-  override def indexAsync[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
+  override def indexAsync[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
     elasticDocuments.createOrUpdate(entity)
     Future.successful(true)
   }
@@ -85,40 +103,62 @@ trait MockElasticClientApi extends ElasticClientApi with StrictLogging {
   override def index(index: String, `type`: String, id: String, source: String): Boolean =
     throw new UnsupportedOperationException
 
-  override def indexAsync(index: String, `type`: String, id: String, source: String)(implicit ec: ExecutionContext): Future[Boolean] =
+  override def indexAsync(index: String, `type`: String, id: String, source: String)(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] =
     throw new UnsupportedOperationException
 
-  override def update[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None, upsert: Boolean = true)(
-    implicit u: ClassTag[U], formats: Formats): Boolean = {
+  override def update[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None,
+    upsert: Boolean = true
+  )(implicit u: ClassTag[U], formats: Formats): Boolean = {
     elasticDocuments.createOrUpdate(entity)
     true
   }
 
-  override   def updateAsync[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None, upsert: Boolean = true)(
-    implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
+  override def updateAsync[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None,
+    upsert: Boolean = true
+  )(implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
     elasticDocuments.createOrUpdate(entity)
     Future.successful(true)
   }
 
-  override def update(index: String, `type`: String, id: String, source: String, upsert: Boolean): Boolean = {
+  override def update(
+    index: String,
+    `type`: String,
+    id: String,
+    source: String,
+    upsert: Boolean
+  ): Boolean = {
     logger.warn("MockElasticClient - {} not updated for {}", id, source)
     false
   }
 
-  override def updateAsync(index: String, `type`: String, id: String, source: String, upsert: Boolean)(
-    implicit ec: ExecutionContext): Future[Boolean] = Future.successful(false)
+  override def updateAsync(
+    index: String,
+    `type`: String,
+    id: String,
+    source: String,
+    upsert: Boolean
+  )(implicit ec: ExecutionContext): Future[Boolean] = Future.successful(false)
 
   override def delete(uuid: String, index: String, `type`: String): Boolean = {
-    if(elasticDocuments.get(uuid).isDefined){
+    if (elasticDocuments.get(uuid).isDefined) {
       elasticDocuments.delete(uuid)
       true
-    }
-    else {
+    } else {
       false
     }
   }
 
-  override def deleteAsync(uuid: String, index: String, `type`: String)(implicit ec: ExecutionContext): Future[Boolean] = {
+  override def deleteAsync(uuid: String, index: String, `type`: String)(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
     Future.successful(delete(uuid, index, `type`))
   }
 
@@ -128,7 +168,10 @@ trait MockElasticClientApi extends ElasticClientApi with StrictLogging {
 
   override type A = this.type
 
-  override def bulk(implicit bulkOptions: BulkOptions, system: ActorSystem): Flow[Seq[A], R, NotUsed] =
+  override def bulk(implicit
+    bulkOptions: BulkOptions,
+    system: ActorSystem
+  ): Flow[Seq[A], R, NotUsed] =
     throw new UnsupportedOperationException
 
   override def bulkResult: Flow[R, Set[String], NotUsed] =
@@ -145,18 +188,37 @@ trait MockElasticClientApi extends ElasticClientApi with StrictLogging {
   override implicit def toBulkElasticResult(r: R): BulkElasticResult =
     throw new UnsupportedOperationException
 
-  override def countAsync(sqlQuery: SQLQuery)(implicit ec: ExecutionContext): Future[scala.Seq[CountResponse]] =
+  override def countAsync(sqlQuery: SQLQuery)(implicit
+    ec: ExecutionContext
+  ): Future[scala.Seq[CountResponse]] =
     throw new UnsupportedOperationException
 
-  override def multiSearchWithInnerHits[U, I](jsonQueries: JSONQueries, innerField: String)(implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]] = List.empty
+  override def multiSearchWithInnerHits[U, I](jsonQueries: JSONQueries, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[List[(U, List[I])]] = List.empty
 
-  override def multiSearchWithInnerHits[U, I](sqlQueries: SQLQueries, innerField: String)(implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]] = List.empty
+  override def multiSearchWithInnerHits[U, I](sqlQueries: SQLQueries, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[List[(U, List[I])]] = List.empty
 
-  override def search[U](jsonQuery: JSONQuery)(implicit m: Manifest[U], formats: Formats): List[U] = List.empty
+  override def search[U](jsonQuery: JSONQuery)(implicit m: Manifest[U], formats: Formats): List[U] =
+    List.empty
 
-  override def searchWithInnerHits[U, I](jsonQuery: JSONQuery, innerField: String)(implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[(U, List[I])] = List.empty
+  override def searchWithInnerHits[U, I](jsonQuery: JSONQuery, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[(U, List[I])] = List.empty
 
-  override def searchWithInnerHits[U, I](sqlQuery: SQLQuery, innerField: String)(implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[(U, List[I])] = List.empty
+  override def searchWithInnerHits[U, I](sqlQuery: SQLQuery, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[(U, List[I])] = List.empty
 }
 
 trait ElasticDocuments {

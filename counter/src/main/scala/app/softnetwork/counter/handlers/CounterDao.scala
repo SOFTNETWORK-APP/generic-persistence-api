@@ -10,12 +10,12 @@ import app.softnetwork.counter.persistence.data.Counter
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
 
-/**
-  * Created by smanciot on 28/03/2021.
+/** Created by smanciot on 28/03/2021.
   */
-trait CounterDao extends SingletonPattern[CounterCommand, CounterResult]{
+trait CounterDao extends SingletonPattern[CounterCommand, CounterResult] {
 
-  implicit def command2Request(command: CounterCommand): Request = replyTo => CounterCommandWrapper(command, replyTo)
+  implicit def command2Request(command: CounterCommand): Request = replyTo =>
+    CounterCommandWrapper(command, replyTo)
 
   override lazy val behavior: Behavior[CounterCommand] = Counter(PNCounterKey(name))
 
@@ -40,7 +40,7 @@ trait CounterDao extends SingletonPattern[CounterCommand, CounterResult]{
     implicit val ec: ExecutionContextExecutor = system.executionContext
     (this ? GetCounterValue).map {
       case r: CounterLoaded => Right(r.value)
-      case other => Left(other)
+      case other            => Left(other)
     }
   }
 
@@ -48,13 +48,13 @@ trait CounterDao extends SingletonPattern[CounterCommand, CounterResult]{
     implicit val ec: ExecutionContextExecutor = system.executionContext
     (this ? GetCounterCachedValue).map {
       case r: CounterLoaded => Right(r.value)
-      case other => Left(other)
+      case other            => Left(other)
     }
   }
 
 }
 
-object CounterDao{
+object CounterDao {
   def apply(counter: String): CounterDao = new CounterDao() {
     override lazy val name: String = counter
   }

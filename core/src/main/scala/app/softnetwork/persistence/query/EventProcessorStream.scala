@@ -15,8 +15,7 @@ import akka.{actor => classic}
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
 
-/**
-  * Created by smanciot on 16/05/2020.
+/** Created by smanciot on 16/05/2020.
   */
 object EventProcessor {
 
@@ -24,11 +23,10 @@ object EventProcessor {
     Behaviors.setup[Nothing] { ctx =>
       val killSwitch = KillSwitches.shared("eventProcessorSwitch")
       eventProcessorStream.runQueryStream(killSwitch)
-      Behaviors.receiveSignal[Nothing] {
-        case (_, PostStop) =>
-          ctx.log.info(s"Stopping stream ${eventProcessorStream.id}")
-          killSwitch.shutdown()
-          Behaviors.same
+      Behaviors.receiveSignal[Nothing] { case (_, PostStop) =>
+        ctx.log.info(s"Stopping stream ${eventProcessorStream.id}")
+        killSwitch.shutdown()
+        Behaviors.same
       }
     }
   }
@@ -43,9 +41,8 @@ trait EventStream {
 
 }
 
-
-
-trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging { _: JournalProvider =>
+trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging {
+  _: JournalProvider =>
 
   implicit def system: ActorSystem[_]
 
@@ -59,13 +56,14 @@ trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging { 
 
   final lazy val id = platformEventProcessorId
 
-  /**
+  /** Processing event
     *
-    * Processing event
-    *
-    * @param event - event to process
-    * @param persistenceId - persistence id
-    * @param sequenceNr - sequence number
+    * @param event
+    *   - event to process
+    * @param persistenceId
+    *   - persistence id
+    * @param sequenceNr
+    *   - sequence number
     * @return
     */
   protected def processEvent(event: E, persistenceId: PersistenceId, sequenceNr: Long): Future[Done]
@@ -81,7 +79,9 @@ trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging { 
           ).map(_ => eventEnvelope.offset)
         case other =>
           logger.error("Unexpected event [{}]", other)
-          Future.failed(new IllegalArgumentException(s"Unexpected event [${other.getClass.getName}]"))
+          Future.failed(
+            new IllegalArgumentException(s"Unexpected event [${other.getClass.getName}]")
+          )
       }
     }
   }
@@ -89,11 +89,18 @@ trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging { 
   final def runQueryStream(killSwitch: SharedKillSwitch): Unit = {
     init()
     RestartSource
-      .withBackoff(RestartSettings(minBackoff = 500.millis, maxBackoff = 20.seconds, randomFactor = 0.1)) { () =>
+      .withBackoff(
+        RestartSettings(minBackoff = 500.millis, maxBackoff = 20.seconds, randomFactor = 0.1)
+      ) { () =>
         Source.futureSource {
           initJournalProvider()
           readOffset().map { offset =>
-            logger.info("Starting stream {} for tag [{}] from offset [{}]", platformEventProcessorId, platformTag, offset)
+            logger.info(
+              "Starting stream {} for tag [{}] from offset [{}]",
+              platformEventProcessorId,
+              platformTag,
+              offset
+            )
             processEventsByTag(offset)
               // groupedWithin can be used here to improve performance by reducing number of offset writes,
               // with the trade-off of possibility of more duplicate events when stream is restarted

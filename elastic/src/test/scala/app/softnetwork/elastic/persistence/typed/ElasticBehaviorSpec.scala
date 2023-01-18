@@ -13,20 +13,18 @@ import app.softnetwork.persistence.launch.PersistentEntity
 
 import scala.language.implicitConversions
 
-/**
-  * Created by smanciot on 11/04/2020.
+/** Created by smanciot on 11/04/2020.
   */
 class ElasticBehaviorSpec extends AnyWordSpecLike with InMemoryPersistenceTestKit {
 
   import app.softnetwork.persistence.launch.PersistenceGuardian._
 
-  /**
-    * initialize all entities
-    *
+  /** initialize all entities
     */
-  override def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = _ => List(
-    SampleBehavior
-  )
+  override def entities: ActorSystem[_] => Seq[PersistentEntity[_, _, _, _]] = _ =>
+    List(
+      SampleBehavior
+    )
 
   import SampleBehavior._
 

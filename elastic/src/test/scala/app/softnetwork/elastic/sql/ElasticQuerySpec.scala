@@ -3,15 +3,16 @@ package app.softnetwork.elastic.sql
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/**
-  * Created by smanciot on 13/04/17.
+/** Created by smanciot on 13/04/17.
   */
 class ElasticQuerySpec extends AnyFlatSpec with Matchers {
 
   import scala.language.implicitConversions
 
   "ElasticQuery" should "perform native count" in {
-    val results = ElasticQuery.count(SQLQuery("select count($t.id) as c2 from Table as t where $t.nom = \"Nom\""))
+    val results = ElasticQuery.count(
+      SQLQuery("select count($t.id) as c2 from Table as t where $t.nom = \"Nom\"")
+    )
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe false
@@ -20,7 +21,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     result.field shouldBe "c2"
     result.sources shouldBe Seq[String]("Table")
     result.query shouldBe
-      """|{
+    """|{
         |  "query": {
         |    "bool": {
         |      "filter": [
@@ -46,7 +47,9 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform count distinct" in {
-    val results = ElasticQuery.count(SQLQuery("select count(distinct $t.id) as c2 from Table as t where $t.nom = \"Nom\""))
+    val results = ElasticQuery.count(
+      SQLQuery("select count(distinct $t.id) as c2 from Table as t where $t.nom = \"Nom\"")
+    )
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe false
@@ -55,7 +58,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     result.field shouldBe "c2"
     result.sources shouldBe Seq[String]("Table")
     result.query shouldBe
-      """|{
+    """|{
         |  "query": {
         |    "bool": {
         |      "filter": [
@@ -81,7 +84,9 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform nested count" in {
-    val results = ElasticQuery.count(SQLQuery("select count(email.value) as email from index where nom = \"Nom\""))
+    val results = ElasticQuery.count(
+      SQLQuery("select count(email.value) as email from index where nom = \"Nom\"")
+    )
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -90,7 +95,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     result.field shouldBe "email"
     result.sources shouldBe Seq[String]("index")
     result.query shouldBe
-      """{
+    """{
         |  "query": {
         |    "bool": {
         |      "filter": [
@@ -123,7 +128,11 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform nested count with nested criteria" in {
-    val results = ElasticQuery.count(SQLQuery("select count(email.value) as email from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))"))
+    val results = ElasticQuery.count(
+      SQLQuery(
+        "select count(email.value) as email from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))"
+      )
+    )
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -132,7 +141,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     result.field shouldBe "email"
     result.sources shouldBe Seq[String]("index")
     result.query shouldBe
-      """{
+    """{
         |  "query": {
         |    "bool": {
         |      "filter": [
@@ -179,7 +188,11 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "perform nested count with filter" in {
-    val results = ElasticQuery.count(SQLQuery("select count(email.value) as email filter[email.context = \"profile\"] from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))"))
+    val results = ElasticQuery.count(
+      SQLQuery(
+        "select count(email.value) as email filter[email.context = \"profile\"] from index where nom = \"Nom\" and (profile.postalCode in (\"75001\",\"75002\"))"
+      )
+    )
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -188,7 +201,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     result.field shouldBe "email"
     result.sources shouldBe Seq[String]("index")
     result.query shouldBe
-      """{
+    """{
         |  "query": {
         |    "bool": {
         |      "filter": [
@@ -246,7 +259,11 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "accept and not operator" in {
-    val results = ElasticQuery.count(SQLQuery("select count(distinct email.value) as email from index where (profile.postalCode = \"33600\" and not profile.postalCode = \"75001\")"))
+    val results = ElasticQuery.count(
+      SQLQuery(
+        "select count(distinct email.value) as email from index where (profile.postalCode = \"33600\" and not profile.postalCode = \"75001\")"
+      )
+    )
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -255,7 +272,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     result.field shouldBe "email"
     result.sources shouldBe Seq[String]("index")
     result.query shouldBe
-      """{
+    """{
         |  "query": {
         |    "bool": {
         |      "must": [
@@ -310,7 +327,11 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "accept date filtering" in {
-    val results = ElasticQuery.count(SQLQuery("select count(distinct email.value) as email from index where profile.postalCode = \"33600\" and profile.createdDate <= \"now-35M/M\""))
+    val results = ElasticQuery.count(
+      SQLQuery(
+        "select count(distinct email.value) as email from index where profile.postalCode = \"33600\" and profile.createdDate <= \"now-35M/M\""
+      )
+    )
     results.size shouldBe 1
     val result = results.head
     result.nested shouldBe true
@@ -319,7 +340,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     result.field shouldBe "email"
     result.sources shouldBe Seq[String]("index")
     result.query shouldBe
-      """{
+    """{
         |  "query": {
         |    "bool": {
         |      "filter": [
@@ -392,7 +413,7 @@ class ElasticQuerySpec extends AnyFlatSpec with Matchers {
     select.isDefined shouldBe true
     val result = select.get
     result.query shouldBe
-      """{
+    """{
         |  "query": {
         |    "bool": {
         |      "filter": [

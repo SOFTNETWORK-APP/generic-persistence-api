@@ -6,8 +6,7 @@ import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 06/07/2018.
+/** Created by smanciot on 06/07/2018.
   */
 object MimeTypeTools {
 

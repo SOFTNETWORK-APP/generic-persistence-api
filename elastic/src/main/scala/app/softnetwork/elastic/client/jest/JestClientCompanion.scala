@@ -9,15 +9,14 @@ import app.softnetwork.elastic.config.Settings
 import app.softnetwork.elastic.config.Settings.ElasticConfig
 import com.typesafe.scalalogging.StrictLogging
 import io.searchbox.action.Action
-import io.searchbox.client.{JestResultHandler, JestResult, JestClient, JestClientFactory}
+import io.searchbox.client.{JestClient, JestClientFactory, JestResult, JestResultHandler}
 import io.searchbox.client.config.HttpClientConfig
 import org.apache.http.HttpHost
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 20/05/2021.
+/** Created by smanciot on 20/05/2021.
   */
 trait JestClientCompanion extends StrictLogging {
 
@@ -53,12 +52,14 @@ trait JestClientCompanion extends StrictLogging {
       }
     }
 
-    override def executeAsync[J <: JestResult](clientRequest: Action[J],
-                                               jestResultHandler: JestResultHandler[_ >: J]): Unit = {
+    override def executeAsync[J <: JestResult](
+      clientRequest: Action[J],
+      jestResultHandler: JestResultHandler[_ >: J]
+    ): Unit = {
       Try(checkClient())
       Option(_jestClient) match {
         case Some(s) => s.executeAsync[J](clientRequest, jestResultHandler)
-        case _       =>
+        case _ =>
           close()
           jestResultHandler.failed(new Exception("JestClient not initialized"))
       }
@@ -67,40 +68,39 @@ trait JestClientCompanion extends StrictLogging {
     override def execute[J <: JestResult](clientRequest: Action[J]): J = {
       Try(checkClient())
       Option(_jestClient) match {
-        case Some(j) => Try(j.execute[J](clientRequest)) match {
-          case Success(s) =>
-            nbFailures = 0
-            s
-          case Failure(f) =>
-            f match {
-              case e: IOException =>
-                nbFailures += 1
-                logger.error(e.getMessage, e)
-                close()
-                if(nbFailures < 10){
-                  Thread.sleep(1000 * nbFailures)
-                  execute(clientRequest)
-                }
-                else {
+        case Some(j) =>
+          Try(j.execute[J](clientRequest)) match {
+            case Success(s) =>
+              nbFailures = 0
+              s
+            case Failure(f) =>
+              f match {
+                case e: IOException =>
+                  nbFailures += 1
+                  logger.error(e.getMessage, e)
+                  close()
+                  if (nbFailures < 10) {
+                    Thread.sleep(1000 * nbFailures)
+                    execute(clientRequest)
+                  } else {
+                    throw f
+                  }
+                case e: IllegalStateException =>
+                  nbFailures += 1
+                  logger.error(e.getMessage, e)
+                  close()
+                  if (nbFailures < 10) {
+                    Thread.sleep(1000 * nbFailures)
+                    execute(clientRequest)
+                  } else {
+                    throw f
+                  }
+                case _ =>
+                  close()
                   throw f
-                }
-              case e: IllegalStateException =>
-                nbFailures += 1
-                logger.error(e.getMessage, e)
-                close()
-                if(nbFailures < 10){
-                  Thread.sleep(1000 * nbFailures)
-                  execute(clientRequest)
-                }
-                else {
-                  throw f
-                }
-              case _      =>
-                close()
-                throw f
-            }
-        }
-        case _      =>
+              }
+          }
+        case _ =>
           close()
           throw new Exception("JestClient not initialized")
       }
@@ -118,10 +118,13 @@ trait JestClientCompanion extends StrictLogging {
   }
 
   private[this] def getHttpHosts(esUrl: String): Set[HttpHost] = {
-    esUrl.split(",").map(u => {
-      val url = new java.net.URL(u)
-      new HttpHost(url.getHost, url.getPort, url.getProtocol)
-    }).toSet
+    esUrl
+      .split(",")
+      .map(u => {
+        val url = new java.net.URL(u)
+        new HttpHost(url.getHost, url.getPort, url.getProtocol)
+      })
+      .toSet
   }
 
   def apply(): JestClient = {
@@ -132,12 +135,14 @@ trait JestClientCompanion extends StrictLogging {
     )
   }
 
-  def apply(esCredentials: ElasticCredentials,
-            multithreaded: Boolean = true,
-            timeout: Int = 60000,
-            discoveryEnabled: Boolean = false,
-            discoveryFrequency: Long = 60L,
-            discoveryFrequencyTimeUnit: TimeUnit = TimeUnit.SECONDS): JestClient = {
+  def apply(
+    esCredentials: ElasticCredentials,
+    multithreaded: Boolean = true,
+    timeout: Int = 60000,
+    discoveryEnabled: Boolean = false,
+    discoveryFrequency: Long = 60L,
+    discoveryFrequencyTimeUnit: TimeUnit = TimeUnit.SECONDS
+  ): JestClient = {
     jestClient match {
       case Some(s) => s
       case None =>

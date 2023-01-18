@@ -1,7 +1,6 @@
 package app.softnetwork.specification
 
-/**
-  * Created by smanciot on 06/03/2020.
+/** Created by smanciot on 06/03/2020.
   */
 sealed trait Specification[A] {
 
@@ -17,9 +16,9 @@ sealed trait Specification[A] {
 
 }
 
-object Specification{
+object Specification {
   def apply[A](rules: Rule[A]*): Specification[A] = {
-    val specification = new Specification[A]{}
+    val specification = new Specification[A] {}
     rules.foreach(specification.add)
     specification
   }

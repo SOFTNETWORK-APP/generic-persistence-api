@@ -12,13 +12,12 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
-/**
-  * Created by smanciot on 17/04/2020.
+/** Created by smanciot on 17/04/2020.
   */
-trait KvHandler extends EntityPattern[KvCommand, KvCommandResult] {_: CommandTypeKey[KvCommand] =>
+trait KvHandler extends EntityPattern[KvCommand, KvCommandResult] { _: CommandTypeKey[KvCommand] =>
 }
 
-trait KvDao extends GenericKeyValueDao {_: KvHandler =>
+trait KvDao extends GenericKeyValueDao { _: KvHandler =>
 
   def lookupKeyValue(key: String)(implicit system: ActorSystem[_]): Future[Option[String]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext

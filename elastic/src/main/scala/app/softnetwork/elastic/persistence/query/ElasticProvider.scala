@@ -14,10 +14,10 @@ import app.softnetwork.elastic.persistence.typed.Elastic._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 16/05/2020.
+/** Created by smanciot on 16/05/2020.
   */
-trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] with StrictLogging {_: ElasticClientApi with ManifestWrapper[T] =>
+trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] with StrictLogging {
+  _: ElasticClientApi with ManifestWrapper[T] =>
 
   implicit def formats: Formats = commonFormats
 
@@ -41,24 +41,27 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
   }
 
   protected def initIndex(): Unit = {
-    Try{
+    Try {
       createIndex(index)
       addAlias(index, alias)
       setMapping(index, `type`, loadMapping(mappingPath))
     } match {
       case Success(_) => logger.info(s"index:$index type:${`type`} alias:$alias created")
-      case Failure(f) => logger.error(s"!!!!! index:$index type:${`type`} alias:$alias -> ${f.getMessage}", f)
+      case Failure(f) =>
+        logger.error(s"!!!!! index:$index type:${`type`} alias:$alias -> ${f.getMessage}", f)
     }
   }
 
   // ExternalPersistenceProvider
 
-  /**
-    * Creates the unerlying document to the external system
+  /** Creates the unerlying document to the external system
     *
-    * @param document - the document to create
-    * @param t        - implicit ClassTag for T
-    * @return whether the operation is successful or not
+    * @param document
+    *   - the document to create
+    * @param t
+    *   - implicit ClassTag for T
+    * @return
+    *   whether the operation is successful or not
     */
   override def createDocument(document: T)(implicit t: ClassTag[T]): Boolean = {
     Try(index(document, Some(index), Some(`type`))) match {
@@ -69,13 +72,17 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /**
-    * Updates the unerlying document to the external system
+  /** Updates the unerlying document to the external system
     *
-    * @param document - the document to update
-    * @param upsert   - whether or not to create the underlying document if it does not exist in the external system
-    * @param t        - implicit ClassTag for T
-    * @return whether the operation is successful or not
+    * @param document
+    *   - the document to update
+    * @param upsert
+    *   - whether or not to create the underlying document if it does not exist in the external
+    *     system
+    * @param t
+    *   - implicit ClassTag for T
+    * @return
+    *   whether the operation is successful or not
     */
   override def updateDocument(document: T, upsert: Boolean)(implicit t: ClassTag[T]): Boolean = {
     Try(update(document, Some(index), Some(`type`), upsert)) match {
@@ -86,11 +93,12 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /**
-    * Deletes the unerlying document referenced by its uuid to the external system
+  /** Deletes the unerlying document referenced by its uuid to the external system
     *
-    * @param uuid - the uuid of the document to delete
-    * @return whether the operation is successful or not
+    * @param uuid
+    *   - the uuid of the document to delete
+    * @return
+    *   whether the operation is successful or not
     */
   override def deleteDocument(uuid: String): Boolean = {
     Try(
@@ -103,12 +111,14 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /**
-    * Upserts the unerlying document referenced by its uuid to the external system
+  /** Upserts the unerlying document referenced by its uuid to the external system
     *
-    * @param uuid - the uuid of the document to upsert
-    * @param data - a map including all the properties and values tu upsert for the document
-    * @return whether the operation is successful or not
+    * @param uuid
+    *   - the uuid of the document to upsert
+    * @param data
+    *   - a map including all the properties and values tu upsert for the document
+    * @return
+    *   whether the operation is successful or not
     */
   override def upsertDocument(uuid: String, data: String): Boolean = {
     logger.debug(s"Upserting document $uuid with $data")
@@ -128,11 +138,12 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /**
-    * Load the document referenced by its uuid
+  /** Load the document referenced by its uuid
     *
-    * @param uuid - the document uuid
-    * @return the document retrieved, None otherwise
+    * @param uuid
+    *   - the document uuid
+    * @return
+    *   the document retrieved, None otherwise
     */
   override def loadDocument(uuid: String)(implicit m: Manifest[T], formats: Formats): Option[T] = {
     Try(get(uuid, Some(index), Some(`type`))) match {
@@ -143,13 +154,16 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /**
-    * Search documents
+  /** Search documents
     *
-    * @param query - the search query
-    * @return the documents founds or an empty list otherwise
+    * @param query
+    *   - the search query
+    * @return
+    *   the documents founds or an empty list otherwise
     */
-  override def searchDocuments(query: String)(implicit m: Manifest[T], formats: Formats): List[T] = {
+  override def searchDocuments(
+    query: String
+  )(implicit m: Manifest[T], formats: Formats): List[T] = {
     Try(search(SQLQuery(query))) match {
       case Success(s) => s
       case Failure(f) =>

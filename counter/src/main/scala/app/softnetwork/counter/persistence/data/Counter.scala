@@ -1,16 +1,15 @@
 package app.softnetwork.counter.persistence.data
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorSystem, Behavior, ActorRef}
-import akka.cluster.ddata.{SelfUniqueAddress, PNCounterKey, PNCounter}
+import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
+import akka.cluster.ddata.{PNCounter, PNCounterKey, SelfUniqueAddress}
 import akka.cluster.ddata.typed.scaladsl.{DistributedData, Replicator}
 
 import org.slf4j.Logger
 
 import app.softnetwork.counter.message._
 
-/**
-  * Created by smanciot on 27/03/2021.
+/** Created by smanciot on 27/03/2021.
   */
 trait Counter {
   import Counter._
@@ -28,33 +27,46 @@ trait Counter {
         //#subscribe
 
         def updated(cachedValue: Int): Behavior[CounterCommand] = {
-          def handleCommand(command: CounterCommand, maybeReplyTo: Option[ActorRef[CounterResult]])(
-            implicit system: ActorSystem[_], log: Logger): Behavior[CounterCommand] = {
+          def handleCommand(
+            command: CounterCommand,
+            maybeReplyTo: Option[ActorRef[CounterResult]]
+          )(implicit system: ActorSystem[_], log: Logger): Behavior[CounterCommand] = {
             command match {
               case IncrementCounter =>
                 replicatorAdapter.askUpdate(
-                  askReplyTo => Replicator.Update(key, PNCounter.empty, Replicator.WriteLocal, askReplyTo)(_ :+ 1),
-                  InternalUpdateResponse.apply)
+                  askReplyTo =>
+                    Replicator.Update(key, PNCounter.empty, Replicator.WriteLocal, askReplyTo)(
+                      _ :+ 1
+                    ),
+                  InternalUpdateResponse.apply
+                )
                 Behaviors.same[CounterCommand]
 
               case DecrementCounter =>
                 replicatorAdapter.askUpdate(
-                  askReplyTo => Replicator.Update(key, PNCounter.empty, Replicator.WriteLocal, askReplyTo)(_.decrement(1)),
-                  InternalUpdateResponse.apply)
+                  askReplyTo =>
+                    Replicator.Update(key, PNCounter.empty, Replicator.WriteLocal, askReplyTo)(
+                      _.decrement(1)
+                    ),
+                  InternalUpdateResponse.apply
+                )
                 Behaviors.same[CounterCommand]
 
               case cmd: ResetCounter =>
                 replicatorAdapter.askUpdate(
-                  askReplyTo => Replicator.Update(key, PNCounter.empty, Replicator.WriteLocal, askReplyTo)(c =>
-                   c.resetDelta  :+ cmd.value
-                  ),
-                  InternalUpdateResponse.apply)
+                  askReplyTo =>
+                    Replicator.Update(key, PNCounter.empty, Replicator.WriteLocal, askReplyTo)(c =>
+                      c.resetDelta :+ cmd.value
+                    ),
+                  InternalUpdateResponse.apply
+                )
                 Behaviors.same[CounterCommand]
 
               case GetCounterValue =>
                 replicatorAdapter.askGet(
                   askReplyTo => Replicator.Get(key, Replicator.ReadLocal, askReplyTo),
-                  value => InternalGetResponse(value, maybeReplyTo))
+                  value => InternalGetResponse(value, maybeReplyTo)
+                )
                 Behaviors.same[CounterCommand]
 
               case GetCounterCachedValue =>
@@ -94,7 +106,7 @@ trait Counter {
               case cmd: CounterCommandWrapper =>
                 handleCommand(cmd.command, Some(cmd.replyTo))(context.system, context.log)
               case cmd: CounterCommand => handleCommand(cmd, None)(context.system, context.log)
-              case _ => Behaviors.same
+              case _                   => Behaviors.same
             }
           }
         }
@@ -106,8 +118,12 @@ trait Counter {
 }
 
 object Counter extends Counter {
-  private case class InternalUpdateResponse(rsp: Replicator.UpdateResponse[PNCounter]) extends InternalCounterCommand
-  private case class InternalGetResponse(rsp: Replicator.GetResponse[PNCounter], replyTo: Option[ActorRef[CounterResult]])
-    extends InternalCounterCommand
-  private case class InternalSubscribeResponse(chg: Replicator.SubscribeResponse[PNCounter]) extends InternalCounterCommand
+  private case class InternalUpdateResponse(rsp: Replicator.UpdateResponse[PNCounter])
+      extends InternalCounterCommand
+  private case class InternalGetResponse(
+    rsp: Replicator.GetResponse[PNCounter],
+    replyTo: Option[ActorRef[CounterResult]]
+  ) extends InternalCounterCommand
+  private case class InternalSubscribeResponse(chg: Replicator.SubscribeResponse[PNCounter])
+      extends InternalCounterCommand
 }

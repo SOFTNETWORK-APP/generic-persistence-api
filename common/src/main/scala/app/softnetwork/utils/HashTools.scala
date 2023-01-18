@@ -7,8 +7,7 @@ import java.nio.file.{Files, Path}
 import java.security.{DigestInputStream, MessageDigest}
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 06/07/2018.
+/** Created by smanciot on 06/07/2018.
   */
 object HashTools {
 
@@ -34,12 +33,18 @@ object HashTools {
     }
   }
 
-  def hashString(data: String, algorithm: AlgorithmType.Value = AlgorithmType.MD5): Option[String] = {
+  def hashString(
+    data: String,
+    algorithm: AlgorithmType.Value = AlgorithmType.MD5
+  ): Option[String] = {
     val stream = new ByteArrayInputStream(data.getBytes("UTF-8"))
     hashStream(stream, algorithm)
   }
 
-  def hashStream(stream: InputStream, algorithm: AlgorithmType.Value = AlgorithmType.MD5): Option[String] = {
+  def hashStream(
+    stream: InputStream,
+    algorithm: AlgorithmType.Value = AlgorithmType.MD5
+  ): Option[String] = {
     val digest = MessageDigest.getInstance(algorithm.toString)
     Try {
       val dis = new DigestInputStream(stream, digest)

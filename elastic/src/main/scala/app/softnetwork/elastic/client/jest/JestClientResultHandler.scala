@@ -6,8 +6,7 @@ import io.searchbox.core.BulkResult
 
 import scala.concurrent.{Future, Promise}
 
-/**
-  * Created by smanciot on 28/04/17.
+/** Created by smanciot on 28/04/17.
   */
 private class JestClientResultHandler[T <: JestResult] extends JestResultHandler[T] {
 
@@ -16,11 +15,12 @@ private class JestClientResultHandler[T <: JestResult] extends JestResultHandler
   override def completed(result: T): Unit =
     if (!result.isSucceeded)
       promise.failure(new Exception(s"${result.getErrorMessage} - ${result.getJsonString}"))
-    else
-    {
+    else {
       result match {
         case r: BulkResult if !r.getFailedItems.isEmpty =>
-          promise.failure(new Exception(s"We don't allow any failed item while indexing ${result.getJsonString}"))
+          promise.failure(
+            new Exception(s"We don't allow any failed item while indexing ${result.getJsonString}")
+          )
         case _ => promise.success(result)
 
       }
@@ -42,4 +42,3 @@ object JestClientResultHandler {
     }
   }
 }
-

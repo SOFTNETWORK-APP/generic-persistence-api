@@ -39,8 +39,9 @@ trait PostgresService extends DockerService {
 class PostgresReadyChecker(user: String, password: String, port: Option[Int] = None)
     extends DockerReadyChecker {
 
-  override def apply(container: DockerContainerState)(implicit docker: DockerCommandExecutor,
-                                                      ec: ExecutionContext): Future[Boolean] =
+  override def apply(
+    container: DockerContainerState
+  )(implicit docker: DockerCommandExecutor, ec: ExecutionContext): Future[Boolean] =
     container
       .getPorts()
       .map(ports =>

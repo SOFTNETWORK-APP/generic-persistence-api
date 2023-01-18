@@ -6,8 +6,7 @@ import app.softnetwork.persistence.message.{Command, CommandResult}
 
 import scala.language.{implicitConversions, reflectiveCalls}
 
-/**
-  * Created by smanciot on 16/05/2020.
+/** Created by smanciot on 16/05/2020.
   */
 package object typed {
 
@@ -29,9 +28,7 @@ package object typed {
 
     def key: ServiceKey[C]
 
-    /**
-      *
-      * a unique name for the service
+    /** a unique name for the service
       */
     def name: String
 
@@ -51,7 +48,7 @@ package object typed {
   implicit def resultToMaybeReply[R <: CommandResult](r: R): MaybeReply[R] = new MaybeReply[R] {
     def apply(): Option[ActorRef[R]] => Unit = {
       case Some(subscriber) => subscriber ! r
-      case _ =>
+      case _                =>
     }
   }
 }

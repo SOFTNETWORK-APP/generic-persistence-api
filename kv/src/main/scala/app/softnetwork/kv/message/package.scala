@@ -23,8 +23,9 @@ package object message {
   case object KvRemoved extends KvCommandResult
 
   @SerialVersionUID(0L)
-  class KvErrorMessage(override val message: String) extends ErrorMessage(message)
-    with KvCommandResult
+  class KvErrorMessage(override val message: String)
+      extends ErrorMessage(message)
+      with KvCommandResult
 
   case object KvNotFound extends KvErrorMessage("KvNotFound")
 

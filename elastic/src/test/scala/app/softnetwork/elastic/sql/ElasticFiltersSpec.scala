@@ -6,8 +6,7 @@ import com.sksamuel.elastic4s.searches.queries.Query
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/**
-  * Created by smanciot on 13/04/17.
+/** Created by smanciot on 13/04/17.
   */
 class ElasticFiltersSpec extends AnyFlatSpec with Matchers {
 
@@ -742,8 +741,8 @@ class ElasticFiltersSpec extends AnyFlatSpec with Matchers {
 
   it should "filter geo distance criteria" in {
     val result = ElasticFilters.filter(geoDistanceCriteria)
-    query2String(result) shouldBe 
-      """{
+    query2String(result) shouldBe
+    """{
 
         |"query":{
         |    "geo_distance" : {

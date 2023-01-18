@@ -9,12 +9,11 @@ import app.softnetwork.persistence.model.Timestamped
 
 import scala.language.implicitConversions
 
-/**
-  * Created by smanciot on 13/04/2020.
+/** Created by smanciot on 13/04/2020.
   */
 package object persistence {
 
-  trait ManifestWrapper[T]{
+  trait ManifestWrapper[T] {
     protected case class ManifestW()(implicit val wrapped: Manifest[T])
     protected val manifestWrapper: ManifestW
   }
@@ -22,7 +21,7 @@ package object persistence {
   def generateUUID(key: Option[String] = None): String =
     key match {
       case Some(clearText) => sha256(clearText)
-      case _ => UUID.randomUUID().toString
+      case _               => UUID.randomUUID().toString
     }
 
   def now(): Date = Calendar.getInstance().getTime
@@ -31,15 +30,14 @@ package object persistence {
     m.runtimeClass.getSimpleName.toLowerCase
   }
 
-  /**
-    * Used for akka and elastic persistence ids, one per targeted environment (development, production, ...)
+  /** Used for akka and elastic persistence ids, one per targeted environment (development,
+    * production, ...)
     */
   val environment: String = sys.env.getOrElse(
     "TARGETED_ENV",
-    if(BuildInfo.version.endsWith("FINAL")){
+    if (BuildInfo.version.endsWith("FINAL")) {
       "prod"
-    }
-    else{
+    } else {
       "dev"
     }
   )

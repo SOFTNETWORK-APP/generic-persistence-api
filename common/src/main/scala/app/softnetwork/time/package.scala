@@ -5,17 +5,16 @@ import java.time.{Instant, LocalDate, LocalDateTime, ZoneOffset, ZonedDateTime}
 import java.util.Date
 import scala.language.implicitConversions
 
-/**
-  * Created by smanciot on 10/05/2021.
+/** Created by smanciot on 10/05/2021.
   */
 package object time {
 
   def now(): ZonedDateTime = ZonedDateTime.now()
 
-  implicit class DateExtensions(date: Date){
+  implicit class DateExtensions(date: Date) {
     lazy val zdt: ZonedDateTime = ZonedDateTime.ofInstant(date.toInstant, ZoneOffset.UTC)
-    lazy val toLocalDateTime: LocalDateTime =  zdt.toLocalDateTime
-    lazy val toLocalDate: LocalDate =  zdt.toLocalDate
+    lazy val toLocalDateTime: LocalDateTime = zdt.toLocalDateTime
+    lazy val toLocalDate: LocalDate = zdt.toLocalDate
     lazy val toEpochSecond: Long = zdt.toEpochSecond
   }
 
@@ -65,7 +64,7 @@ package object time {
 
   private[this] def periodicityNumber(ld: LocalDate = LocalDate.now(), numberOfMonths: Int) = {
     var periodicity = Math.floor(ld.getMonthValue / numberOfMonths).toInt
-    if(ld.getMonthValue % numberOfMonths > 0){
+    if (ld.getMonthValue % numberOfMonths > 0) {
       periodicity += 1
     }
     periodicity

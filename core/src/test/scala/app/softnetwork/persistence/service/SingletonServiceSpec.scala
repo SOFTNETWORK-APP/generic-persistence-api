@@ -9,13 +9,13 @@ import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.util.{Failure, Success}
 
-/**
-  * Created by smanciot on 02/06/2021.
+/** Created by smanciot on 02/06/2021.
   */
-class SingletonServiceSpec extends SingletonService[SampleCommand, SampleCommandResult]
-  with SamplePattern
-  with AnyWordSpecLike
-  with BeforeAndAfterAll {
+class SingletonServiceSpec
+    extends SingletonService[SampleCommand, SampleCommandResult]
+    with SamplePattern
+    with AnyWordSpecLike
+    with BeforeAndAfterAll {
 
   lazy val systemName: String = generateUUID()
 
@@ -27,11 +27,12 @@ class SingletonServiceSpec extends SingletonService[SampleCommand, SampleCommand
 
   implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
-  def test(): Unit = run(TestSample) complete() match {
-    case Success(s) => s match {
-      case SampleTested => logger.info("sample tested !")
-      case other => fail(other.toString)
-    }
+  def test(): Unit = run(TestSample) complete () match {
+    case Success(s) =>
+      s match {
+        case SampleTested => logger.info("sample tested !")
+        case other        => fail(other.toString)
+      }
     case Failure(f) => fail(f.getMessage)
   }
 

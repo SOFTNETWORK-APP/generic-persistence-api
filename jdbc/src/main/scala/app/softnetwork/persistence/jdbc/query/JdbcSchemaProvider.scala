@@ -16,9 +16,9 @@
 
 package app.softnetwork.persistence.jdbc.query
 
+import slick.jdbc.JdbcBackend
+
 import java.sql.Statement
-import akka.persistence.jdbc.config.SlickConfiguration
-import akka.persistence.jdbc.util.SlickDatabase
 import app.softnetwork.utils.ClasspathResources
 import app.softnetwork.persistence.query.SchemaProvider
 import com.typesafe.config.{Config, ConfigFactory}
@@ -26,14 +26,13 @@ import app.softnetwork.persistence.jdbc.query.JdbcSchema._
 import com.typesafe.scalalogging.StrictLogging
 import slick.jdbc.JdbcBackend.{Database, Session}
 
-
 trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with StrictLogging {
 
   def schemaType: SchemaType
 
   def cfg: Config = ConfigFactory.load()
 
-  def db: Database = SlickDatabase.forConfig(cfg, new SlickConfiguration(cfg.getConfig("slick")))
+  def db: Database = JdbcBackend.createDatabase(cfg, "slick")
 
   def initSchema(): Unit = {
     create(schemaType.schema)
@@ -50,7 +49,8 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
   def withSession[A](f: Session => A): A = {
     withDatabase { db =>
       val session = db.createSession()
-      try f(session) finally session.close()
+      try f(session)
+      finally session.close()
     }
   }
 
@@ -63,8 +63,10 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
       if trimmedLine.nonEmpty
     } yield trimmedLine
   } withStatement { stmt =>
-    try stmt.executeUpdate(ddl) catch {
-      case t: java.sql.SQLSyntaxErrorException if t.getMessage contains "ORA-00942" => // suppress known error message in the test
+    try stmt.executeUpdate(ddl)
+    catch {
+      case t: java.sql.SQLSyntaxErrorException
+          if t.getMessage contains "ORA-00942" => // suppress known error message in the test
       case other: Throwable => logger.error(other.getMessage)
     }
   }
@@ -90,4 +92,3 @@ trait OracleSchemaProvider extends JdbcSchemaProvider {
 trait SQLServerSchemaProvider extends JdbcSchemaProvider {
   override lazy val schemaType: SchemaType = SQLServer
 }
-

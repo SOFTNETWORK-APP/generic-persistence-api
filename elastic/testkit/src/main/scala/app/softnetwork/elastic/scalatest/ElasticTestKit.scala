@@ -13,8 +13,7 @@ import org.scalatest.matchers.{MatchResult, Matcher}
 
 import scala.util.{Failure, Success}
 
-/**
-  * Created by smanciot on 18/05/2021.
+/** Created by smanciot on 18/05/2021.
   */
 trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
 
@@ -23,7 +22,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
   // Rewriting methods from IndexMatchers in elastic4s with the ElasticClient
   def haveCount(expectedCount: Int): Matcher[String] =
     (left: String) => {
-      client.execute(search(left).size(0)) complete() match {
+      client.execute(search(left).size(0)) complete () match {
         case Success(s) =>
           val count = s.result.totalHits
           MatchResult(
@@ -37,7 +36,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
 
   def containDoc(expectedId: String): Matcher[String] =
     (left: String) => {
-      client.execute(get(expectedId).from(left)) complete() match {
+      client.execute(get(expectedId).from(left)) complete () match {
         case Success(s) =>
           val exists = s.result.exists
           MatchResult(
@@ -51,7 +50,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
 
   def beCreated(): Matcher[String] =
     (left: String) => {
-      client.execute(indexExists(left)) complete() match {
+      client.execute(indexExists(left)) complete () match {
         case Success(s) =>
           val exists = s.result.isExists
           MatchResult(
@@ -65,7 +64,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
 
   def beEmpty(): Matcher[String] =
     (left: String) => {
-      client.execute(search(left).size(0)) complete() match {
+      client.execute(search(left).size(0)) complete () match {
         case Success(s) =>
           val count = s.result.totalHits
           MatchResult(
@@ -87,7 +86,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     client
       .execute {
         refreshIndex(indexes)
-      } complete() match {
+      } complete () match {
       case Success(s) => s.result
       case Failure(f) => throw f
     }
@@ -98,7 +97,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
       client
         .execute {
           clusterHealth()
-        } complete() match {
+        } complete () match {
         case Success(s) => s.result.status.toUpperCase == "GREEN"
         case Failure(f) => throw f
       }
@@ -112,13 +111,13 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
   def ensureIndexExists(index: String): Unit = {
     client.execute {
       createIndex(index)
-    } complete() match {
+    } complete () match {
       case Success(_) => ()
       case Failure(f) =>
         f match {
           case _: ResourceAlreadyExistsException => // Ok, ignore.
           case _: RemoteTransportException       => // Ok, ignore.
-          case other => throw other
+          case other                             => throw other
         }
     }
   }
@@ -127,9 +126,9 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     client
       .execute {
         indexExists(name)
-      } complete() match {
+      } complete () match {
       case Success(s) => s.result.isExists
-      case _ => false
+      case _          => false
     }
   }
 
@@ -137,9 +136,9 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     client
       .execute {
         aliasExists(name)
-      } complete() match {
+      } complete () match {
       case Success(s) => s.result.isExists
-      case _ => false
+      case _          => false
     }
   }
 
@@ -147,7 +146,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     if (doesIndexExists(name)) {
       client.execute {
         ElasticDsl.deleteIndex(name)
-      } complete() match {
+      } complete () match {
         case Success(_) => ()
         case Failure(f) => throw f
       }
@@ -165,9 +164,9 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
       client
         .execute {
           get(id).from(index / `type`)
-        } complete() match {
+        } complete () match {
         case Success(s) => s.result.exists
-        case _ => false
+        case _          => false
       }
     }
   }
@@ -176,7 +175,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     blockUntil(s"Expected count of $expected") { () =>
       client.execute {
         search(index).matchAllQuery().size(0)
-      } complete() match {
+      } complete () match {
         case Success(s) => expected <= s.result.totalHits
         case Failure(f) => throw f
       }
@@ -187,21 +186,21 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     blockUntil(s"Expected count of $expected") { () =>
       client.execute {
         searchWithType(indexAndTypes).matchAllQuery().size(0)
-      } complete() match {
+      } complete () match {
         case Success(s) => expected <= s.result.totalHits
         case Failure(f) => throw f
       }
     }
   }
 
-  /**
-    * Will block until the given index and optional types have at least the given number of documents.
+  /** Will block until the given index and optional types have at least the given number of
+    * documents.
     */
   def blockUntilCount(expected: Long, index: String, types: String*): Unit = {
     blockUntil(s"Expected count of $expected") { () =>
       client.execute {
         searchWithType(index / types).matchAllQuery().size(0)
-      } complete() match {
+      } complete () match {
         case Success(s) => expected <= s.result.totalHits
         case Failure(f) => throw f
       }
@@ -213,7 +212,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
       client
         .execute {
           searchWithType(index / types).size(0)
-        } complete() match {
+        } complete () match {
         case Success(s) => expected == s.result.totalHits
         case Failure(f) => throw f
       }
@@ -225,7 +224,7 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
       client
         .execute {
           search(Indexes(index)).size(0)
-        } complete() match {
+        } complete () match {
         case Success(s) => s.result.totalHits == 0
         case Failure(f) => throw f
       }
@@ -250,12 +249,17 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
     }
   }
 
-  def blockUntilDocumentHasVersion(index: String, `type`: String, id: String, version: Long): Unit = {
+  def blockUntilDocumentHasVersion(
+    index: String,
+    `type`: String,
+    id: String,
+    version: Long
+  ): Unit = {
     blockUntil(s"Expected document $id to have version $version") { () =>
       client
         .execute {
           get(id).from(index / `type`)
-        } complete() match {
+        } complete () match {
         case Success(s) => s.result.version == version
         case Failure(f) => throw f
       }

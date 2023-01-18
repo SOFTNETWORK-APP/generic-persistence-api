@@ -22,62 +22,75 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 16/05/2020.
+/** Created by smanciot on 16/05/2020.
   */
-trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, S, ElasticEvent, ElasticResult] 
-  with ManifestWrapper[S] with ElasticProvider[S] with StrictLogging {_: ElasticClientApi =>
+trait ElasticBehavior[S <: Timestamped]
+    extends EntityBehavior[ElasticCommand, S, ElasticEvent, ElasticResult]
+    with ManifestWrapper[S]
+    with ElasticProvider[S]
+    with StrictLogging { _: ElasticClientApi =>
 
   private[this] val defaultAtMost = 10.second
 
-  override def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit tTag: ClassTag[ElasticCommand]): Unit = {
+  override def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit
+    tTag: ClassTag[ElasticCommand]
+  ): Unit = {
     logger.info(s"Initializing ${TypeKey.name}")
     super.init(system, maybeRole)
     initIndex()
   }
 
-  /**
-    *
-    * @param entityId - entity identity
-    * @param state - current state
-    * @param command - command to handle
-    * @param replyTo - optional actor to reply to
-    * @return effect
+  /** @param entityId
+    *   - entity identity
+    * @param state
+    *   - current state
+    * @param command
+    *   - command to handle
+    * @param replyTo
+    *   - optional actor to reply to
+    * @return
+    *   effect
     */
   override def handleCommand(
-                              entityId: String,
-                              state: Option[S],
-                              command: ElasticCommand,
-                              replyTo: Option[ActorRef[ElasticResult]],
-                              timers: TimerScheduler[ElasticCommand])(implicit context: ActorContext[ElasticCommand]
-  ): Effect[ElasticEvent, Option[S]] = {
+    entityId: String,
+    state: Option[S],
+    command: ElasticCommand,
+    replyTo: Option[ActorRef[ElasticResult]],
+    timers: TimerScheduler[ElasticCommand]
+  )(implicit context: ActorContext[ElasticCommand]): Effect[ElasticEvent, Option[S]] = {
     command match {
 
       case cmd: CreateDocument[S] =>
         import cmd._
         implicit val m: Manifest[S] = manifestWrapper.wrapped
-        Effect.persist[ElasticEvent, Option[S]](DocumentCreatedEvent(document))
+        Effect
+          .persist[ElasticEvent, Option[S]](DocumentCreatedEvent(document))
           .thenRun(_ => DocumentCreated(document.uuid) ~> replyTo)
 
       case cmd: UpdateDocument[S] =>
         import cmd._
         implicit val m: Manifest[S] = manifestWrapper.wrapped
-        Effect.persist[ElasticEvent, Option[S]](DocumentUpdatedEvent(document, upsert))
+        Effect
+          .persist[ElasticEvent, Option[S]](DocumentUpdatedEvent(document, upsert))
           .thenRun(_ => DocumentUpdated(document.uuid) ~> replyTo)
 
       case cmd: UpsertDocument =>
         import cmd._
-        Effect.persist[ElasticEvent, Option[S]](
-          DocumentUpsertedEvent(
-            id,
-            data
+        Effect
+          .persist[ElasticEvent, Option[S]](
+            DocumentUpsertedEvent(
+              id,
+              data
+            )
           )
-        ).thenRun(_ => DocumentUpserted(entityId) ~> replyTo)
+          .thenRun(_ => DocumentUpserted(entityId) ~> replyTo)
 
       case cmd: DeleteDocument =>
         import cmd._
-        Effect.persist[ElasticEvent, Option[S]](DocumentDeletedEvent(id))
-          .thenRun(_ => DocumentDeleted ~> replyTo).thenStop()
+        Effect
+          .persist[ElasticEvent, Option[S]](DocumentDeletedEvent(id))
+          .thenRun(_ => DocumentDeleted ~> replyTo)
+          .thenStop()
 
       case _: LoadDocument =>
         implicit val m: Manifest[S] = manifestWrapper.wrapped
@@ -111,7 +124,7 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
         import cmd._
         implicit val ec: ExecutionContextExecutor = context.system.executionContext
         Effect.none.thenRun(_ =>
-          (countAsync(sqlQuery) complete() match {
+          (countAsync(sqlQuery) complete () match {
             case Success(s) => ElasticCountResult(s)
             case Failure(f) =>
               logger.error(f.getMessage, f.fillInStackTrace())
@@ -177,63 +190,63 @@ trait ElasticBehavior[S  <: Timestamped] extends EntityBehavior[ElasticCommand, 
     }
   }
 
-  /**
-    *
-    * @param state - current state
-    * @param event - event to hanlde
-    * @return new state
+  /** @param state
+    *   - current state
+    * @param event
+    *   - event to hanlde
+    * @return
+    *   new state
     */
-  override def handleEvent(state: Option[S], event: ElasticEvent)(
-    implicit context: ActorContext[_]): Option[S] = {
+  override def handleEvent(state: Option[S], event: ElasticEvent)(implicit
+    context: ActorContext[_]
+  ): Option[S] = {
     event match {
       case evt: CrudEvent => handleElasticCrudEvent(state, evt)
-      case _ => super.handleEvent(state, event)
+      case _              => super.handleEvent(state, event)
     }
   }
 
-  /**
-    *
-    * @param state - current state
-    * @param event - elastic event to hanlde
-    * @return new state
+  /** @param state
+    *   - current state
+    * @param event
+    *   - elastic event to hanlde
+    * @return
+    *   new state
     */
-  private[this] def handleElasticCrudEvent(state: Option[S], event: CrudEvent)(
-    implicit context: ActorContext[_]): Option[S] = {
+  private[this] def handleElasticCrudEvent(state: Option[S], event: CrudEvent)(implicit
+    context: ActorContext[_]
+  ): Option[S] = {
     implicit val m: Manifest[S] = manifestWrapper.wrapped
     event match {
       case e: Created[S] =>
         import e._
-        if(createDocument(document)){
+        if (createDocument(document)) {
           Some(document)
-        }
-        else{
+        } else {
           state
         }
 
       case e: Updated[S] =>
         import e._
-        if(updateDocument(document, upsert)){
+        if (updateDocument(document, upsert)) {
           Some(document)
-        }
-        else{
+        } else {
           state
         }
 
       case e: Upserted =>
         import e._
-        if(upsertDocument(uuid, data)){
+        if (upsertDocument(uuid, data)) {
           loadDocument(uuid)
-        }
-        else{
+        } else {
           state
         }
 
       case e: Deleted =>
         import e._
-        if(deleteDocument(uuid)){
+        if (deleteDocument(uuid)) {
           emptyState
-        }
-        else{
+        } else {
           state
         }
 

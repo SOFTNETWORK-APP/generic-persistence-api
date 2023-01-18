@@ -14,11 +14,12 @@ import org.scalatest.matchers.should.Matchers
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-trait DockerService extends TestSuite
-  with Matchers
-  with DockerTestKit
-  with Eventually
-  with CompletionTestKit {
+trait DockerService
+    extends TestSuite
+    with Matchers
+    with DockerTestKit
+    with Eventually
+    with CompletionTestKit {
 
   override val StartContainersTimeout: FiniteDuration = defaultTimeout
 
@@ -35,27 +36,34 @@ trait DockerService extends TestSuite
   import DockerService._
 
   def exposedPort(port: Int): Option[Int] = Some(
-        containerEnv.getOrElse(s"${name.toUpperCase}_$port", dynamicPort().toString).toInt
-      )
+    containerEnv.getOrElse(s"${name.toUpperCase}_$port", dynamicPort().toString).toInt
+  )
 
-  lazy val exposedPorts: Seq[(Int, Option[Int])] = containerPorts.map{ port => (port, exposedPort(port))}
+  lazy val exposedPorts: Seq[(Int, Option[Int])] = containerPorts.map { port =>
+    (port, exposedPort(port))
+  }
 
   lazy val dockerContainer: DockerContainer = DockerContainer(container, Some(name))
-    .withPorts(exposedPorts:_*)
+    .withPorts(exposedPorts: _*)
     .withEnv(
-      containerEnv.map( t => s"${t._1}=${t._2}").toSeq:_*
+      containerEnv.map(t => s"${t._1}=${t._2}").toSeq: _*
     )
 
   def _container(): DockerContainer
 
   override implicit val dockerFactory: DockerFactory = new SpotifyDockerFactory(
-    DefaultDockerClient.fromEnv().build())
+    DefaultDockerClient.fromEnv().build()
+  )
 
-  protected def waitForContainerUp(maxTries: Int = (defaultTimeout.toMillis/1000).toInt, sleep: Int = 1000): Unit = {
-    val predicate: () => Boolean = () => Await.result(
-      isContainerReady(_container()),
-      sleep.milliseconds
-    )
+  protected def waitForContainerUp(
+    maxTries: Int = (defaultTimeout.toMillis / 1000).toInt,
+    sleep: Int = 1000
+  ): Unit = {
+    val predicate: () => Boolean = () =>
+      Await.result(
+        isContainerReady(_container()),
+        sleep.milliseconds
+      )
     blockUntil(s"container $container is up", maxTries, sleep)(predicate)
   }
 
@@ -67,7 +75,7 @@ object DockerService {
 
   def dynamicPort(): Int = {
     val socket = new ServerSocket(0)
-    val port   = socket.getLocalPort
+    val port = socket.getLocalPort
     socket.close()
     port
   }
@@ -78,7 +86,7 @@ object DockerService {
       if (uri.startsWith("unix://")) {
         None
       } else {
-          Some(new URI(uri).getHost)
+        Some(new URI(uri).getHost)
       }
     }
     .getOrElse("127.0.0.1")

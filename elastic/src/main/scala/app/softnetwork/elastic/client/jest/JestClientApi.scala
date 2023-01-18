@@ -20,51 +20,56 @@ import org.json4s.Formats
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.Seq
-import scala.concurrent.{Promise, Future, ExecutionContext}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 20/05/2021.
+/** Created by smanciot on 20/05/2021.
   */
-trait JestClientApi extends ElasticClientApi
-  with JestIndicesApi
-  with JestAliasApi
-  with JestUpdateSettingsApi
-  with JestMappingApi
-  with JestRefreshApi
-  with JestFlushApi
-  with JestCountApi
-  with JestIndexApi
-  with JestUpdateApi
-  with JestDeleteApi
-  with JestGetApi
-  with JestSearchApi
-  with JestBulkApi
+trait JestClientApi
+    extends ElasticClientApi
+    with JestIndicesApi
+    with JestAliasApi
+    with JestUpdateSettingsApi
+    with JestMappingApi
+    with JestRefreshApi
+    with JestFlushApi
+    with JestCountApi
+    with JestIndexApi
+    with JestUpdateApi
+    with JestDeleteApi
+    with JestGetApi
+    with JestSearchApi
+    with JestBulkApi
 
 trait JestIndicesApi extends IndicesApi with JestClientCompanion {
   override def createIndex(index: String, settings: String = defaultSettings): Boolean =
     apply().execute(new CreateIndex.Builder(index).settings(settings).build()).isSucceeded
-  override def deleteIndex(index: String): Boolean = apply().execute(new DeleteIndex.Builder(index).build()).isSucceeded
-  override def closeIndex(index: String): Boolean = apply().execute(new CloseIndex.Builder(index).build()).isSucceeded
-  override def openIndex(index: String): Boolean = apply().execute(new OpenIndex.Builder(index).build()).isSucceeded
+  override def deleteIndex(index: String): Boolean =
+    apply().execute(new DeleteIndex.Builder(index).build()).isSucceeded
+  override def closeIndex(index: String): Boolean =
+    apply().execute(new CloseIndex.Builder(index).build()).isSucceeded
+  override def openIndex(index: String): Boolean =
+    apply().execute(new OpenIndex.Builder(index).build()).isSucceeded
 }
 
 trait JestAliasApi extends AliasApi with JestClientCompanion {
   override def addAlias(index: String, alias: String): Boolean = {
-    apply().execute(
-      new ModifyAliases.Builder(
-        new AddAliasMapping.Builder(index, alias).build()
-      ).build()
-    ).isSucceeded
+    apply()
+      .execute(
+        new ModifyAliases.Builder(
+          new AddAliasMapping.Builder(index, alias).build()
+        ).build()
+      )
+      .isSucceeded
   }
 }
 
-trait JestUpdateSettingsApi extends UpdateSettingsApi with JestClientCompanion {_: IndicesApi =>
+trait JestUpdateSettingsApi extends UpdateSettingsApi with JestClientCompanion { _: IndicesApi =>
   override def updateSettings(index: String, settings: String = defaultSettings): Boolean =
     closeIndex(index) &&
-      apply().execute(new UpdateSettings.Builder(settings).addIndex(index).build()).isSucceeded &&
-      openIndex(index)
+    apply().execute(new UpdateSettings.Builder(settings).addIndex(index).build()).isSucceeded &&
+    openIndex(index)
 }
 
 trait JestMappingApi extends MappingApi with JestClientCompanion {
@@ -73,18 +78,22 @@ trait JestMappingApi extends MappingApi with JestClientCompanion {
 }
 
 trait JestRefreshApi extends RefreshApi with JestClientCompanion {
-  override def refresh(index: String): Boolean = apply().execute(new Refresh.Builder().addIndex(index).build()).isSucceeded
+  override def refresh(index: String): Boolean =
+    apply().execute(new Refresh.Builder().addIndex(index).build()).isSucceeded
 }
 
 trait JestFlushApi extends FlushApi with JestClientCompanion {
-  override def flush(index: String, force: Boolean = true, wait: Boolean = true): Boolean = apply().execute(
-    new Flush.Builder().addIndex(index).force(force).waitIfOngoing(wait).build()
-  ).isSucceeded
+  override def flush(index: String, force: Boolean = true, wait: Boolean = true): Boolean = apply()
+    .execute(
+      new Flush.Builder().addIndex(index).force(force).waitIfOngoing(wait).build()
+    )
+    .isSucceeded
 }
 
 trait JestCountApi extends CountApi with JestClientCompanion {
-  override def countAsync(jsonQuery: JSONQuery)(implicit ec: ExecutionContext
-  ): Future[Option[Double]] = {
+  override def countAsync(
+    jsonQuery: JSONQuery
+  )(implicit ec: ExecutionContext): Future[Option[Double]] = {
     import JestClientResultHandler._
     import jsonQuery._
     val count = new Count.Builder().query(query)
@@ -93,7 +102,7 @@ trait JestCountApi extends CountApi with JestClientCompanion {
     val promise = Promise[Option[Double]]()
     apply().executeAsyncPromise(count.build()) onComplete {
       case Success(result) =>
-        if(!result.isSucceeded)
+        if (!result.isSucceeded)
           logger.error(result.getErrorMessage)
         promise.success(Option(result.getCount))
       case Failure(f) =>
@@ -109,13 +118,14 @@ trait JestCountApi extends CountApi with JestClientCompanion {
     for (indice <- indices) count.addIndex(indice)
     for (t      <- types) count.addType(t)
     val result = apply().execute(count.build())
-    if(!result.isSucceeded)
+    if (!result.isSucceeded)
       logger.error(result.getErrorMessage)
     Option(result.getCount)
   }
 
-  override def countAsync(sqlQuery: SQLQuery)(implicit ec: ExecutionContext
-  ): Future[_root_.scala.collection.Seq[CountResponse]] = {
+  override def countAsync(
+    sqlQuery: SQLQuery
+  )(implicit ec: ExecutionContext): Future[_root_.scala.collection.Seq[CountResponse]] = {
     val futures = for (elasticCount <- ElasticQuery.count(sqlQuery)) yield {
       val promise: Promise[CountResponse] = Promise()
       import collection.immutable.Seq
@@ -129,7 +139,8 @@ trait JestCountApi extends CountApi with JestClientCompanion {
           countAsync(
             JSONQuery(_query, Seq(_sources: _*), Seq.empty[String])
           ).onComplete {
-            case Success(result) => promise.success(CountResponse(_field, result.getOrElse(0D).toInt, None))
+            case Success(result) =>
+              promise.success(CountResponse(_field, result.getOrElse(0d).toInt, None))
             case Failure(f) =>
               logger.error(f.getMessage, f.fillInStackTrace())
               promise.success(CountResponse(_field, 0, Some(f.getMessage)))
@@ -137,37 +148,39 @@ trait JestCountApi extends CountApi with JestClientCompanion {
         case _ =>
           import JestClientApi._
           import JestClientResultHandler._
-          apply().executeAsyncPromise(JSONQuery(_query, Seq(_sources: _*), Seq.empty[String]).search).onComplete {
-            case Success(result) =>
-              val agg = _agg.split("\\.").last
+          apply()
+            .executeAsyncPromise(JSONQuery(_query, Seq(_sources: _*), Seq.empty[String]).search)
+            .onComplete {
+              case Success(result) =>
+                val agg = _agg.split("\\.").last
 
-              val itAgg = _agg.split("\\.").iterator
+                val itAgg = _agg.split("\\.").iterator
 
-              var root =
-                if (elasticCount.nested)
-                  result.getAggregations.getAggregation(itAgg.next(), classOf[RootAggregation])
-                else
-                  result.getAggregations
-
-              if (elasticCount.filtered) {
-                root = root.getAggregation(itAgg.next(), classOf[RootAggregation])
-              }
-
-              promise.success(
-                CountResponse(
-                  _field,
-                  if (elasticCount.distinct)
-                    root.getCardinalityAggregation(agg).getCardinality.toInt
+                var root =
+                  if (elasticCount.nested)
+                    result.getAggregations.getAggregation(itAgg.next(), classOf[RootAggregation])
                   else
-                    root.getValueCountAggregation(agg).getValueCount.toInt,
-                  None
-                )
-              )
+                    result.getAggregations
 
-            case Failure(f) =>
-              logger.error(f.getMessage, f.fillInStackTrace())
-              promise.success(CountResponse(_field, 0, Some(f.getMessage)))
-          }
+                if (elasticCount.filtered) {
+                  root = root.getAggregation(itAgg.next(), classOf[RootAggregation])
+                }
+
+                promise.success(
+                  CountResponse(
+                    _field,
+                    if (elasticCount.distinct)
+                      root.getCardinalityAggregation(agg).getCardinality.toInt
+                    else
+                      root.getValueCountAggregation(agg).getValueCount.toInt,
+                    None
+                  )
+                )
+
+              case Failure(f) =>
+                logger.error(f.getMessage, f.fillInStackTrace())
+                promise.success(CountResponse(_field, 0, Some(f.getMessage)))
+            }
       }
       promise.future
     }
@@ -177,11 +190,13 @@ trait JestCountApi extends CountApi with JestClientCompanion {
 
 trait JestIndexApi extends IndexApi with JestClientCompanion {
   override def index(index: String, `type`: String, id: String, source: String): Boolean = {
-    Try(apply().execute(
-      new Index.Builder(source).index(index).`type`(`type`).id(id).build()
-    )) match {
+    Try(
+      apply().execute(
+        new Index.Builder(source).index(index).`type`(`type`).id(id).build()
+      )
+    ) match {
       case Success(s) =>
-        if(!s.isSucceeded)
+        if (!s.isSucceeded)
           logger.error(s.getErrorMessage)
         s.isSucceeded
       case Failure(f) =>
@@ -190,8 +205,9 @@ trait JestIndexApi extends IndexApi with JestClientCompanion {
     }
   }
 
-  override def indexAsync( index: String, `type`: String, id: String, source: String)(
-    implicit ec: ExecutionContext): Future[Boolean] = {
+  override def indexAsync(index: String, `type`: String, id: String, source: String)(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
     import JestClientResultHandler._
     val promise: Promise[Boolean] = Promise()
     apply().executeAsyncPromise(
@@ -208,17 +224,25 @@ trait JestIndexApi extends IndexApi with JestClientCompanion {
 }
 
 trait JestUpdateApi extends UpdateApi with JestClientCompanion {
-  override def update(index: String, `type`: String, id: String, source: String, upsert: Boolean): Boolean = {
-    Try(apply().execute(
-      new Update.Builder(
-        if(upsert)
-          docAsUpsert(source)
-        else
-          source
-      ).index(index).`type`(`type`).id(id).build()
-    )) match {
+  override def update(
+    index: String,
+    `type`: String,
+    id: String,
+    source: String,
+    upsert: Boolean
+  ): Boolean = {
+    Try(
+      apply().execute(
+        new Update.Builder(
+          if (upsert)
+            docAsUpsert(source)
+          else
+            source
+        ).index(index).`type`(`type`).id(id).build()
+      )
+    ) match {
       case Success(s) =>
-        if(!s.isSucceeded)
+        if (!s.isSucceeded)
           logger.error(s.getErrorMessage)
         s.isSucceeded
       case Failure(f) =>
@@ -227,20 +251,25 @@ trait JestUpdateApi extends UpdateApi with JestClientCompanion {
     }
   }
 
-  override def updateAsync(index: String, `type`: String, id: String, source: String, upsert: Boolean)(
-    implicit ec: ExecutionContext): Future[Boolean] = {
+  override def updateAsync(
+    index: String,
+    `type`: String,
+    id: String,
+    source: String,
+    upsert: Boolean
+  )(implicit ec: ExecutionContext): Future[Boolean] = {
     import JestClientResultHandler._
     val promise: Promise[Boolean] = Promise()
     apply().executeAsyncPromise(
       new Update.Builder(
-        if(upsert)
+        if (upsert)
           docAsUpsert(source)
         else
           source
       ).index(index).`type`(`type`).id(id).build()
     ) onComplete {
       case Success(s) =>
-        if(!s.isSucceeded)
+        if (!s.isSucceeded)
           logger.error(s.getErrorMessage)
         promise.success(s.isSucceeded)
       case Failure(f) =>
@@ -257,21 +286,22 @@ trait JestDeleteApi extends DeleteApi with JestClientCompanion {
     val result = apply().execute(
       new Delete.Builder(uuid).index(index).`type`(`type`).build()
     )
-    if(!result.isSucceeded){
+    if (!result.isSucceeded) {
       logger.error(result.getErrorMessage)
     }
     result.isSucceeded
   }
 
-  override def deleteAsync(uuid: String, index: String, `type`: String)(
-    implicit ec: ExecutionContext): Future[Boolean] = {
+  override def deleteAsync(uuid: String, index: String, `type`: String)(implicit
+    ec: ExecutionContext
+  ): Future[Boolean] = {
     import JestClientResultHandler._
     val promise: Promise[Boolean] = Promise()
     apply().executeAsyncPromise(
       new Delete.Builder(uuid).index(index).`type`(`type`).build()
     ) onComplete {
       case Success(s) =>
-        if(!s.isSucceeded)
+        if (!s.isSucceeded)
           logger.error(s.getErrorMessage)
         promise.success(s.isSucceeded)
       case Failure(f) =>
@@ -286,8 +316,11 @@ trait JestDeleteApi extends DeleteApi with JestClientCompanion {
 trait JestGetApi extends GetApi with JestClientCompanion {
 
   // GetApi
-  override def get[U <: Timestamped](id: String, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit m: Manifest[U], formats: Formats): Option[U] = {
+  override def get[U <: Timestamped](
+    id: String,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit m: Manifest[U], formats: Formats): Option[U] = {
     val result = apply().execute(
       new Get.Builder(
         index.getOrElse(
@@ -298,17 +331,19 @@ trait JestGetApi extends GetApi with JestClientCompanion {
         id
       ).build()
     )
-    if(result.isSucceeded){
+    if (result.isSucceeded) {
       Some(serialization.read[U](result.getSourceAsString))
-    }
-    else{
+    } else {
       logger.error(result.getErrorMessage)
       None
     }
   }
 
-  override def getAsync[U <: Timestamped](id: String, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]] = {
+  override def getAsync[U <: Timestamped](
+    id: String,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]] = {
     import JestClientResultHandler._
     val promise: Promise[Option[U]] = Promise()
     apply().executeAsyncPromise(
@@ -320,15 +355,15 @@ trait JestGetApi extends GetApi with JestClientCompanion {
         ),
         id
       ).build()
-    ) onComplete{
+    ) onComplete {
       case Success(result) =>
         if (result.isSucceeded)
           promise.success(Some(serialization.read[U](result.getSourceAsString)))
-        else{
+        else {
           logger.error(result.getErrorMessage)
           promise.success(None)
         }
-      case Failure(f)      =>
+      case Failure(f) =>
         logger.error(f.getMessage, f)
         promise.failure(f)
     }
@@ -341,15 +376,21 @@ trait JestSearchApi extends SearchApi with JestClientCompanion {
 
   import JestClientApi._
 
-  override def search[U](jsonQuery: JSONQuery)(
-    implicit m: Manifest[U], formats: Formats): List[U] = {
+  override def search[U](
+    jsonQuery: JSONQuery
+  )(implicit m: Manifest[U], formats: Formats): List[U] = {
     import jsonQuery._
     val search = new Search.Builder(query)
     for (indice <- indices) search.addIndex(indice)
     for (t      <- types) search.addType(t)
-    Try(apply().execute(search.build()).getSourceAsStringList.asScala.map(
-      source => serialization.read[U](source)
-    ).toList) match {
+    Try(
+      apply()
+        .execute(search.build())
+        .getSourceAsStringList
+        .asScala
+        .map(source => serialization.read[U](source))
+        .toList
+    ) match {
       case Success(s) => s
       case Failure(f) =>
         logger.error(f.getMessage, f)
@@ -362,31 +403,32 @@ trait JestSearchApi extends SearchApi with JestClientCompanion {
     (search match {
       case Some(s) =>
         val result = apply().execute(s)
-        if(result.isSucceeded){
+        if (result.isSucceeded) {
           Some(result)
-        }
-        else{
+        } else {
           logger.error(result.getErrorMessage)
           None
         }
-      case _       => None
+      case _ => None
     }) match {
       case Some(searchResult) =>
-        Try(searchResult.getSourceAsStringList.asScala.map(
-          source =>
-            serialization.read[U](source)
-        ).toList) match {
+        Try(
+          searchResult.getSourceAsStringList.asScala
+            .map(source => serialization.read[U](source))
+            .toList
+        ) match {
           case Success(s) => s
           case Failure(f) =>
             logger.error(f.getMessage, f)
             List.empty
         }
-      case _                  => List.empty
+      case _ => List.empty
     }
   }
 
-  override def searchAsync[U](sqlQuery: SQLQuery)(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats
-  ): Future[List[U]] = {
+  override def searchAsync[U](
+    sqlQuery: SQLQuery
+  )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[List[U]] = {
     val promise = Promise[List[U]]()
     val search: Option[Search] = sqlQuery.search
     search match {
@@ -395,9 +437,9 @@ trait JestSearchApi extends SearchApi with JestClientCompanion {
         apply().executeAsyncPromise(s) onComplete {
           case Success(searchResult) =>
             promise.success(
-              searchResult.getSourceAsStringList.asScala.map(
-                source => serialization.read[U](source)
-              ).toList
+              searchResult.getSourceAsStringList.asScala
+                .map(source => serialization.read[U](source))
+                .toList
             )
           case Failure(f) =>
             promise.failure(f)
@@ -407,106 +449,123 @@ trait JestSearchApi extends SearchApi with JestClientCompanion {
     promise.future
   }
 
-  override def searchWithInnerHits[U, I](sqlQuery: SQLQuery, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[(U, List[I])] = {
+  override def searchWithInnerHits[U, I](sqlQuery: SQLQuery, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[(U, List[I])] = {
     val search: Option[Search] = sqlQuery.search
     (search match {
       case Some(s) =>
         val result = apply().execute(s)
-        if(result.isSucceeded){
+        if (result.isSucceeded) {
           Some(result)
-        }
-        else{
+        } else {
           logger.error(result.getErrorMessage)
           None
         }
-      case _       => None
+      case _ => None
     }) match {
       case Some(searchResult) =>
-        Try(searchResult.getJsonObject ~>[U, I] innerField) match {
+        Try(searchResult.getJsonObject ~> [U, I] innerField) match {
           case Success(s) => s
           case Failure(f) =>
             logger.error(f.getMessage, f)
             List.empty
         }
-      case _                  => List.empty
+      case _ => List.empty
     }
   }
 
-  override def searchWithInnerHits[U, I](jsonQuery: JSONQuery, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[(U, List[I])] = {
+  override def searchWithInnerHits[U, I](jsonQuery: JSONQuery, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[(U, List[I])] = {
     val result = apply().execute(jsonQuery.search)
-    (if(result.isSucceeded){
-      Some(result)
-    }
-    else{
-      logger.error(result.getErrorMessage)
-      None
-    }) match {
+    (if (result.isSucceeded) {
+       Some(result)
+     } else {
+       logger.error(result.getErrorMessage)
+       None
+     }) match {
       case Some(searchResult) =>
-        Try(searchResult.getJsonObject ~>[U, I] innerField) match {
+        Try(searchResult.getJsonObject ~> [U, I] innerField) match {
           case Success(s) => s
           case Failure(f) =>
             logger.error(f.getMessage, f)
             List.empty
         }
-      case _                  => List.empty
+      case _ => List.empty
     }
   }
 
-  override def multiSearch[U](sqlQueries: SQLQueries)(implicit m: Manifest[U], formats: Formats): List[List[U]] = {
+  override def multiSearch[U](
+    sqlQueries: SQLQueries
+  )(implicit m: Manifest[U], formats: Formats): List[List[U]] = {
     val searches: List[Search] = sqlQueries.queries.flatMap(_.search)
-    (if(searches.size == sqlQueries.queries.size){
-      Some(apply().execute(new MultiSearch.Builder(searches.asJava).build()))
-    }
-    else{
-      None
-    }) match {
+    (if (searches.size == sqlQueries.queries.size) {
+       Some(apply().execute(new MultiSearch.Builder(searches.asJava).build()))
+     } else {
+       None
+     }) match {
       case Some(multiSearchResult) =>
-        multiSearchResult.getResponses.asScala.map(searchResponse =>
-          searchResponse.searchResult.getSourceAsStringList.asScala.map(
-            source => serialization.read[U](source)
-          ).toList
-        ).toList
-      case _                  => List.empty
+        multiSearchResult.getResponses.asScala
+          .map(searchResponse =>
+            searchResponse.searchResult.getSourceAsStringList.asScala
+              .map(source => serialization.read[U](source))
+              .toList
+          )
+          .toList
+      case _ => List.empty
     }
   }
 
-  override def multiSearch[U](jsonQueries: JSONQueries)(implicit m: Manifest[U], formats: Formats): List[List[U]] = {
+  override def multiSearch[U](
+    jsonQueries: JSONQueries
+  )(implicit m: Manifest[U], formats: Formats): List[List[U]] = {
     val searches: List[Search] = jsonQueries.queries.map(_.search)
     val multiSearchResult = apply().execute(new MultiSearch.Builder(searches.asJava).build())
-    multiSearchResult.getResponses.asScala.map(searchResponse =>
-      searchResponse.searchResult.getSourceAsStringList.asScala.map(
-        source => serialization.read[U](source)
-      ).toList
-    ).toList
+    multiSearchResult.getResponses.asScala
+      .map(searchResponse =>
+        searchResponse.searchResult.getSourceAsStringList.asScala
+          .map(source => serialization.read[U](source))
+          .toList
+      )
+      .toList
   }
 
-  override def multiSearchWithInnerHits[U, I](sqlQueries: SQLQueries, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]] = {
+  override def multiSearchWithInnerHits[U, I](sqlQueries: SQLQueries, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[List[(U, List[I])]] = {
     val searches: List[Search] = sqlQueries.queries.flatMap(_.search)
-    if(searches.size == sqlQueries.queries.size){
+    if (searches.size == sqlQueries.queries.size) {
       nativeMultiSearchWithInnerHits(searches, innerField)
-    }
-    else{
+    } else {
       List.empty
     }
   }
 
-  override def multiSearchWithInnerHits[U, I](jsonQueries: JSONQueries, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]] = {
+  override def multiSearchWithInnerHits[U, I](jsonQueries: JSONQueries, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[List[(U, List[I])]] = {
     nativeMultiSearchWithInnerHits(jsonQueries.queries.map(_.search), innerField)
   }
 
-  private[this] def nativeMultiSearchWithInnerHits[U, I](searches: List[Search], innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]] = {
+  private[this] def nativeMultiSearchWithInnerHits[U, I](
+    searches: List[Search],
+    innerField: String
+  )(implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]] = {
     val multiSearchResult = apply().execute(new MultiSearch.Builder(searches.asJava).build())
-    if(multiSearchResult.isSucceeded){
-      multiSearchResult.getResponses.asScala.map(searchResponse =>
-        searchResponse.searchResult.getJsonObject ~>[U, I] innerField
-      ).toList
-    }
-    else{
+    if (multiSearchResult.isSucceeded) {
+      multiSearchResult.getResponses.asScala
+        .map(searchResponse => searchResponse.searchResult.getJsonObject ~> [U, I] innerField)
+        .toList
+    } else {
       logger.error(multiSearchResult.getErrorMessage)
       List.empty
     }
@@ -514,46 +573,56 @@ trait JestSearchApi extends SearchApi with JestClientCompanion {
 
 }
 
-trait JestBulkApi extends JestRefreshApi with JestUpdateSettingsApi with JestIndicesApi with BulkApi with JestClientCompanion {
+trait JestBulkApi
+    extends JestRefreshApi
+    with JestUpdateSettingsApi
+    with JestIndicesApi
+    with BulkApi
+    with JestClientCompanion {
   override type A = BulkableAction[DocumentResult]
   override type R = BulkResult
 
-  override implicit def toBulkElasticAction(a: A) : BulkElasticAction =
+  override implicit def toBulkElasticAction(a: A): BulkElasticAction =
     new BulkElasticAction {
       override def index: String = a.getIndex
     }
 
   private[this] def toBulkElasticResultItem(i: BulkResult#BulkResultItem): BulkElasticResultItem =
-    new BulkElasticResultItem{
+    new BulkElasticResultItem {
       override def index: String = i.index
     }
 
   override implicit def toBulkElasticResult(r: R): BulkElasticResult =
     new BulkElasticResult {
-      override def items: List[BulkElasticResultItem] = r.getItems.asScala.toList.map(toBulkElasticResultItem)
+      override def items: List[BulkElasticResultItem] =
+        r.getItems.asScala.toList.map(toBulkElasticResultItem)
     }
 
-  override def bulk(implicit bulkOptions: BulkOptions, system: ActorSystem): Flow[Seq[A], R, NotUsed] = {
+  override def bulk(implicit
+    bulkOptions: BulkOptions,
+    system: ActorSystem
+  ): Flow[Seq[A], R, NotUsed] = {
     import JestClientResultHandler._
     val parallelism = Math.max(1, bulkOptions.balance)
 
     Flow[Seq[BulkableAction[DocumentResult]]]
       .named("bulk")
       .mapAsyncUnordered[BulkResult](parallelism)(items => {
-      logger.info(s"Starting to write batch of ${items.size}...")
-      val init = new Bulk.Builder().defaultIndex(bulkOptions.index).defaultType(bulkOptions.documentType)
-      val bulkQuery = items.foldLeft(init) { (current, query) =>
-        current.addAction(query)
-      }
-      apply().executeAsyncPromise(bulkQuery.build())
-    })
+        logger.info(s"Starting to write batch of ${items.size}...")
+        val init =
+          new Bulk.Builder().defaultIndex(bulkOptions.index).defaultType(bulkOptions.documentType)
+        val bulkQuery = items.foldLeft(init) { (current, query) =>
+          current.addAction(query)
+        }
+        apply().executeAsyncPromise(bulkQuery.build())
+      })
   }
 
   override def bulkResult: Flow[R, Set[String], NotUsed] =
     Flow[BulkResult]
       .named("result")
       .map(result => {
-        val items   = result.getItems
+        val items = result.getItems
         val indices = items.asScala.map(_.index).toSet
         logger.info(s"Finished to write batch of ${items.size} within ${indices.mkString(",")}.")
         indices
@@ -563,7 +632,7 @@ trait JestBulkApi extends JestRefreshApi with JestUpdateSettingsApi with JestInd
     val builder = bulkItem.action match {
       case BulkAction.DELETE => new Delete.Builder(bulkItem.body)
       case BulkAction.UPDATE => new Update.Builder(bulkItem.body)
-      case _ => new Index.Builder(bulkItem.body)
+      case _                 => new Index.Builder(bulkItem.body)
     }
     bulkItem.id.foreach(builder.id)
     builder.index(bulkItem.index)
@@ -574,7 +643,7 @@ trait JestBulkApi extends JestRefreshApi with JestUpdateSettingsApi with JestInd
 }
 
 object JestClientApi {
-  implicit class SearchSQLQuery(sqlQuery: SQLQuery){
+  implicit class SearchSQLQuery(sqlQuery: SQLQuery) {
     def search: Option[Search] = {
       import ElasticQuery._
       select(sqlQuery) match {
@@ -584,12 +653,12 @@ object JestClientApi {
           val search = new Search.Builder(query)
           for (source <- sources) search.addIndex(source)
           Some(search.build())
-        case _       => None
+        case _ => None
       }
     }
   }
 
-  implicit class SearchJSONQuery(jsonQuery: JSONQuery){
+  implicit class SearchJSONQuery(jsonQuery: JSONQuery) {
     def search: Search = {
       import jsonQuery._
       val _search = new Search.Builder(query)

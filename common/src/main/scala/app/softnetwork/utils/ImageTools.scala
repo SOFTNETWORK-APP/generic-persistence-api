@@ -11,8 +11,7 @@ import java.util.regex.Pattern
 import javax.imageio.ImageIO
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 06/07/2018.
+/** Created by smanciot on 06/07/2018.
   */
 object ImageTools {
 
@@ -30,7 +29,7 @@ object ImageTools {
     isAnImage(detectMimeType(path))
   }
 
-  def isAnImage(mimeType: Option[String]) : Boolean = {
+  def isAnImage(mimeType: Option[String]): Boolean = {
     mimeType match {
       case Some(mimeType) =>
         val matcher = IMAGE_FORMAT.matcher(mimeType)
@@ -56,15 +55,18 @@ object ImageTools {
           bos.close()
           None
       }
-    }
-    else {
+    } else {
       None
     }
   }
 
-  def generateImages(originalImage: Path, replace: Boolean = true, imageSizes: Seq[ImageSize] = Seq(Icon, Small)): Boolean = {
+  def generateImages(
+    originalImage: Path,
+    replace: Boolean = true,
+    imageSizes: Seq[ImageSize] = Seq(Icon, Small)
+  ): Boolean = {
     val mimeType = detectMimeType(originalImage)
-    if(isAnImage(mimeType)){
+    if (isAnImage(mimeType)) {
       mimeType match {
         case Some(mimeType) =>
           val originalPath = originalImage.toAbsolutePath
@@ -73,29 +75,39 @@ object ImageTools {
           val originalWidth = src.getWidth
           val originalHeight = src.getHeight
           for (imageSize <- imageSizes) {
-            resizeImage(src, originalWidth, originalHeight, originalPath, format, imageSize, replace)
+            resizeImage(
+              src,
+              originalWidth,
+              originalHeight,
+              originalPath,
+              format,
+              imageSize,
+              replace
+            )
           }
           true
         case _ => false
       }
-    }
-    else{
+    } else {
       false
     }
   }
 
-  def getImage(originalPath: Path, size: Option[ImageSize] = None, replace: Boolean = true): Path = {
+  def getImage(
+    originalPath: Path,
+    size: Option[ImageSize] = None,
+    replace: Boolean = true
+  ): Path = {
     size match {
       case Some(s) =>
         val format = toFormat(originalPath).getOrElse("jpeg")
         val out = s.resizedPath(originalPath, Option(format))
-        if(!Files.exists(out)){
+        if (!Files.exists(out)) {
           val src: BufferedImage = ImageIO.read(Files.newInputStream(originalPath))
           val originalWidth = src.getWidth
           val originalHeight = src.getHeight
           resizeImage(src, originalWidth, originalHeight, originalPath, format, s, replace)
-        }
-        else {
+        } else {
           out
         }
       case _ => originalPath
@@ -103,14 +115,14 @@ object ImageTools {
   }
 
   private def resizeImage(
-                           src: BufferedImage,
-                           originalWidth: Int,
-                           originalHeight: Int,
-                           originalPath: Path,
-                           format: String,
-                           imageSize: ImageSize,
-                           replace: Boolean
-                         ): Path = {
+    src: BufferedImage,
+    originalWidth: Int,
+    originalHeight: Int,
+    originalPath: Path,
+    format: String,
+    imageSize: ImageSize,
+    replace: Boolean
+  ): Path = {
     import imageSize._
     val out = imageSize.resizedPath(originalPath, Option(format))
     if (!Files.exists(out) || replace) {

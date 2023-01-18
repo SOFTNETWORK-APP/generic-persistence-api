@@ -8,8 +8,7 @@ import scala.language.implicitConversions
 
 import app.softnetwork.persistence._
 
-/**
-  * Created by smanciot on 10/04/2020.
+/** Created by smanciot on 10/04/2020.
   */
 object Elastic {
 

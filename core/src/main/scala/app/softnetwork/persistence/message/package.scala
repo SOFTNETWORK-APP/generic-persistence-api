@@ -6,67 +6,66 @@ import app.softnetwork.persistence.model.{Entity, Timestamped}
 
 import scala.language.implicitConversions
 
-/**
-  * Created by smanciot on 19/03/2018.
+/** Created by smanciot on 19/03/2018.
   */
 package object message {
 
-  /** Command objects **/
+  /** Command objects * */
   trait Command
 
-  /**
-    * a command which includes a reference to the actor identity to whom a reply has to be sent
+  /** a command which includes a reference to the actor identity to whom a reply has to be sent
     *
-    * @tparam R - type of command result
+    * @tparam R
+    *   - type of command result
     */
   trait CommandWithReply[R <: CommandResult] extends Command {
     def replyTo: ActorRef[R]
   }
 
-  /**
-    * a wrapper arround a command and its reference to the actor identity to whom a reply has to be sent
+  /** a wrapper arround a command and its reference to the actor identity to whom a reply has to be
+    * sent
     *
-    * @tparam C - type of command
-    * @tparam R - type of command result
+    * @tparam C
+    *   - type of command
+    * @tparam R
+    *   - type of command result
     */
   trait CommandWrapper[C <: Command, R <: CommandResult] extends CommandWithReply[R] {
     def command: C
   }
 
-  /**
-    * CommandWrapper companion object
+  /** CommandWrapper companion object
     */
   object CommandWrapper {
-    def apply[C <: Command, R <: CommandResult](aCommand: C, aReplyTo: ActorRef[R]): C = new CommandWrapper[C, R] {
-      override val command: C = aCommand
-      override val replyTo: ActorRef[R] = aReplyTo
-    }.asInstanceOf[C]
+    def apply[C <: Command, R <: CommandResult](aCommand: C, aReplyTo: ActorRef[R]): C =
+      new CommandWrapper[C, R] {
+        override val command: C = aCommand
+        override val replyTo: ActorRef[R] = aReplyTo
+      }.asInstanceOf[C]
   }
 
-  /** Entity command **/
+  /** Entity command * */
 
-  /**
-    * a command that should be handled by a specific entity
+  /** a command that should be handled by a specific entity
     */
   trait EntityCommand extends Command with Entity {
     def id: String // TODO rename to uuid ?
   }
 
-  /**
-    * allow a command to be handled by no specific entity
+  /** allow a command to be handled by no specific entity
     */
-  trait AllEntities extends EntityCommand {_: Command =>
+  trait AllEntities extends EntityCommand { _: Command =>
     override val id: String = ALL_KEY
   }
 
-  /** Event objects **/
+  /** Event objects * */
   trait Event
 
   trait BroadcastEvent extends Event {
     def externalUuid: String
   }
 
-  /** Crud events **/
+  /** Crud events * */
   trait CrudEvent extends Event
 
   trait Created[T <: Timestamped] extends CrudEvent {
@@ -99,7 +98,7 @@ package object message {
     def uuid: String
   }
 
-  /** Command result **/
+  /** Command result * */
   trait CommandResult
 
   @SerialVersionUID(0L)
@@ -109,15 +108,15 @@ package object message {
 
   case object UnknownEvent extends ErrorMessage("UnknownEvent")
 
-  /** Count command result **/
+  /** Count command result * */
   case class CountResponse(field: String, count: Int, error: Option[String] = None)
 
   @SerialVersionUID(0L)
   abstract class CountResult(results: Seq[CountResponse]) extends CommandResult
 
-  /** Protobuf events **/
+  /** Protobuf events * */
   trait ProtobufEvent extends Event
 
-  /** Cbor events **/
+  /** Cbor events * */
   trait CborEvent extends Event
 }

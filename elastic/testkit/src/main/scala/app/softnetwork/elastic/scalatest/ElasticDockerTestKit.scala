@@ -14,18 +14,23 @@ import org.scalatest.Suite
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
-/**
-  * Created by smanciot on 28/06/2018.
+/** Created by smanciot on 28/06/2018.
   */
-trait ElasticDockerTestKit extends DockerTestKit with DockerKitDockerJava with Logging with ElasticTestKit {_: Suite =>
+trait ElasticDockerTestKit
+    extends DockerTestKit
+    with DockerKitDockerJava
+    with Logging
+    with ElasticTestKit { _: Suite =>
 
   override lazy val client: ElasticClient = ElasticClient(ElasticProperties(elasticURL))
 
   override def beforeAll(): Unit = {
     super.beforeAll
     client.execute {
-      createIndexTemplate("all_templates", "*").settings(Map("number_of_shards" -> 1, "number_of_replicas" -> 0))
-    } complete() match {
+      createIndexTemplate("all_templates", "*").settings(
+        Map("number_of_shards" -> 1, "number_of_replicas" -> 0)
+      )
+    } complete () match {
       case Success(_) => ()
       case Failure(f) => throw f
     }
@@ -51,7 +56,7 @@ trait ElasticDockerTestKit extends DockerTestKit with DockerKitDockerJava with L
 
   lazy val elasticPort: Int = sys.env.get("ES_PORT").map(_.toInt).getOrElse(dynamicPort)
 
-  lazy val elasticURL    = s"http://$elasticHost:$elasticPort"
+  lazy val elasticURL = s"http://$elasticHost:$elasticPort"
 
   lazy val clusterName: String = s"test-${UUID.randomUUID()}"
 
@@ -90,7 +95,7 @@ trait ElasticDockerTestKit extends DockerTestKit with DockerKitDockerJava with L
 object ElasticDockerTestKit {
   def dynamicPort: Int = {
     val socket = new ServerSocket(0)
-    val port   = socket.getLocalPort
+    val port = socket.getLocalPort
     socket.close()
     port
   }

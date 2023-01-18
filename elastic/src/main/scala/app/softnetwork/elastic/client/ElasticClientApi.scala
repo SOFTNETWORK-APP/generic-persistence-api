@@ -5,7 +5,7 @@ import java.time.format.DateTimeFormatter
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import _root_.akka.stream.{Materializer, FlowShape}
+import _root_.akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl._
 
 import app.softnetwork.persistence.message.CountResponse
@@ -15,33 +15,33 @@ import app.softnetwork.serialization._
 
 import app.softnetwork.elastic.sql.{SQLQueries, SQLQuery}
 
-import org.json4s.{Formats, DefaultFormats}
+import org.json4s.{DefaultFormats, Formats}
 import org.json4s.jackson.JsonMethods._
 
 import scala.collection.immutable.Seq
 
-import scala.concurrent.{Future, ExecutionContext, Await}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
-import scala.language.{postfixOps, implicitConversions}
+import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 
-/**
-  * Created by smanciot on 28/06/2018.
+/** Created by smanciot on 28/06/2018.
   */
-trait ElasticClientApi extends IndicesApi
-  with UpdateSettingsApi
-  with AliasApi
-  with MappingApi
-  with CountApi
-  with SearchApi
-  with IndexApi
-  with UpdateApi
-  with GetApi
-  with BulkApi
-  with DeleteApi
-  with RefreshApi
-  with FlushApi
+trait ElasticClientApi
+    extends IndicesApi
+    with UpdateSettingsApi
+    with AliasApi
+    with MappingApi
+    with CountApi
+    with SearchApi
+    with IndexApi
+    with UpdateApi
+    with GetApi
+    with BulkApi
+    with DeleteApi
+    with RefreshApi
+    with FlushApi
 
 trait IndicesApi {
   val defaultSettings: String =
@@ -101,11 +101,12 @@ trait AliasApi {
   def addAlias(index: String, alias: String): Boolean
 }
 
-trait UpdateSettingsApi {_: IndicesApi =>
+trait UpdateSettingsApi { _: IndicesApi =>
   def toggleRefresh(index: String, enable: Boolean): Unit = {
     updateSettings(
       index,
-      if (!enable) """{"index" : {"refresh_interval" : -1} }""" else """{"index" : {"refresh_interval" : "1s"} }"""
+      if (!enable) """{"index" : {"refresh_interval" : -1} }"""
+      else """{"index" : {"refresh_interval" : "1s"} }"""
     )
   }
 
@@ -129,69 +130,99 @@ trait FlushApi {
 }
 
 trait IndexApi {
-  def index[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit u: ClassTag[U], formats: Formats): Boolean = {
-    val _type  = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+  def index[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit u: ClassTag[U], formats: Formats): Boolean = {
+    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     this.index(index.getOrElse(_type), _type, entity.uuid, serialization.write[U](entity))
   }
 
   def index(index: String, `type`: String, id: String, source: String): Boolean
 
-  def indexAsync[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
-    val _type  = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+  def indexAsync[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
+    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     indexAsync(index.getOrElse(_type), _type, entity.uuid, serialization.write[U](entity))
   }
 
-  def indexAsync( index: String, `type`: String, id: String, source: String)(
-    implicit ec: ExecutionContext): Future[Boolean]
+  def indexAsync(index: String, `type`: String, id: String, source: String)(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
 }
 
 trait UpdateApi {
-  def update[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None, upsert: Boolean = true)(
-    implicit u: ClassTag[U], formats: Formats): Boolean = {
-    val _type  = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+  def update[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None,
+    upsert: Boolean = true
+  )(implicit u: ClassTag[U], formats: Formats): Boolean = {
+    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     this.update(index.getOrElse(_type), _type, entity.uuid, serialization.write[U](entity), upsert)
   }
 
   def update(index: String, `type`: String, id: String, source: String, upsert: Boolean): Boolean
 
-  def updateAsync[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None, upsert: Boolean = true)(
-    implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
-    val _type  = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
-    this.updateAsync(index.getOrElse(_type), _type, entity.uuid, serialization.write[U](entity), upsert)
+  def updateAsync[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None,
+    upsert: Boolean = true
+  )(implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
+    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+    this.updateAsync(
+      index.getOrElse(_type),
+      _type,
+      entity.uuid,
+      serialization.write[U](entity),
+      upsert
+    )
   }
 
   def updateAsync(index: String, `type`: String, id: String, source: String, upsert: Boolean)(
-    implicit ec: ExecutionContext): Future[Boolean]
+    implicit ec: ExecutionContext
+  ): Future[Boolean]
 }
 
 trait DeleteApi {
-  def delete[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit u: ClassTag[U]): Boolean = {
-    val _type  = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+  def delete[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit u: ClassTag[U]): Boolean = {
+    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     delete(entity.uuid, index.getOrElse(_type), _type)
   }
 
   def delete(uuid: String, index: String, `type`: String): Boolean
 
-  def deleteAsync[U <: Timestamped](entity: U, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit u: ClassTag[U], ec: ExecutionContext): Future[Boolean] = {
-    val _type  = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+  def deleteAsync[U <: Timestamped](
+    entity: U,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit u: ClassTag[U], ec: ExecutionContext): Future[Boolean] = {
+    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     deleteAsync(entity.uuid, index.getOrElse(_type), _type)
   }
 
-  def deleteAsync(uuid: String, index: String, `type`: String)(implicit ec: ExecutionContext): Future[Boolean]
+  def deleteAsync(uuid: String, index: String, `type`: String)(implicit
+    ec: ExecutionContext
+  ): Future[Boolean]
 
 }
 
-trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
+trait BulkApi { _: RefreshApi with UpdateSettingsApi =>
   type A
   type R
 
   def toBulkAction(bulkItem: BulkItem): A
 
-  implicit def toBulkElasticAction(a: A) : BulkElasticAction
+  implicit def toBulkElasticAction(a: A): BulkElasticAction
 
   implicit def toBulkElasticResult(r: R): BulkElasticResult
 
@@ -199,8 +230,7 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
 
   def bulkResult: Flow[R, Set[String], NotUsed]
 
-  /**
-    * +----------+
+  /** +----------+
     * |          |
     * |  Source  |  items: Iterator[D]
     * |          |
@@ -271,14 +301,16 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
     * @tparam D the type of the items
     * @return the indexes on which the documents have been indexed
     */
-  def bulk[D](items: Iterator[D],
-              toDocument: D => String,
-              idKey: Option[String] = None,
-              suffixDateKey: Option[String] = None,
-              suffixDatePattern: Option[String] = None,
-              update: Option[Boolean] = None,
-              delete: Option[Boolean] = None,
-              parentIdKey: Option[String] = None)(implicit bulkOptions: BulkOptions, system: ActorSystem): Set[String] = {
+  def bulk[D](
+    items: Iterator[D],
+    toDocument: D => String,
+    idKey: Option[String] = None,
+    suffixDateKey: Option[String] = None,
+    suffixDatePattern: Option[String] = None,
+    update: Option[Boolean] = None,
+    delete: Option[Boolean] = None,
+    parentIdKey: Option[String] = None
+  )(implicit bulkOptions: BulkOptions, system: ActorSystem): Set[String] = {
 
     implicit val materializer: Materializer = Materializer(system)
 
@@ -286,20 +318,32 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
 
     val source = Source.fromIterator(() => items)
 
-    val sink   = Sink.fold[Set[String], Set[String]](Set.empty[String])(_ ++ _)
+    val sink = Sink.fold[Set[String], Set[String]](Set.empty[String])(_ ++ _)
 
     val g = Flow.fromGraph(GraphDSL.create() { implicit b =>
       val transform =
-        b.add(Flow[D].map(item => toBulkAction(
-          toBulkItem(toDocument, idKey, suffixDateKey, suffixDatePattern, update, delete, parentIdKey, item)
-        )))
+        b.add(
+          Flow[D].map(item =>
+            toBulkAction(
+              toBulkItem(
+                toDocument,
+                idKey,
+                suffixDateKey,
+                suffixDatePattern,
+                update,
+                delete,
+                parentIdKey,
+                item
+              )
+            )
+          )
+        )
 
       val settings = b.add(BulkSettings[A](bulkOptions.disableRefresh)(this, toBulkElasticAction))
 
-      val group = b.add(Flow[A].named("group").grouped(bulkOptions.maxBulkSize).map {
-        items =>
+      val group = b.add(Flow[A].named("group").grouped(bulkOptions.maxBulkSize).map { items =>
 //          logger.info(s"Preparing to write batch of ${items.size}...")
-          items
+        items
       })
 
       val parallelism = Math.max(1, bulkOptions.balance)
@@ -334,14 +378,16 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
     indices
   }
 
-  def toBulkItem[D](toDocument: D => String,
-                    idKey: Option[String],
-                    suffixDateKey: Option[String],
-                    suffixDatePattern: Option[String],
-                    update: Option[Boolean],
-                    delete: Option[Boolean],
-                    parentIdKey: Option[String],
-                    item: D)(implicit bulkOptions: BulkOptions): BulkItem = {
+  def toBulkItem[D](
+    toDocument: D => String,
+    idKey: Option[String],
+    suffixDateKey: Option[String],
+    suffixDatePattern: Option[String],
+    update: Option[Boolean],
+    delete: Option[Boolean],
+    parentIdKey: Option[String],
+    item: D
+  )(implicit bulkOptions: BulkOptions): BulkItem = {
 
     implicit val formats: DefaultFormats = org.json4s.DefaultFormats
     val document = toDocument(item)
@@ -357,9 +403,12 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
         // Expecting a date field YYYY-MM-dd ...
         jsonMap.get(s).map { d =>
           val strDate = d.toString.substring(0, 10)
-          val date    = LocalDate.parse(strDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+          val date = LocalDate.parse(strDate, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
           date.format(
-            suffixDatePattern.map(DateTimeFormatter.ofPattern).getOrElse(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+            suffixDatePattern
+              .map(DateTimeFormatter.ofPattern)
+              .getOrElse(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+          )
         }
       }
       .map(s => s"${bulkOptions.index}-$s")
@@ -376,13 +425,13 @@ trait BulkApi {_: RefreshApi with UpdateSettingsApi =>
       case _ =>
         update match {
           case Some(u) if u => BulkAction.UPDATE
-          case _ => BulkAction.INDEX
+          case _            => BulkAction.INDEX
         }
     }
 
     val body = action match {
       case BulkAction.UPDATE => docAsUpsert(document)
-      case _ => document
+      case _                 => document
     }
 
     BulkItem(index, action, body, id, parent)
@@ -395,15 +444,23 @@ trait CountApi {
 
   def count(query: JSONQuery): Option[Double]
 
-  def countAsync(sqlQuery: SQLQuery)(implicit ec: ExecutionContext): Future[_root_.scala.collection.Seq[CountResponse]]
+  def countAsync(sqlQuery: SQLQuery)(implicit
+    ec: ExecutionContext
+  ): Future[_root_.scala.collection.Seq[CountResponse]]
 }
 
 trait GetApi {
-  def get[U <: Timestamped](id: String, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit m: Manifest[U], formats: Formats): Option[U]
+  def get[U <: Timestamped](
+    id: String,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit m: Manifest[U], formats: Formats): Option[U]
 
-  def getAsync[U <: Timestamped](id: String, index: Option[String] = None, `type`: Option[String] = None)(
-    implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]]
+  def getAsync[U <: Timestamped](
+    id: String,
+    index: Option[String] = None,
+    `type`: Option[String] = None
+  )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]]
 }
 
 trait SearchApi {
@@ -412,23 +469,40 @@ trait SearchApi {
 
   def search[U](sqlQuery: SQLQuery)(implicit m: Manifest[U], formats: Formats): List[U]
 
-  def searchAsync[U](sqlQuery: SQLQuery)(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats
-  ): Future[List[U]]
+  def searchAsync[U](
+    sqlQuery: SQLQuery
+  )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[List[U]]
 
-  def searchWithInnerHits[U, I](sqlQuery: SQLQuery, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[(U, List[I])]
+  def searchWithInnerHits[U, I](sqlQuery: SQLQuery, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[(U, List[I])]
 
-  def searchWithInnerHits[U, I](jsonQuery: JSONQuery, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[(U, List[I])]
+  def searchWithInnerHits[U, I](jsonQuery: JSONQuery, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[(U, List[I])]
 
-  def multiSearch[U](sqlQueries: SQLQueries)(implicit m: Manifest[U], formats: Formats): List[List[U]]
+  def multiSearch[U](
+    sqlQueries: SQLQueries
+  )(implicit m: Manifest[U], formats: Formats): List[List[U]]
 
-  def multiSearch[U](jsonQueries: JSONQueries)(implicit m: Manifest[U], formats: Formats): List[List[U]]
+  def multiSearch[U](
+    jsonQueries: JSONQueries
+  )(implicit m: Manifest[U], formats: Formats): List[List[U]]
 
-  def multiSearchWithInnerHits[U, I](sqlQueries: SQLQueries, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]]
+  def multiSearchWithInnerHits[U, I](sqlQueries: SQLQueries, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[List[(U, List[I])]]
 
-  def multiSearchWithInnerHits[U, I](jsonQueries: JSONQueries, innerField: String)(
-    implicit m1: Manifest[U], m2: Manifest[I], formats: Formats): List[List[(U, List[I])]]
+  def multiSearchWithInnerHits[U, I](jsonQueries: JSONQueries, innerField: String)(implicit
+    m1: Manifest[U],
+    m2: Manifest[I],
+    formats: Formats
+  ): List[List[(U, List[I])]]
 
 }

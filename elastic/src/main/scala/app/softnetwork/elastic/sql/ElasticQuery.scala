@@ -2,10 +2,9 @@ package app.softnetwork.elastic.sql
 
 import com.sksamuel.elastic4s.ElasticApi._
 import com.sksamuel.elastic4s.http.search.SearchBodyBuilderFn
-import com.sksamuel.elastic4s.searches.queries.{Query, BoolQuery}
+import com.sksamuel.elastic4s.searches.queries.{BoolQuery, Query}
 
-/**
-  * Created by smanciot on 27/06/2018.
+/** Created by smanciot on 27/06/2018.
   */
 object ElasticQuery {
 
@@ -14,12 +13,11 @@ object ElasticQuery {
 
   def select(sqlQuery: SQLQuery): Option[ElasticSelect] = select(sqlQuery.query)
 
-  private[this]def select(query: String): Option[ElasticSelect] = {
+  private[this] def select(query: String): Option[ElasticSelect] = {
     val select: Option[SQLSelectQuery] = query
     select match {
 
       case Some(s) =>
-
         val criteria = s.where match {
           case Some(w) => w.criteria
           case _       => None
@@ -45,9 +43,9 @@ object ElasticQuery {
 
         val q = SearchBodyBuilderFn(_search).string()
 
-        Some(ElasticSelect(s.select.fields, sources, q.replace("\"version\":true,", "")/*FIXME*/))
+        Some(ElasticSelect(s.select.fields, sources, q.replace("\"version\":true,", "") /*FIXME*/ ))
 
-      case _       => None
+      case _ => None
     }
   }
 
@@ -94,14 +92,13 @@ object ElasticQuery {
           }
 
           val q =
-            if(sourceField.equalsIgnoreCase("_id")) {// "native" elastic count
+            if (sourceField.equalsIgnoreCase("_id")) { // "native" elastic count
               SearchBodyBuilderFn(
                 search("") query {
                   queryFiltered
                 }
               ).string()
-            }
-            else{
+            } else {
               val _agg =
                 if (distinct)
                   cardinalityAgg(agg, sourceField)
@@ -109,15 +106,14 @@ object ElasticQuery {
                   valueCountAgg(agg, sourceField)
 
               def _filtered = {
-                if(isFiltered){
+                if (isFiltered) {
                   val filteredAgg = s"filtered_agg"
                   aggPath ++= Seq(filteredAgg)
-                  filterAgg(filteredAgg, filter(filtered.get.criteria)) subaggs{
+                  filterAgg(filteredAgg, filter(filtered.get.criteria)) subaggs {
                     aggPath ++= Seq(agg)
                     _agg
                   }
-                }
-                else{
+                } else {
                   aggPath ++= Seq(agg)
                   _agg
                 }
@@ -127,7 +123,7 @@ object ElasticQuery {
                 search("") query {
                   queryFiltered
                 }
-                  aggregations {
+                aggregations {
                   if (nested) {
                     val path = sourceField.split("\\.").head
                     val nestedAgg = s"nested_$path"
@@ -135,12 +131,11 @@ object ElasticQuery {
                     nestedAggregation(nestedAgg, path) subaggs {
                       _filtered
                     }
-                  }
-                  else{
+                  } else {
                     _filtered
                   }
                 }
-                  size 0
+                size 0
               ).string()
             }
 
@@ -155,25 +150,25 @@ object ElasticQuery {
             isFiltered
           )
         })
-      case _                      => Seq.empty
+      case _ => Seq.empty
     }
   }
 
 }
 
 case class ElasticCount(
-                         agg: String,
-                         field: String,
-                         sourceField: String,
-                         sources: Seq[String],
-                         query: String,
-                         distinct: Boolean = false,
-                         nested: Boolean = false,
-                         filtered: Boolean = false
-                       )
+  agg: String,
+  field: String,
+  sourceField: String,
+  sources: Seq[String],
+  query: String,
+  distinct: Boolean = false,
+  nested: Boolean = false,
+  filtered: Boolean = false
+)
 
 case class ElasticSelect(
-                          fields: Seq[SQLField],
-                          sources: Seq[String],
-                          query: String
-                        )
+  fields: Seq[SQLField],
+  sources: Seq[String],
+  query: String
+)

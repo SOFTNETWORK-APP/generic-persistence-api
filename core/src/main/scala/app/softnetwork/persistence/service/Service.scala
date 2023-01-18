@@ -7,8 +7,7 @@ import app.softnetwork.persistence.message.{Command, CommandResult}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag
 
-/**
-  * Created by smanciot on 15/04/2020.
+/** Created by smanciot on 15/04/2020.
   */
 trait Service[C <: Command, R <: CommandResult] { _: Patterns[C, R] =>
 

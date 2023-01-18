@@ -27,8 +27,7 @@ import scala.concurrent.{Await, ExecutionContextExecutor}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success}
 
-/**
-  * Created by smanciot on 28/06/2018.
+/** Created by smanciot on 28/06/2018.
   */
 class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with Matchers {
 
@@ -105,7 +104,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     """ { "uuid": "A16", "name": "Barney Gumble", "birthDate": "1969-05-09 21:00:00"} """
   )
 
-  private val personsWithUpsert = persons :+ """ { "uuid": "A16", "name": "Barney Gumble2", "birthDate": "1969-05-09 21:00:00"} """
+  private val personsWithUpsert =
+    persons :+ """ { "uuid": "A16", "name": "Barney Gumble2", "birthDate": "1969-05-09 21:00:00"} """
 
   val children = List(
     """ { "parentId": "A16", "name": "Steve Gumble", "birthDate": "1999-05-09 21:00:00"} """,
@@ -125,14 +125,16 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person1").query(MatchAllQuery())
-    } complete()
+    } complete ()
 
     response.result.hits.hits.foreach { h =>
       h.id should not be h.sourceField("uuid")
     }
 
     response.result.hits.hits
-      .map(_.sourceField("name")) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble")
+      .map(
+        _.sourceField("name")
+      ) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble")
   }
 
   "Bulk index valid json with an id key but no suffix key" should "work" in {
@@ -157,14 +159,16 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person2").query(MatchAllQuery())
-    } complete()
+    } complete ()
 
     response.result.hits.hits.foreach { h =>
       h.id shouldBe h.sourceField("uuid")
     }
 
     response.result.hits.hits
-      .map(_.sourceField("name")) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble")
+      .map(
+        _.sourceField("name")
+      ) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble")
 
     // FIXME elastic >= v 6.x no more multiple Parent / Child relationship allowed within the same index
 //    val childIndices =
@@ -184,7 +188,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
   "Bulk index valid json with an id key and a suffix key" should "work" in {
     implicit val bulkOptions: BulkOptions = BulkOptions("person", "person", 1000)
     implicit val jclient: JestClient = pClient.jestClient
-    val indices = pClient.bulk[String](persons.iterator, identity, Some("uuid"), Some("birthDate"), None, None)
+    val indices =
+      pClient.bulk[String](persons.iterator, identity, Some("uuid"), Some("birthDate"), None, None)
     refresh(indices)
 
     indices should contain allOf ("person-1967-11-21", "person-1969-05-09")
@@ -197,14 +202,16 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person-1967-11-21", "person-1969-05-09").query(MatchAllQuery())
-    } complete()
+    } complete ()
 
     response.result.hits.hits.foreach { h =>
       h.id shouldBe h.sourceField("uuid")
     }
 
     response.result.hits.hits
-      .map(_.sourceField("name")) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble")
+      .map(
+        _.sourceField("name")
+      ) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble")
   }
 
   "Bulk index invalid json with an id key and a suffix key" should "work" in {
@@ -220,7 +227,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     implicit val bulkOptions: BulkOptions = BulkOptions("person4", "person", 1000)
     implicit val jclient: JestClient = pClient.jestClient
     val indices =
-      pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
+      pClient
+        .bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
 
     indices should contain only "person4"
@@ -231,20 +239,29 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person4").query(MatchAllQuery())
-    } complete()
+    } complete ()
 
     response.result.hits.hits.foreach { h =>
       h.id shouldBe h.sourceField("uuid")
     }
 
     response.result.hits.hits
-      .map(_.sourceField("name")) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble2")
+      .map(
+        _.sourceField("name")
+      ) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble2")
   }
 
   "Bulk upsert valid json with an id key and a suffix key" should "work" in {
     implicit val bulkOptions: BulkOptions = BulkOptions("person5", "person", 1000)
     implicit val jclient: JestClient = pClient.jestClient
-    val indices = pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), Some("birthDate"), None, Some(true))
+    val indices = pClient.bulk[String](
+      personsWithUpsert.iterator,
+      identity,
+      Some("uuid"),
+      Some("birthDate"),
+      None,
+      Some(true)
+    )
     refresh(indices)
 
     indices should contain allOf ("person5-1967-11-21", "person5-1969-05-09")
@@ -257,21 +274,24 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     val response = client.execute {
       search("person5-1967-11-21", "person5-1969-05-09").query(MatchAllQuery())
-    } complete()
+    } complete ()
 
     response.result.hits.hits.foreach { h =>
       h.id shouldBe h.sourceField("uuid")
     }
 
     response.result.hits.hits
-      .map(_.sourceField("name")) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble2")
+      .map(
+        _.sourceField("name")
+      ) should contain allOf ("Homer Simpson", "Moe Szyslak", "Barney Gumble2")
   }
 
   "Count" should "work" in {
     implicit val bulkOptions: BulkOptions = BulkOptions("person6", "person", 1000)
     implicit val jclient: JestClient = pClient.jestClient
     val indices =
-      pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
+      pClient
+        .bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
 
     indices should contain only "person6"
@@ -282,8 +302,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
 
     import scala.collection.immutable.Seq
 
-    pClient.countAsync(JSONQuery("{}", Seq[String]("person6"), Seq[String]())) complete() match {
-      case Success(s) => s.getOrElse(0D).toInt should ===(3)
+    pClient.countAsync(JSONQuery("{}", Seq[String]("person6"), Seq[String]())) complete () match {
+      case Success(s) => s.getOrElse(0d).toInt should ===(3)
       case Failure(f) => fail(f.getMessage)
     }
   }
@@ -292,7 +312,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     implicit val bulkOptions: BulkOptions = BulkOptions("person7", "person", 1000)
     implicit val jclient: JestClient = pClient.jestClient
     val indices =
-      pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
+      pClient
+        .bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
 
     indices should contain only "person7"
@@ -315,7 +336,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     implicit val bulkOptions: BulkOptions = BulkOptions("person8", "person", 1000)
     implicit val jclient: JestClient = pClient.jestClient
     val indices =
-      pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
+      pClient
+        .bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
 
     indices should contain only "person8"
@@ -334,7 +356,8 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
     implicit val bulkOptions: BulkOptions = BulkOptions("person9", "person", 1000)
     implicit val jclient: JestClient = pClient.jestClient
     val indices =
-      pClient.bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
+      pClient
+        .bulk[String](personsWithUpsert.iterator, identity, Some("uuid"), None, None, Some(true))
     refresh(indices)
 
     indices should contain only "person9"
@@ -416,13 +439,18 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
         |}
       """.stripMargin
     bClient.setMapping("binaries", "test", mapping) shouldBe true
-    for(uuid <- Seq("png", "jpg", "pdf")){
-      val path = Paths.get(Thread.currentThread().getContextClassLoader.getResource(s"avatar.$uuid").getPath)
+    for (uuid <- Seq("png", "jpg", "pdf")) {
+      val path =
+        Paths.get(Thread.currentThread().getContextClassLoader.getResource(s"avatar.$uuid").getPath)
       import app.softnetwork.utils.ImageTools._
       import app.softnetwork.utils.HashTools._
       import app.softnetwork.utils.Base64Tools._
       val encoded = encodeImageBase64(path).getOrElse("")
-      val binary = Binary(uuid, content=encoded, md5 = hashStream(new ByteArrayInputStream(decodeBase64(encoded))).getOrElse(""))
+      val binary = Binary(
+        uuid,
+        content = encoded,
+        md5 = hashStream(new ByteArrayInputStream(decodeBase64(encoded))).getOrElse("")
+      )
       bClient.index(binary) shouldBe true
       bClient.get[Binary](uuid) match {
         case Some(result) =>
@@ -432,31 +460,47 @@ class ElasticClientSpec extends AnyFlatSpecLike with ElasticDockerTestKit with M
           fos.write(decoded)
           fos.close()
           hashFile(out).getOrElse("") shouldBe binary.md5
-        case _            => fail("no result found for \""+uuid+"\"")
+        case _ => fail("no result found for \"" + uuid + "\"")
       }
     }
   }
 }
 
-case class Person(uuid: String, name: String, birthDate: String, var createdDate: Date = now(), var lastUpdated: Date = now())
-extends Timestamped
+case class Person(
+  uuid: String,
+  name: String,
+  birthDate: String,
+  var createdDate: Date = now(),
+  var lastUpdated: Date = now()
+) extends Timestamped
 
-case class Binary(uuid: String, var createdDate: Date = now(), var lastUpdated: Date = now(), content: String, md5: String)
-  extends Timestamped
+case class Binary(
+  uuid: String,
+  var createdDate: Date = now(),
+  var lastUpdated: Date = now(),
+  content: String,
+  md5: String
+) extends Timestamped
 
-class PersonProvider(ec: ElasticCredentials) extends JestProvider[Person] with ManifestWrapper[Person]{
+class PersonProvider(ec: ElasticCredentials)
+    extends JestProvider[Person]
+    with ManifestWrapper[Person] {
   override protected val manifestWrapper: ManifestW = ManifestW()
   override protected def credentials: Option[ElasticCredentials] = Some(ec)
   implicit lazy val jestClient: JestClient = apply(ec, multithreaded = false)
 }
 
-class SampleProvider(ec: ElasticCredentials) extends JestProvider[Sample] with ManifestWrapper[Sample]{
+class SampleProvider(ec: ElasticCredentials)
+    extends JestProvider[Sample]
+    with ManifestWrapper[Sample] {
   override protected val manifestWrapper: ManifestW = ManifestW()
   override protected def credentials: Option[ElasticCredentials] = Some(ec)
   implicit lazy val jestClient: JestClient = apply(ec, multithreaded = false)
 }
 
-class BinaryProvider(ec: ElasticCredentials) extends JestProvider[Binary] with ManifestWrapper[Binary]{
+class BinaryProvider(ec: ElasticCredentials)
+    extends JestProvider[Binary]
+    with ManifestWrapper[Binary] {
   override protected val manifestWrapper: ManifestW = ManifestW()
   override protected def credentials: Option[ElasticCredentials] = Some(ec)
   implicit lazy val jestClient: JestClient = apply(ec, multithreaded = false)

@@ -18,24 +18,31 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
-/**
-  * Created by smanciot on 11/05/2021.
+/** Created by smanciot on 11/05/2021.
   */
 trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with StrictLogging {
   type Request = ActorRef[R] => C
 
   type Recipient
 
-  implicit def command2Request(command: C) : Request
+  implicit def command2Request(command: C): Request
 
   implicit def timeout: Timeout = Settings.DefaultTimeout
 
-  def recipientRef(recipient: Recipient)(implicit tTag: ClassTag[C], system: ActorSystem[_]): RecipientRef[C]
+  def recipientRef(
+    recipient: Recipient
+  )(implicit tTag: ClassTag[C], system: ActorSystem[_]): RecipientRef[C]
 
-  def ?(recipient: Recipient, command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Future[R] =
+  def ?(recipient: Recipient, command: C)(implicit
+    tTag: ClassTag[C],
+    system: ActorSystem[_]
+  ): Future[R] =
     recipientRef(recipient) ? command
 
-  def !(recipient: Recipient, command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Unit =
+  def !(recipient: Recipient, command: C)(implicit
+    tTag: ClassTag[C],
+    system: ActorSystem[_]
+  ): Unit =
     recipientRef(recipient) ! command
 
   implicit def key2Recipient[T](key: T): Recipient
@@ -47,7 +54,7 @@ trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with Stric
     implicit val ec: ExecutionContextExecutor = system.executionContext
     lookup(key) flatMap {
       case Some(recipient) => this ? (recipient, command)
-      case _              => this ? (key, command)
+      case _               => this ? (key, command)
     }
   }
 
@@ -55,36 +62,42 @@ trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with Stric
     implicit val ec: ExecutionContextExecutor = system.executionContext
     lookup(key) map {
       case Some(recipient) => this ! (recipient, command)
-      case _              => this ! (key, command)
+      case _               => this ! (key, command)
     }
   }
 
-  def *?[T](keys: List[T], command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Future[List[R]] = {
+  def *?[T](keys: List[T], command: C)(implicit
+    tTag: ClassTag[C],
+    system: ActorSystem[_]
+  ): Future[List[R]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    Future.sequence(for(key <- keys) yield lookup(key) flatMap {
+    Future.sequence(for (key <- keys) yield lookup(key) flatMap {
       case Some(recipient) => this ? (recipient, command)
-      case _ => this ? (key, command)
+      case _               => this ? (key, command)
     })
   }
 
   def *![T](keys: List[T], command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Unit = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
-    for(key <- keys) yield lookup(key) map {
+    for (key <- keys) yield lookup(key) map {
       case Some(recipient) => this ! (recipient, command)
-      case _ => this ? (key, command)
+      case _               => this ? (key, command)
     }
   }
 
 }
 
-trait CommandHandler[C <: Command, R <: CommandResult]{
-  def handleCommand(command: C, replyTo: Option[ActorRef[R]])(implicit context: ActorContext[C]): Unit = {}
+trait CommandHandler[C <: Command, R <: CommandResult] {
+  def handleCommand(command: C, replyTo: Option[ActorRef[R]])(implicit
+    context: ActorContext[C]
+  ): Unit = {}
 }
 
-trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R]
-  with CommandHandler[C, R]
-  with Singleton[C]
-  with Completion {
+trait SingletonPattern[C <: Command, R <: CommandResult]
+    extends Patterns[C, R]
+    with CommandHandler[C, R]
+    with Singleton[C]
+    with Completion {
 
   import akka.actor.typed.receptionist.Receptionist
 
@@ -126,31 +139,30 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R]
       val child = context.spawn(behavior, name)
       context.system.receptionist ! Receptionist.Register(key, child)
       Behaviors.receiveMessage { message =>
-          message.client ! SingletonRefResult(child)
-          Behaviors.same
+        message.client ! SingletonRefResult(child)
+        Behaviors.same
       }
     }
 
   private[this] def actorRef(implicit system: ActorSystem[_]): ActorRef[C] = {
-    if(maybeActorRef.isEmpty){
+    if (maybeActorRef.isEmpty) {
       val maybeSingletonRef = Option(singletonRef)
-      if(maybeSingletonRef.isEmpty){
+      if (maybeSingletonRef.isEmpty) {
         logger.warn(s"actorRef for [$name] is undefined")
-        system.receptionist ? Find(key) complete() match {
+        system.receptionist ? Find(key) complete () match {
           case Success(s) => maybeActorRef = s.serviceInstances(key).headOption
           case Failure(f) =>
             logger.error(f.getMessage, f)
         }
-      }
-      else{
+      } else {
         maybeActorRef = maybeSingletonRef
       }
     }
-    maybeActorRef.getOrElse({
+    maybeActorRef.getOrElse {
       logger.info(s"spawn supervisor for singleton [$name]")
       import app.softnetwork.persistence._
       val supervisorRef = system.systemActorOf(supervisor, generateUUID())
-      supervisorRef ? SingletonRef complete() match {
+      supervisorRef ? SingletonRef complete () match {
         case Success(s) =>
           maybeActorRef = Some(s.singletonRef)
           logger.info(s"actorRef for [$name] has been loaded -> ${s.singletonRef.path}")
@@ -159,18 +171,20 @@ trait SingletonPattern[C <: Command, R <: CommandResult] extends Patterns[C, R]
           logger.error(f.getMessage, f)
           throw f
       }
-    })
+    }
   }
 
-  final override def recipientRef(recipient: Behavior[C])(implicit tTag: ClassTag[C], system: ActorSystem[_]
-  ): RecipientRef[C] = actorRef
+  final override def recipientRef(
+    recipient: Behavior[C]
+  )(implicit tTag: ClassTag[C], system: ActorSystem[_]): RecipientRef[C] = actorRef
 }
 
-trait EntityPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] with Entity {_: CommandTypeKey[C] =>
+trait EntityPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] with Entity {
+  _: CommandTypeKey[C] =>
 
   type Recipient = String
 
-  implicit def command2Request(command: C) : Request = replyTo => CommandWrapper(command, replyTo)
+  implicit def command2Request(command: C): Request = replyTo => CommandWrapper(command, replyTo)
 
   implicit def key2Recipient[T](key: T): String = key match {
     case s: String => s
@@ -182,8 +196,7 @@ trait EntityPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] wit
       Try(ClusterSharding(system).entityRefFor(TypeKey, entityId)) match {
         case Success(s) => s
         case Failure(f) =>
-          logger.error(
-            s"""
+          logger.error(s"""
                |Could not find entity for ${TypeKey.name}|$entityId
                |using ${system.path.toString}
                |""".stripMargin)
@@ -192,19 +205,21 @@ trait EntityPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] wit
     }
   }
 
-  override def recipientRef(recipient: String)(implicit tTag: ClassTag[C], system: ActorSystem[_]): RecipientRef[C] =
+  override def recipientRef(
+    recipient: String
+  )(implicit tTag: ClassTag[C], system: ActorSystem[_]): RecipientRef[C] =
     recipient ref
 
   def !?(command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Future[R] =
     command match {
       case cmd: EntityCommand => this ? (cmd.id, command)
-      case _ => this ? (ALL_KEY, command)
+      case _                  => this ? (ALL_KEY, command)
     }
 
   def !!(command: C)(implicit tTag: ClassTag[C], system: ActorSystem[_]): Unit =
     command match {
       case cmd: EntityCommand => this ! (cmd.id, command)
-      case _ => this ! (ALL_KEY, command)
+      case _                  => this ! (ALL_KEY, command)
     }
 
 }
