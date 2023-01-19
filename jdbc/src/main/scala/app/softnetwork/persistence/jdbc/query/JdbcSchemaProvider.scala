@@ -32,7 +32,7 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
 
   def cfg: Config = ConfigFactory.load()
 
-  def db: Database = JdbcBackend.createDatabase(cfg, "slick")
+  def db: Database = JdbcBackend.createDatabase(cfg, "slick.db")
 
   def initSchema(): Unit = {
     create(schemaType.schema)
