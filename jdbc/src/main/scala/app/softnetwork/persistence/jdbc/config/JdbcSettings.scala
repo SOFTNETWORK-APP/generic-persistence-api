@@ -6,7 +6,7 @@ import configs.Configs
 
 /** Created by smanciot on 15/09/2020.
   */
-object Settings extends StrictLogging {
+object JdbcSettings extends StrictLogging {
 
   case class JdbcEventProcessorOffsets(schema: String, table: String)
 

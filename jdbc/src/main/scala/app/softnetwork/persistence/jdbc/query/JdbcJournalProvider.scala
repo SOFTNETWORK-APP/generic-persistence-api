@@ -6,12 +6,12 @@ import akka.persistence.jdbc.query.scaladsl.JdbcReadJournal
 import akka.persistence.query.{EventEnvelope, Offset, PersistenceQuery, Sequence}
 
 import akka.stream.scaladsl.Source
-import app.softnetwork.persistence.jdbc.config.Settings
 
 import slick.jdbc.JdbcBackend.Session
 
 import scala.concurrent.Future
 
+import app.softnetwork.persistence.jdbc.config.JdbcSettings._
 import app.softnetwork.persistence.query.JournalProvider
 
 import scala.util.{Failure, Success, Try}
@@ -19,8 +19,6 @@ import scala.util.{Failure, Success, Try}
 /** Created by smanciot on 16/05/2020.
   */
 trait JdbcJournalProvider extends JournalProvider { _: JdbcSchemaProvider =>
-
-  import Settings._
 
   lazy val offsetSchema: String = jdbcEventProcessorOffsets.schema
 
