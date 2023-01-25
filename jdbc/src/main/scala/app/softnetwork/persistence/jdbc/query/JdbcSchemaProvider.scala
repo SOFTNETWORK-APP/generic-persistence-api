@@ -32,7 +32,7 @@ trait JdbcSchemaProvider extends SchemaProvider with ClasspathResources with Str
 
   def cfg: Config = ConfigFactory.load()
 
-  lazy val db: Database = JdbcBackend.createDatabase(cfg, "jdbc-event-processor-offsets.db")
+  def db: Database = JdbcBackend.createDatabase(cfg, "jdbc-event-processor-offsets.db")
 
   def initSchema(): Unit = {
     create(schemaType.schema)
