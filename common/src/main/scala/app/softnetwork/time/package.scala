@@ -15,6 +15,7 @@ package object time {
     def toLocalDate: LocalDate = d
     def toLocalDateTime: LocalDateTime = d
     def toZonedDateTime: ZonedDateTime = d
+    def toEpochSecond: Long = d.toInstant.getEpochSecond
   }
 
   implicit def epochSecondToInstant(epochSecond: Long): Instant = {
