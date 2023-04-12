@@ -8,9 +8,9 @@ object Versions {
 
   val akkaPersistenceJdbc = "3.5.2"
 
-  val akkaManagement = "1.1.4" // 1.0.10 -> 1.1.4
+  val akkaManagement = "1.1.4" // 1.1.4 -> 1.2
 
-  val postgresql = "42.2.18" //"9.4.1210"
+  val postgresql = "42.2.18"
 
   val scalatest = "3.1.1"
 
@@ -20,7 +20,7 @@ object Versions {
 
   val jackson = "2.11.4"
 
-  val json4s = "3.6.12" // 3.6.7 -> 3.6.12
+  val json4s = "3.6.12"
 
   val scalaLogging = "3.9.2"
 

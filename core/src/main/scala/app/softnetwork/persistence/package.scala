@@ -1,12 +1,11 @@
 package app.softnetwork
 
-import java.util.{Calendar, Date, UUID}
-
+import java.util.{Date, UUID}
 import app.softnetwork.build.info.persistence.core.BuildInfo
 import app.softnetwork.security._
-
 import app.softnetwork.persistence.model.Timestamped
 
+import java.time.Instant
 import scala.language.implicitConversions
 
 /** Created by smanciot on 13/04/2020.
@@ -24,7 +23,7 @@ package object persistence {
       case _               => UUID.randomUUID().toString
     }
 
-  def now(): Date = Calendar.getInstance().getTime
+  def now(): Date = Date.from(Instant.now())
 
   def getType[T <: Timestamped](implicit m: Manifest[T]): String = {
     m.runtimeClass.getSimpleName.toLowerCase

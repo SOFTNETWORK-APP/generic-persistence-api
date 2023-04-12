@@ -1,7 +1,7 @@
 package app.softnetwork
 
 import java.time.temporal.ChronoField
-import java.time.{Instant, LocalDate, LocalDateTime, ZoneOffset, ZonedDateTime}
+import java.time.{Instant, LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import java.util.Date
 import scala.language.implicitConversions
 
@@ -9,41 +9,50 @@ import scala.language.implicitConversions
   */
 package object time {
 
-  def now(): ZonedDateTime = ZonedDateTime.now()
+  implicit def zoneId: ZoneId = ZoneId.systemDefault()
 
-  implicit class DateExtensions(date: Date) {
-    lazy val zdt: ZonedDateTime = ZonedDateTime.ofInstant(date.toInstant, ZoneOffset.UTC)
-    lazy val toLocalDateTime: LocalDateTime = zdt.toLocalDateTime
-    lazy val toLocalDate: LocalDate = zdt.toLocalDate
-    lazy val toEpochSecond: Long = zdt.toEpochSecond
+  implicit def epochSecondToInstant(epochSecond: Long): Instant = {
+    Instant.ofEpochSecond(epochSecond)
+  }
+
+  implicit def instantToDate(instant: Instant): Date = {
+    Date.from(instant)
   }
 
   implicit def epochSecondToDate(epochSecond: Long): Date = {
-    Date.from(Instant.ofEpochSecond(epochSecond).atZone(ZoneOffset.UTC).toInstant)
+    Date.from(epochSecond)
+  }
+
+  implicit def localDateToDate(ld: LocalDate): Date = {
+    Date.from(ld.atStartOfDay(zoneId).toInstant)
+  }
+
+  implicit def localDateTimeToDate(ldt: LocalDateTime): Date = {
+    Date.from(ldt.atZone(zoneId).toInstant)
+  }
+
+  implicit def zonedDateTimeToDate(zdt: ZonedDateTime): Date = {
+    Date.from(zdt.toInstant)
   }
 
   implicit def epochSecondToLocalDate(epochSecond: Long): LocalDate = {
-    Instant.ofEpochSecond(epochSecond).atZone(ZoneOffset.UTC).toLocalDate
+    Instant.ofEpochSecond(epochSecond).atZone(zoneId).toLocalDate
   }
 
-  implicit def toLocalDate(d: Date): LocalDate = {
-    d.toLocalDate
+  implicit def dateToEpochSecond(d: Date): Long = {
+    d.toInstant.getEpochSecond
   }
 
-  implicit class LocalDateExtensions(ld: LocalDate) {
-    lazy val toDate: Date = Date.from(ld.atStartOfDay(ZoneOffset.UTC).toInstant)
+  implicit def dateToLocalDate(d: Date): LocalDate = {
+    ZonedDateTime.ofInstant(d.toInstant, zoneId).toLocalDate
   }
 
-  implicit def toDate(ld: LocalDate): Date = {
-    ld.toDate
+  implicit def dateToLocalDateTime(d: Date): LocalDateTime = {
+    ZonedDateTime.ofInstant(d.toInstant, zoneId).toLocalDateTime
   }
 
-  implicit class LocalDateTimeExtensions(ldt: LocalDateTime) {
-    lazy val toDate: Date = Date.from(ldt.atZone(ZoneOffset.UTC).toInstant)
-  }
-
-  implicit def toDate(ldt: LocalDateTime): Date = {
-    ldt.toDate
+  implicit def dateToZonedDateTime(d: Date): ZonedDateTime = {
+    ZonedDateTime.ofInstant(d.toInstant, zoneId)
   }
 
   def weekNumber(ld: LocalDate = LocalDate.now()): Int = {
