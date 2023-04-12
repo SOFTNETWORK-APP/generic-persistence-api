@@ -11,6 +11,12 @@ package object time {
 
   implicit def zoneId: ZoneId = ZoneId.systemDefault()
 
+  implicit class DateExtensions(d: Date) {
+    def toLocalDate: LocalDate = d
+    def toLocalDateTime: LocalDateTime = d
+    def toZonedDateTime: ZonedDateTime = d
+  }
+
   implicit def epochSecondToInstant(epochSecond: Long): Instant = {
     Instant.ofEpochSecond(epochSecond)
   }
@@ -23,12 +29,24 @@ package object time {
     Date.from(epochSecond)
   }
 
+  implicit class LocalDateExtensions(ld: LocalDate) {
+    def toDate: Date = ld
+  }
+
   implicit def localDateToDate(ld: LocalDate): Date = {
     Date.from(ld.atStartOfDay(zoneId).toInstant)
   }
 
+  implicit class LocalDateTimeExtensions(ldt: LocalDateTime) {
+    def toDate: Date = ldt
+  }
+
   implicit def localDateTimeToDate(ldt: LocalDateTime): Date = {
     Date.from(ldt.atZone(zoneId).toInstant)
+  }
+
+  implicit class ZonedDateTimeExtensions(zdt: ZonedDateTime) {
+    def toDate: Date = zdt
   }
 
   implicit def zonedDateTimeToDate(zdt: ZonedDateTime): Date = {
