@@ -1,2 +1,5 @@
 # generic-persistence-api
-a scala framework for persistence and CQRS using akka persistence
+a CQRS/ES framework in scala using akka persistence
+
+![](docs/diagrams/src/CQRS.svg)
+
