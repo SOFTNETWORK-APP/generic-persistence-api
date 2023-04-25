@@ -50,9 +50,7 @@ The resulting system is highly efficient, with the ability to quickly rebuild it
 
 Moreover, providing the ability to **tag events** enables **read-side projections** to be easily implemented and maintained, improving the overall performance and scalability of the system.
 
-### Event Sourcing with generic-persistence-api 
-
-![](docs/diagrams/out/EventSourcing.svg)
+### generic-persistence-api 
 
 #### Commands
 
@@ -144,4 +142,29 @@ akka {
 ```
 
 ![](docs/diagrams/out/Serialization.svg)
+
+##### Versioning
+
+You may find it necessary to change the definition of a particular event type or aggregate at some point in the future.
+You must consider how your system will be able to handle multiple versions of an event type and aggregates.
+
+#### Entity Behavior
+
+![](docs/diagrams/out/EntityBehavior.svg)
+
+#### Entity Pattern
+
+As we have seen, Cluster Sharding is a distributed system mechanism in Akka that allows you to partition actor entities across multiple nodes in a cluster. Each entity is uniquely identified by a shard identifier (EntityTypeKey) and an entity identifier. 
+
+The shard identifier represents a group of entities that share the same state, and the entity identifier identifies a specific entity within that shard.
+
+When a command is sent to an entity, the "entity pattern" is used to locate the actor reference for that entity. The shard identifier is used to determine which node in the cluster is responsible for managing the shard, and the entity identifier is used to locate the specific actor entity within that shard on that node.
+
+Once the actor reference for the entity has been located, the command is sent to the EntityBehavior, which processes it and updates its state. The state changes are then persisted using Akka Persistence, which ensures that the state changes are durable and can be recovered in the event of a node failure.
+
+![](docs/diagrams/out/Patterns.svg)
+
+### Event Sourcing with generic-persistence-api
+
+![](docs/diagrams/out/EventSourcing.svg)
 

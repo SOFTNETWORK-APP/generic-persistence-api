@@ -10,7 +10,7 @@ import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior, Recovery, 
 import app.softnetwork.concurrent.Completion
 
 import app.softnetwork.persistence.message._
-import app.softnetwork.persistence.model.{Entity => InternalEntity, _}
+import app.softnetwork.persistence.model.{Entity => _, _}
 import app.softnetwork.persistence._
 
 import scala.concurrent.duration._
@@ -21,6 +21,12 @@ import scala.reflect.ClassTag
 /** Created by smanciot on 16/05/2020.
   */
 trait CommandTypeKey[C <: Command] {
+
+  /** @param c
+    *   - The type of commands to be send to this type of entity
+    * @return
+    *   A key that uniquely identifies the type of entity in the cluster
+    */
   def TypeKey(implicit c: ClassTag[C]): EntityTypeKey[C]
 }
 
@@ -64,27 +70,52 @@ trait EntityEventHandler[S <: State, E <: Event] {
 
 trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
     extends CommandTypeKey[C]
-    with InternalEntity
+    with model.Entity
     with Completion {
   type W = CommandWrapper[C, R] with C
 
   type WR = CommandWithReply[R] with C
 
-  /** number of events received before generating a snapshot - should be configurable * */
+  /** @return
+    *   number of events before saving a snapshot of the current actor entity state. If multiple
+    *   events are persisted with a single Effect the snapshot will happen after all of the events
+    *   are persisted rather than precisely every `numberOfEvents`
+    */
   def snapshotInterval: Int = 10
 
+  /** @return
+    *   number of snapshots to keep
+    */
+  def numberOfSnapshots: Int = 2
+
+  /** @return
+    *   the key used to define the Entity Type Key of this actor that uniquely identifies the type
+    *   of entity in this cluster and is then used to retrieve an EntityRef for a given entity
+    *   identifier
+    */
   def persistenceId: String
 
   /** @return
-    *   node role required to start this actor
+    *   node role required to start this entity actor
     */
   def role: String = ""
 
   final def TypeKey(implicit c: ClassTag[C]): EntityTypeKey[C] =
     EntityTypeKey[C](s"$persistenceId-$environment")
 
+  /** @return
+    *   the intial state for the entity before any events have been processed
+    */
   val emptyState: Option[S] = None
 
+  /** @param system
+    *   - actor system
+    * @param maybeRole
+    *   - an optional node role required to start this entity
+    * @param c
+    * -
+    * @return
+    */
   def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit
     c: ClassTag[C]
   ): Unit = {
@@ -105,14 +136,17 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
     */
   def broadcastEvent(event: BE): List[E] = List(event)
 
-  /** Set event tags, which will be used in persistence query
+  /** associate a set of tags to an event before the latter will be appended to the event log
+    *
+    * This allows events to be easily filtered and queried based on their tags, improving the
+    * efficiency of read-side projections
     *
     * @param entityId
     *   - entity id
     * @param event
     *   - the event to tag
     * @return
-    *   event tags
+    *   set of tags to associate to this event
     */
   protected def tagEvent(entityId: String, event: E): Set[String] = Set.empty
 
@@ -232,7 +266,10 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
           is fulfilled (snapshotWhen). */
           .withRetention(
             RetentionCriteria
-              .snapshotEvery(numberOfEvents = snapshotInterval, keepNSnapshots = 2)
+              .snapshotEvery(
+                numberOfEvents = snapshotInterval,
+                keepNSnapshots = numberOfSnapshots
+              )
               .withDeleteEventsOnSnapshot /* after a snapshot has been successfully stored, a delete of the events
           (journaled by a single event sourced actor) up until the sequence number of the data held by that snapshot
           can be issued */

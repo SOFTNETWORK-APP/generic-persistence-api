@@ -2,13 +2,13 @@ package app.softnetwork.elastic.persistence.typed
 
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.actor.typed.{ActorRef, ActorSystem}
+import akka.cluster.sharding.typed.ShardingEnvelope
 import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.persistence.message._
 import app.softnetwork.persistence.typed._
 import app.softnetwork.serialization._
 import akka.persistence.typed.scaladsl.Effect
 import com.typesafe.scalalogging.StrictLogging
-import app.softnetwork.persistence.typed._
 import app.softnetwork.elastic.client.ElasticClientApi
 import app.softnetwork.elastic.message._
 import app.softnetwork.persistence.model.Timestamped
@@ -18,7 +18,6 @@ import org.softnetwork.elastic.message.{DocumentUpsertedEvent, ElasticEvent}
 import scala.concurrent.ExecutionContextExecutor
 import scala.language.implicitConversions
 import scala.language.postfixOps
-import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
@@ -30,14 +29,12 @@ trait ElasticBehavior[S <: Timestamped]
     with ElasticProvider[S]
     with StrictLogging { _: ElasticClientApi =>
 
-  private[this] val defaultAtMost = 10.second
-
   override def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit
     tTag: ClassTag[ElasticCommand]
-  ): Unit = {
+  ): ActorRef[ShardingEnvelope[ElasticCommand]] = {
     logger.info(s"Initializing ${TypeKey.name}")
-    super.init(system, maybeRole)
     initIndex()
+    super.init(system, maybeRole)
   }
 
   /** @param entityId

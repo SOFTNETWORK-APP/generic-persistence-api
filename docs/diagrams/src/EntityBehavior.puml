@@ -1,0 +1,76 @@
+@startuml EntityBehavior
+'https://plantuml.com/class-diagram
+
+skinparam monochrome true
+hide empty members
+
+package app.softnetwork.persistence.typed {
+    abstract class CommandTypeKey <C: Command> <<(T,orchid) trait >> {
+        +def TypeKey(implicit c: ClassTag[C]): EntityTypeKey[C]
+    }
+    note right of CommandTypeKey::TypeKey
+        A key that uniquely identifies the type of entity in the cluster
+    end note
+    abstract class EntityBehavior <C: Command, S: State, E: Event, R: CommandResult> <<(T,orchid) trait >> implements CommandTypeKey {
+        +def snapshotInterval: Int = 10
+        +def numberOfSnapshots: Int = 2
+        +def persistenceId: String
+        +def role: String = ""
+        +val emptyState: Option[S] = None
+        +def init(system: ActorSystem[_], maybeRole: Option[String])(implicit c: ClassTag[C]): Unit
+        #def tagEvent(entityId: String, event: E): Set[String] = Set.empty
+        +def handleCommand(entityId: String, state: Option[S], command: C, replyTo: Option[ActorRe[R]], ...): Effect[E, Option[S]]
+        +def handleEvent(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S]
+        +def postRecoveryCompleted(state: Option[S])(implicit context: ActorContext[C]): Unit = {}
+    }
+    note left of EntityBehavior::snapshotInterval
+        number of events before saving a snapshot of the current actor state
+    end note
+    note left of EntityBehavior::numberOfSnapshots
+        number of snapshots to keep
+    end note
+    note left of EntityBehavior::persistenceId
+        The key used to define the EntityTypeKey that
+        uniquely identifies the type of this entity in the cluster
+        and is then used to retrieve the EntityRef
+        for a given entity identifier
+    end note
+    note right of EntityBehavior::role
+        node role required to start this entity actor
+        The node roles are defined in the configuration property
+        named akka.cluster.roles
+    end note
+    note left of EntityBehavior::emptyState
+        the intial state for this entity before
+        any events have been processed
+    end note
+    note left of EntityBehavior::init
+        Initialize sharding for this EntityTypeKey
+        It will start a shard region or a proxy depending on
+        if an optional node role has been specified
+        and if this node has such a role
+    end note
+    note right of EntityBehavior::tagEvent
+        associate a set of tags to the event
+        before the latter will be appended to the event log
+    end note
+    note right of EntityBehavior::handleCommand
+        handle any **command** sent to this entity actor
+        The actor uses its current **state**
+        to determine how to handle the command,
+        and may generate one or more **events** before eventually
+        responding to the sender
+    end note
+    note left of EntityBehavior::handleEvent
+        This method is invoked whenever an event
+        has been persisted successfully or
+        for each event that has to be replayed
+        when the entity is started up
+    end note
+    note left of EntityBehavior::postRecoveryCompleted
+        called just after the state of this entity
+        has been successfully recovered
+    end note
+}
+
+@enduml
