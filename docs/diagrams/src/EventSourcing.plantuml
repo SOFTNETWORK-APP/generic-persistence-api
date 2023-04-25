@@ -1,0 +1,44 @@
+@startuml EventSourcing
+hide footbox
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+skinparam sequenceMessageAlign center
+skinparam monochrome true
+
+participant Consumer as c
+control "Entity Pattern" as ep
+participant "Cluster Sharding" as cs
+entity "Entity Behavior" as eb
+database Journal as j
+
+c -> ep++: ? (**entityId**: String, **cmd**: Command)
+ep -> ep : ref(**entityId**)
+ep -> cs++: entityRefFor(**entityId**)
+return recipient
+ep -> eb++: ? **cmd**
+
+opt recovering from latest saved snapshot
+eb -> eb: stash **cmd**
+eb -> eb: initialize entity **state** with the latest saved **snapshot**
+loop all events after latest saved snapshot
+j -> eb++: revent
+eb -> eb: handleEvent(**state**, revent)
+eb --> j--
+end
+end
+
+eb -> eb++: handleCommand(**cmd**)
+opt
+eb -> eb: persist(events)
+loop for event <- events
+eb -> eb: tagEvent(event)
+eb -> j++: persist event with tag(s)
+return
+eb -> eb: handleEvent(**state**, event)
+end
+end
+eb--
+return **result**: CommandResult
+return **result**: CommandResult
+
+@enduml

@@ -285,20 +285,26 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
       case _ => Effect.unhandled
     }
 
-  /** @param state
+  /** This method is invoked whenever an event has been persisted successfully or when the entity is
+    * started up to recover its state from the stored events
+    *
+    * @param state
     *   - current state
     * @param event
     *   - event to hanlde
     * @return
-    *   new state
+    *   new state created by applying the event to the previous state
     */
   def handleEvent(state: Option[S], event: E)(implicit context: ActorContext[_]): Option[S] =
     event match {
       case _ => state
     }
 
-  /** @param state
-    *   - current entity state
+  /** This method is called just after the state of the corresponding entity has been successfully
+    * recovered
+    *
+    * @param state
+    *   - current state
     * @param context
     *   - actor context
     */

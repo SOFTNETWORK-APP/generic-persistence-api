@@ -1,0 +1,25 @@
+@startuml Serialization
+hide empty members
+skinparam monochrome true
+
+package app.softnetwork.persistence {
+    package message {
+        abstract Event << (T,orchid) trait >>
+        abstract ProtobufEvent << (T,orchid) trait >> extends Event
+        note bottom of ProtobufEvent: Marker trait for serializing \nan event with Protobuf
+        abstract CborEvent << (T,orchid) trait >> extends Event
+        note bottom of CborEvent: Marker trait for serializing \nan event with Jackson CBOR
+    }
+    package model {
+        abstract State << (T,orchid) trait >> {
+            +uuid: String
+        }
+        abstract ProtobufDomainObject << (T,orchid) trait >>
+        note bottom of ProtobufDomainObject: Marker trait for serializing \na Domain Object with Protobuf
+        abstract CborDomainObject << (T,orchid) trait >>
+        note bottom of CborDomainObject: Marker trait for serializing \na Domain Object with Jackson CBOR
+        abstract ProtobufStateObject << (T,orchid) trait >> extends ProtobufDomainObject
+        State <|-- ProtobufStateObject: <<mixin>>
+    }
+}
+@enduml

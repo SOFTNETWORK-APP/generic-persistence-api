@@ -1,0 +1,40 @@
+@startuml Patterns
+skinparam monochrome true
+hide empty members
+
+package app.softnetwork {
+    package concurrent {
+        abstract Retryable <T> <<(T,orchid) trait>> {
+            +nbTries: Int = 1
+            +retry(fn: => Future[T]): Future[T] = retry(nbTries)(fn)
+            +<<recursive>>retry(n: Int)(fn: => Future[T]): Future[T]
+        }
+    }
+    package persistence.typed.scaladsl {
+        abstract Patterns <C: Command, R: CommandResult> <<(T,orchid) trait>>{
+            <<type>> Recipient
+            <<implicit>> command2Request(command: C): ActorRef[R] => C
+            timeout: Timeout
+            -recipientRef(recipient: Recipient): akka.actor.typed.RecipientRef[C]
+            +?(recipient: Recipient, command: C): Future[R] = recipientRef(recipient) ? command
+            +!(recipient: Recipient, command: C): Unit = recipientRef(recipient) ! command
+            <<implicit>> key2Recipient[T](key: T): Recipient
+            #lookup[T](key: T): Future[Option[Recipient]]
+            +??[T](key: T, command: C): Future[R]
+            +?![T](key: T, command: C): Unit
+            +*?[T](keys: List[T], command: C): Future[List[R]]
+            +*![T](keys: List[T], command: C): Unit
+        }
+        Retryable <|-- Patterns: <<bind>> <R -> T>
+        abstract EntityPattern <C: Command, R: CommandResult> <<(T,orchid) trait>> extends Patterns{
+            <<type>> Recipient = String
+        }
+        abstract SingletonPattern <C: Command, R: CommandResult> <<(T,orchid) trait>> extends Patterns
+        class RecipientPattern {
+          entityId: String
+          ref(): EntityRef[C]
+        }
+        EntityPattern +-- RecipientPattern: <<implicit>>
+    }
+}
+@enduml

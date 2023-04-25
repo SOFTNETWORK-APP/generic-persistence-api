@@ -10,7 +10,9 @@ package object model {
     final val ALL_KEY = "*"
   }
 
-  /** State objects * */
+  /**
+    * The in-memory state of the entity actor
+    */
   trait State {
     def uuid: String
   }
@@ -20,8 +22,14 @@ package object model {
     def createdDate: Date
   }
 
+  /**
+    * Marker trait for serialization with Protobuf
+    */
   trait ProtobufDomainObject
 
+  /**
+    * Marker trait for serialization with Jackson CBOR
+    */
   trait CborDomainObject
 
   trait ProtobufStateObject extends ProtobufDomainObject with State

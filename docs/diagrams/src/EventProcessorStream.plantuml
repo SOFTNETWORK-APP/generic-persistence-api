@@ -1,0 +1,62 @@
+@startuml EventProcessorStream
+hide footbox
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+skinparam sequenceMessageAlign center
+skinparam monochrome true
+
+box#AntiqueWhite
+boundary "External Bounded Context" as ebc
+end box
+
+database Journal as j
+queue "Event \nProcessor Stream\ntag = 'domain-to-external'" as eps
+control "Entity Pattern" as ep
+participant "Cluster Sharding" as cs
+entity "Entity Behavior" as eb
+
+eps -> eps++: init
+eps -> j++: readOffset()
+return **offset**
+eps -> j: readEventsByTag(**offset**)
+note right : **stream** of events with the tag "domain-to-external" \nfrom the specified offset
+
+ebc -> j++: persist domain event with tag\n Set("domain-to-external", ...)
+return
+
+j -->> eps: **devent**
+eps -> eps++: processEvent(**devent**)
+eps -> ep++: ? (**entityId**, **cmd**)
+note right: **entityId** should be specified or inferred \nfrom one of the event properties
+ep -> ep : ref(**entityId**)
+ep -> cs++: entityRefFor(**entityId**)
+return recipient
+ep -> eb++: ? **cmd**
+
+eb -> eb++: handleCommand(**cmd**)
+opt recovering from latest saved snapshot
+eb -> eb: stash **cmd**
+eb -> eb: initialize entity **state** with \nthe latest saved **snapshot**
+loop all events after latest saved snapshot
+j -> eb++: revent
+eb -> eb: handleEvent(**state**, revent)
+eb --> j--
+end
+end
+
+opt
+eb -> eb: persist(events)
+loop for event <- events
+eb -> eb: tagEvent(**entityId**, event)
+eb -> j++: persist event with tag(s)
+return
+eb -> eb: handleEvent(**state**, event)
+end
+end
+eb--
+return **result**: CommandResult
+
+ep -> eps--: **result**: CommandResult
+eps --> j-- :writeOffset
+
+@enduml

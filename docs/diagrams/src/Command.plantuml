@@ -1,0 +1,26 @@
+@startuml Command
+skinparam monochrome true
+hide empty members
+
+package app.softnetwork.persistence.message {
+    abstract CommandResult << (T,orchid) trait >>
+    abstract Command << (T,orchid) trait >>
+    abstract CommandWithReply <R: CommandResult> <<(T,orchid) trait >>{
+      +replyTo: ActorRef[R]
+    }
+    note right: a command which includes \na reference to the actor identity \nto whom a response has to be sent
+    Command <|-- CommandWithReply
+
+    abstract CommandWrapper <C: Command, R: CommandResult> <<(T,orchid) trait >> extends CommandWithReply {
+     +command: C
+    }
+
+    class ErrorMessage implements CommandResult{
+      +message: String
+    }
+    object UnknownMessage {
+      message = "UnknownMessage"
+    }
+    ErrorMessage <|-- UnknownMessage
+}
+@enduml

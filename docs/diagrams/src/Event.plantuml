@@ -1,0 +1,31 @@
+@startuml Event
+hide empty members
+skinparam monochrome true
+
+package app.softnetwork.persistence.message {
+    abstract Event << (T,orchid) trait >>
+    abstract BroadcastEvent << (T,orchid) trait >> extends Event {
+        +externalUuid: String
+    }
+    note left of BroadcastEvent: A particular event that is intended \nto be broadcast
+    abstract CrudEvent << (T,orchid) trait >> extends Event
+    abstract Created <T: Timestamped> << (T,orchid) trait >> extends CrudEvent {
+        +document: T
+    }
+    abstract Updated <T: Timestamped> << (T,orchid) trait >> extends CrudEvent {
+        +document: T
+        +upsert: Boolean = true
+    }
+    abstract Upserted << (T,orchid) trait >> extends CrudEvent {
+        +uuid: String
+        +data: String
+    }
+    abstract UpsertedDecorator << (T,orchid) trait >> {
+        +data: String
+    }
+    Upserted <|.. UpsertedDecorator: <<self>>
+    abstract Deleted << (T,orchid) trait >> extends CrudEvent {
+        +uuid: String
+    }
+}
+@enduml

@@ -1,0 +1,15 @@
+@startuml State
+hide empty members
+skinparam monochrome true
+
+package app.softnetwork.persistence.model {
+    abstract State << (T,orchid) trait >> {
+        +uuid: String
+    }
+    note top of State: The in-memory state of the entity actor
+    abstract Timestamped << (T,orchid) trait >> extends State{
+        +createdDate: Instant
+        +lastUpdated: Instant
+    }
+}
+@enduml

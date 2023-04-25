@@ -22,6 +22,10 @@ package object time {
     Instant.ofEpochSecond(epochSecond)
   }
 
+  implicit def dateToInstant(date: Date): Instant = {
+    date.toInstant
+  }
+
   implicit def instantToDate(instant: Instant): Date = {
     Date.from(instant)
   }
