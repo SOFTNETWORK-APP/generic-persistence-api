@@ -119,12 +119,12 @@ package object message {
   abstract class CountResult(results: Seq[CountResponse]) extends CommandResult
 
   /** Protobuf events
-    * Marker trait for serializing an event with Protobuf
+    * Marker trait for serializing an event using Protobuf Serializer
     */
   trait ProtobufEvent extends Event
 
   /** Cbor events
-    * Marker trait for serializing an event with Jackson CBOR
+    * Marker trait for serializing an event using Jackson CBOR Serializer
     */
   trait CborEvent extends Event
 }

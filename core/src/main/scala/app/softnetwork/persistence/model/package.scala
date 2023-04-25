@@ -23,12 +23,12 @@ package object model {
   }
 
   /**
-    * Marker trait for serialization with Protobuf
+    * Marker trait for serializing a Domain Object using Protobuf Serializer
     */
   trait ProtobufDomainObject
 
   /**
-    * Marker trait for serialization with Jackson CBOR
+    * Marker trait for serializing a Domain Object using Jackson CBOR Serializer
     */
   trait CborDomainObject
 

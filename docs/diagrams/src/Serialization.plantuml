@@ -6,18 +6,18 @@ package app.softnetwork.persistence {
     package message {
         abstract Event << (T,orchid) trait >>
         abstract ProtobufEvent << (T,orchid) trait >> extends Event
-        note bottom of ProtobufEvent: Marker trait for serializing \nan event with Protobuf
+        note bottom of ProtobufEvent: Marker trait for serializing \nan event using \nProtobuf Serializer
         abstract CborEvent << (T,orchid) trait >> extends Event
-        note bottom of CborEvent: Marker trait for serializing \nan event with Jackson CBOR
+        note bottom of CborEvent: Marker trait for serializing \nan event using \nJackson CBOR Serializer
     }
     package model {
         abstract State << (T,orchid) trait >> {
             +uuid: String
         }
         abstract ProtobufDomainObject << (T,orchid) trait >>
-        note bottom of ProtobufDomainObject: Marker trait for serializing \na Domain Object with Protobuf
+        note bottom of ProtobufDomainObject: Marker trait for serializing \na Domain Object using \nProtobuf Serializer
         abstract CborDomainObject << (T,orchid) trait >>
-        note bottom of CborDomainObject: Marker trait for serializing \na Domain Object with Jackson CBOR
+        note bottom of CborDomainObject: Marker trait for serializing \na Domain Object using \nJackson CBOR Serializer
         abstract ProtobufStateObject << (T,orchid) trait >> extends ProtobufDomainObject
         State <|-- ProtobufStateObject: <<mixin>>
     }
