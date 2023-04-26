@@ -27,11 +27,11 @@ eb --> j--
 end
 end
 
-eb -> eb++: handleCommand(**cmd**)
+eb -> eb++: handleCommand(**entityId**, **state**, **cmd**, replyTo, timers)
 opt
 eb -> eb: persist(events)
 loop for event <- events
-eb -> eb: tagEvent(event)
+eb -> eb: tagEvent(**entityId**, event)
 eb -> j++: persist event with tag(s)
 return
 eb -> eb: handleEvent(**state**, event)
