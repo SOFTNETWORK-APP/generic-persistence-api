@@ -5,10 +5,16 @@ hide empty members
 package app.softnetwork.persistence.message {
     abstract CommandResult << (T,orchid) trait >>
     abstract Command << (T,orchid) trait >>
+    abstract EntityCommand << (T,orchid) trait >> extends Command{
+        +def id: String
+    }
+    note right of EntityCommand::id
+        the entity identifier
+    end note
     abstract CommandWithReply <R: CommandResult> <<(T,orchid) trait >>{
       +replyTo: ActorRef[R]
     }
-    note right: a command which includes \na reference to the actor identity \nto whom a response has to be sent
+    note right of CommandWithReply: a command which includes \na reference to the actor identity \nto whom a response has to be sent
     Command <|-- CommandWithReply
 
     abstract CommandWrapper <C: Command, R: CommandResult> <<(T,orchid) trait >> extends CommandWithReply {

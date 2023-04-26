@@ -5,16 +5,16 @@ skinparam BoxPadding 10
 skinparam sequenceMessageAlign center
 skinparam monochrome true
 
-participant Consumer as c
+participant Sender as s
 control "Entity Pattern" as ep
 participant "Cluster Sharding" as cs
 entity "Entity Behavior" as eb
 database Journal as j
 
-c -> ep++: ? (**entityId**: String, **cmd**: Command)
+s -> ep++: ? (**entityId**: String, **cmd**: Command)
 ep -> ep : ref(**entityId**)
-ep -> cs++: entityRefFor(**entityId**)
-return recipient
+ep -> cs++: entityRefFor(entityTypeKey, **entityId**)
+return entity reference
 ep -> eb++: ? **cmd**
 
 opt recovering from latest saved snapshot

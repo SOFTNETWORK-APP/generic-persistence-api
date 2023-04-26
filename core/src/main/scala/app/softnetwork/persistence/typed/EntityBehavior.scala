@@ -79,7 +79,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
   /** @return
     *   number of events before saving a snapshot of the current actor entity state. If multiple
     *   events are persisted with a single Effect the snapshot will happen after all of the events
-    *   are persisted rather than precisely every `numberOfEvents`
+    *   are persisted rather than precisely every `snapshotInterval`
     */
   def snapshotInterval: Int = 10
 
@@ -89,9 +89,8 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
   def numberOfSnapshots: Int = 2
 
   /** @return
-    *   the key used to define the Entity Type Key of this actor that uniquely identifies the type
-    *   of entity in this cluster and is then used to retrieve an EntityRef for a given entity
-    *   identifier
+    *   the key used to define the Entity Type Key of this entity actor that uniquely identifies the type
+    *   of entity in the cluster
     */
   def persistenceId: String
 
@@ -112,7 +111,7 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
     *   - actor system
     * @param maybeRole
     *   - an optional node role required to start this entity
-    * @param c
+    * @param c - runtime class of C
     * -
     * @return
     */
