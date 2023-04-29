@@ -11,16 +11,18 @@ import app.softnetwork.config.Settings
 import app.softnetwork.persistence.message._
 import app.softnetwork.persistence.model.Entity
 import app.softnetwork.persistence.typed.{CommandTypeKey, Singleton}
-import com.typesafe.scalalogging.StrictLogging
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
+import scala.language.reflectiveCalls
+
 /** Created by smanciot on 11/05/2021.
   */
-trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] with StrictLogging {
+trait Patterns[C <: Command, R <: CommandResult] extends Retryable[R] { _: { def log: Logger } =>
   type Request = ActorRef[R] => C
 
   type Recipient
@@ -97,7 +99,7 @@ trait SingletonPattern[C <: Command, R <: CommandResult]
     extends Patterns[C, R]
     with CommandHandler[C, R]
     with Singleton[C]
-    with Completion {
+    with Completion { _: { def log: Logger } =>
 
   import akka.actor.typed.receptionist.Receptionist
 
@@ -148,27 +150,27 @@ trait SingletonPattern[C <: Command, R <: CommandResult]
     if (maybeActorRef.isEmpty) {
       val maybeSingletonRef = Option(singletonRef)
       if (maybeSingletonRef.isEmpty) {
-        logger.warn(s"actorRef for [$name] is undefined")
+        log.warn(s"actorRef for [$name] is undefined")
         system.receptionist ? Find(key) complete () match {
           case Success(s) => maybeActorRef = s.serviceInstances(key).headOption
           case Failure(f) =>
-            logger.error(f.getMessage, f)
+            log.error(f.getMessage, f)
         }
       } else {
         maybeActorRef = maybeSingletonRef
       }
     }
     maybeActorRef.getOrElse {
-      logger.info(s"spawn supervisor for singleton [$name]")
+      log.info(s"spawn supervisor for singleton [$name]")
       import app.softnetwork.persistence._
       val supervisorRef = system.systemActorOf(supervisor, generateUUID())
       supervisorRef ? SingletonRef complete () match {
         case Success(s) =>
           maybeActorRef = Some(s.singletonRef)
-          logger.info(s"actorRef for [$name] has been loaded -> ${s.singletonRef.path}")
+          log.info(s"actorRef for [$name] has been loaded -> ${s.singletonRef.path}")
           s.singletonRef
         case Failure(f) =>
-          logger.error(f.getMessage, f)
+          log.error(f.getMessage, f)
           throw f
       }
     }
@@ -181,6 +183,8 @@ trait SingletonPattern[C <: Command, R <: CommandResult]
 
 trait EntityPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] with Entity {
   _: CommandTypeKey[C] =>
+
+  def log: Logger
 
   type Recipient = String
 
@@ -196,7 +200,7 @@ trait EntityPattern[C <: Command, R <: CommandResult] extends Patterns[C, R] wit
       Try(ClusterSharding(system).entityRefFor(TypeKey, entityId)) match {
         case Success(s) => s
         case Failure(f) =>
-          logger.error(s"""
+          log.error(s"""
                |Could not find entity for ${TypeKey.name}|$entityId
                |using ${system.path.toString}
                |""".stripMargin)

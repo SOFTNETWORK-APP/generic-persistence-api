@@ -1,0 +1,7 @@
+{{#includeSchema}}CREATE SCHEMA IF NOT EXISTS {{offsetSchema}};{{/includeSchema}}
+CREATE TABLE IF NOT EXISTS {{#includeSchema}}{{offsetSchema}}.{{/includeSchema}}{{offsetTable}} (
+  event_processor_id VARCHAR(255) NOT NULL,
+  tag VARCHAR(255) NOT NULL,
+  sequence_number BIGINT NOT NULL,
+  PRIMARY KEY(event_processor_id, tag)
+);

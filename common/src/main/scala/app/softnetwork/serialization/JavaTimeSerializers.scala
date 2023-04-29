@@ -1,7 +1,6 @@
 package app.softnetwork.serialization
 
 import java.{time => jt}
-
 import org.json4s.CustomSerializer
 import org.json4s.JsonAST.JString
 
@@ -13,8 +12,30 @@ import scala.util.Try
   *   smanciot
   */
 object JavaTimeSerializers {
-  def all = Seq(LocalDateTimeISOSerializer, LocalDateISOSerializer, ZonedDateTimeISOSerializer)
+  def all = Seq(
+    LocalDateTimeISOSerializer,
+    LocalDateISOSerializer,
+    ZonedDateTimeISOSerializer,
+    InstantISOSerializer
+  )
 }
+
+case object InstantISOSerializer
+    extends CustomSerializer[jt.Instant](_ => {
+
+      val isoFormat = jt.format.DateTimeFormatter.ISO_DATE_TIME
+      def isValidInstant(str: String): Boolean = Try(isoFormat.parse(str)).isSuccess
+
+      (
+        {
+          case JString(value) if isValidInstant(value) =>
+            jt.LocalDateTime.parse(value, isoFormat).atZone(jt.ZoneId.systemDefault()).toInstant
+        },
+        { case ldt: jt.Instant =>
+          JString(jt.format.DateTimeFormatter.ISO_INSTANT.format(ldt))
+        }
+      )
+    })
 
 case object LocalDateTimeISOSerializer
     extends CustomSerializer[jt.LocalDateTime](_ => {

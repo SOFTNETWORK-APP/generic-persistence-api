@@ -3,9 +3,16 @@ package app.softnetwork.persistence.service
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence._
+import app.softnetwork.persistence.message.SampleMessages.{
+  SampleCommand,
+  SampleCommandResult,
+  SampleTested,
+  TestSample
+}
 import app.softnetwork.persistence.typed.scaladsl._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.wordspec.AnyWordSpecLike
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.{Failure, Success}
 
@@ -27,19 +34,18 @@ class SingletonServiceSpec
 
   implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
-  def test(): Unit = run(TestSample) complete () match {
-    case Success(s) =>
-      s match {
-        case SampleTested => logger.info("sample tested !")
-        case other        => fail(other.toString)
-      }
-    case Failure(f) => fail(f.getMessage)
-  }
+  lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
   "SingletonService" must {
     "run commands" in {
-      test()
-      test()
+      run(TestSample) complete () match {
+        case Success(s) =>
+          s match {
+            case SampleTested => log.info("sample tested !")
+            case other        => fail(other.toString)
+          }
+        case Failure(f) => fail(f.getMessage)
+      }
     }
   }
 }

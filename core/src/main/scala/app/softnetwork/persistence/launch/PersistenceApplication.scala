@@ -1,7 +1,7 @@
 package app.softnetwork.persistence.launch
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.persistence.query.SchemaProvider
+import app.softnetwork.persistence.schema.SchemaProvider
 import com.typesafe.config.{Config, ConfigFactory}
 
 trait PersistenceApplication extends App with PersistenceGuardian { _: SchemaProvider =>

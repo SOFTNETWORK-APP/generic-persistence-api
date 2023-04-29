@@ -10,14 +10,15 @@ import app.softnetwork.concurrent.scalatest.CompletionTestKit
 import app.softnetwork.config.Settings
 import app.softnetwork.persistence.launch.PersistenceGuardian
 import app.softnetwork.persistence.message.Command
-import app.softnetwork.persistence.query.{InMemorySchemaProvider, SchemaProvider}
+import app.softnetwork.persistence.schema.{InMemorySchemaProvider, SchemaProvider}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.Span
 import org.scalatest.{BeforeAndAfterAll, Suite}
+import org.slf4j.Logger
 
-import java.net.InetAddress
+import java.net.{InetAddress, ServerSocket}
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
@@ -33,16 +34,37 @@ trait PersistenceTestKit
 
   import app.softnetwork.persistence._
 
+  def log: Logger
+
   lazy val systemName: String = generateUUID()
 
-  lazy val hostname: String = InetAddress.getLocalHost.getHostAddress
+  def hostname: String = InetAddress.getLocalHost.getHostAddress
+
+  def dynamicPort: Int = {
+    val socket = new ServerSocket(0)
+    val port = socket.getLocalPort
+    socket.close()
+    port
+  }
+
+  private[this] var maybeManagementPort: Option[Int] = None
+
+  def managementPort: Int = {
+    maybeManagementPort match {
+      case Some(port) => port
+      case _ =>
+        val port = dynamicPort
+        maybeManagementPort = Some(port)
+        port
+    }
+  }
 
   /** @return
     *   roles associated with this node
     */
   def roles: Seq[String] = Seq.empty
 
-  lazy val akka: String = s"""
+  final lazy val akka: String = s"""
                 |akka {
                 |  stdout-loglevel = off // defaults to WARNING can be disabled with off. The stdout-loglevel is only in effect during system startup and shutdown
                 |  log-dead-letters-during-shutdown = on
@@ -63,7 +85,7 @@ trait PersistenceTestKit
                 |      endpoints = [
                 |        {
                 |          host = "$hostname"
-                |          port = 8558
+                |          port = $managementPort
                 |        }
                 |      ]
                 |    }
@@ -71,6 +93,9 @@ trait PersistenceTestKit
                 |}
                 |
                 |akka.management {
+                |  http {
+                |    port = $managementPort
+                |  }
                 |  cluster.bootstrap {
                 |    contact-point-discovery {
                 |      service-name = $systemName
@@ -94,7 +119,7 @@ trait PersistenceTestKit
                 |
                 |  # Duration to wait in expectNoMessage by default.
                 |  # Dilated by the timefactor.
-                |  expect-no-message-default = 100ms
+                |  expect-no-message-default = 1000ms
                 |
                 |  # The timeout that is used as an implicit Timeout.
                 |  # Dilated by the timefactor.
@@ -113,14 +138,14 @@ trait PersistenceTestKit
                 |
                 |}
                 |
-                |""".stripMargin
+                |""".stripMargin + additionalConfig
 
   /** @return
     *   additional configuration
     */
   def additionalConfig: String = ""
 
-  lazy val akkaConfig: Config = ConfigFactory.parseString(akka + additionalConfig)
+  lazy val akkaConfig: Config = ConfigFactory.parseString(akka)
 
   lazy val config: Config = akkaConfig.withFallback(ConfigFactory.load())
 
@@ -140,7 +165,7 @@ trait PersistenceTestKit
   }
 
   override def afterAll(): Unit = {
-    testKit.shutdownTestKit()
+    shutdownCluster()
   }
 
   /** init and join cluster
@@ -151,6 +176,10 @@ trait PersistenceTestKit
     blockUntil("let the nodes join and become Up", 30, 2000)(() =>
       Cluster(system).selfMember.status == MemberStatus.Up
     )
+  }
+
+  final def shutdownCluster(): Unit = {
+    testKit.shutdownTestKit()
   }
 
   def createTestProbe[M](): TestProbe[M] = testKit.createTestProbe()

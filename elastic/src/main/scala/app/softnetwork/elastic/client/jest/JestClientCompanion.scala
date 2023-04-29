@@ -3,11 +3,8 @@ package app.softnetwork.elastic.client.jest
 import java.io.IOException
 import java.util
 import java.util.concurrent.TimeUnit
-
-import app.softnetwork.elastic.client.ElasticCredentials
-import app.softnetwork.elastic.config.Settings
-import app.softnetwork.elastic.config.Settings.ElasticConfig
-import com.typesafe.scalalogging.StrictLogging
+import app.softnetwork.elastic.client.{ElasticConfig, ElasticCredentials}
+import com.sksamuel.exts.Logging
 import io.searchbox.action.Action
 import io.searchbox.client.{JestClient, JestClientFactory, JestResult, JestResultHandler}
 import io.searchbox.client.config.HttpClientConfig
@@ -16,13 +13,13 @@ import org.apache.http.HttpHost
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
+import scala.language.reflectiveCalls
+
 /** Created by smanciot on 20/05/2021.
   */
-trait JestClientCompanion extends StrictLogging {
+trait JestClientCompanion extends Logging {
 
-  protected def credentials: Option[ElasticCredentials] = None
-
-  private[this] lazy val elasticConfig: ElasticConfig = Settings.config.get
+  def elasticConfig: ElasticConfig
 
   private[this] var jestClient: Option[InnerJestClient] = None
 
@@ -129,7 +126,7 @@ trait JestClientCompanion extends StrictLogging {
 
   def apply(): JestClient = {
     apply(
-      credentials.getOrElse(elasticConfig.credentials),
+      elasticConfig.credentials,
       multithreaded = elasticConfig.multithreaded,
       discoveryEnabled = elasticConfig.discoveryEnabled
     )

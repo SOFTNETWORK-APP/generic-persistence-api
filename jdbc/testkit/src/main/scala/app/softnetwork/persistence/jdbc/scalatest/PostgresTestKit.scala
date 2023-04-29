@@ -1,38 +1,17 @@
 package app.softnetwork.persistence.jdbc.scalatest
 
-import app.softnetwork.persistence.jdbc.docker.PostgresService
-import app.softnetwork.persistence.jdbc.query.PostgresSchemaProvider
+import app.softnetwork.persistence.jdbc.schema.PostgresSchemaProvider
+import org.scalatest.Suite
+import org.testcontainers.containers.PostgreSQLContainer
 
-trait PostgresTestKit
-    extends PostgresService
-    with PostgresSchemaProvider
-    with JdbcPersistenceTestKit {
+trait PostgresTestKit extends JdbcContainerTestKit with PostgresSchemaProvider { _: Suite =>
 
-  override lazy val slick: String = s"""
-                      |slick {
-                      |  profile = "slick.jdbc.PostgresProfile$$"
-                      |  db {
-                      |    url = "jdbc:postgresql://$PostgresHost:$PostgresPort/$PostgresDB?reWriteBatchedInserts=true"
-                      |    user = "$PostgresUser"
-                      |    password = "$PostgresPassword"
-                      |    driver = "org.postgresql.Driver"
-                      |    numThreads = 5
-                      |    maxConnections = 5
-                      |    minConnections = 1
-                      |    idleTimeout = 10000 //10 seconds
-                      |  }
-                      |}
-                      |""".stripMargin
+  def postgresVersion: String = "9.6"
 
-  override def beforeAll(): Unit = {
-    startAllOrFail()
-    waitForContainerUp()
-    super.beforeAll()
-  }
+  lazy val jdbcContainer = new PostgreSQLContainer(s"postgres:$postgresVersion")
 
-  override def afterAll(): Unit = {
-    super.afterAll()
-    stopAllQuietly()
-  }
+  val slickProfile: String = "slick.jdbc.PostgresProfile$"
+
+  val jdbcDriver: String = "org.postgresql.Driver"
 
 }

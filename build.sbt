@@ -30,7 +30,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.2.6.2"
+ThisBuild / version := "0.3.0"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -81,13 +81,6 @@ lazy val coreTestkit = project.in(file("core/testkit"))
     commonTestkit % "compile->compile;test->test;it->it"
   )
 
-lazy val schema = project.in(file("jdbc/schema"))
-  .configs(IntegrationTest)
-  .settings(Defaults.itSettings)
-  .dependsOn(
-    jdbc % "compile->compile;test->test;it->it"
-  )
-
 lazy val jdbc = project.in(file("jdbc"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
@@ -116,17 +109,6 @@ lazy val counter = project.in(file("counter"))
     coreTestkit % "test->test;it->it"
   )
 
-lazy val elasticTestkit = project.in(file("elastic/testkit"))
-  .configs(IntegrationTest)
-  .settings(Defaults.itSettings/*, pbSettings*/)
-  .enablePlugins(AkkaGrpcPlugin)
-  .dependsOn(
-    common % "compile->compile;test->test;it->it"
-  )
-  .dependsOn(
-    commonTestkit % "compile->compile;test->test;it->it"
-  )
-
 lazy val elastic = project.in(file("elastic"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings/*, pbSettings*/)
@@ -134,11 +116,22 @@ lazy val elastic = project.in(file("elastic"))
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
+
+lazy val elasticTestkit = project.in(file("elastic/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings/*, pbSettings*/)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
-    coreTestkit % "test->test;it->it"
+    elastic % "compile->compile;test->test;it->it"
   )
   .dependsOn(
-    elasticTestkit % "test->test;it->it"
+    commonTestkit % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    jdbcTestkit % "compile->compile;test->test;it->it"
   )
 
 lazy val kv = project.in(file("kv"))
@@ -159,11 +152,10 @@ lazy val root = project.in(file("."))
     core,
     coreTestkit,
     jdbc,
-    schema,
     jdbcTestkit,
     counter,
-    elasticTestkit,
     elastic,
+    elasticTestkit,
     kv
   )
   .configs(IntegrationTest)

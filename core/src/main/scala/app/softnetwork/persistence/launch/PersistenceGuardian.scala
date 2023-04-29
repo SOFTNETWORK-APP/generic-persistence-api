@@ -10,19 +10,27 @@ import akka.{actor => classic}
 import app.softnetwork.persistence._
 import message.{Command, CommandResult, Event}
 import model.State
-import app.softnetwork.persistence.config.Settings._
-import app.softnetwork.persistence.query.{EventProcessor, EventProcessorStream, SchemaProvider}
+import app.softnetwork.persistence.query.{EventProcessor, EventProcessorStream}
+import app.softnetwork.persistence.schema.SchemaProvider
 import app.softnetwork.persistence.typed.EntityBehavior
 import app.softnetwork.persistence.typed.Singleton
+import com.typesafe.config.Config
 
+import java.util
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
-
 import scala.language.implicitConversions
 
 /** Created by smanciot on 15/05/2020.
   */
 trait PersistenceGuardian extends ClusterDomainEventHandler { _: SchemaProvider =>
+
+  def config: Config
+
+  lazy val AkkaClusterSeedNodes: util.List[String] = config.getStringList("akka.cluster.seed-nodes")
+
+  lazy val AkkaClusterWithBootstrap: Boolean = AkkaClusterSeedNodes.isEmpty &&
+    !config.getIsNull("akka.management.cluster.bootstrap.contact-point-discovery.discovery-method")
 
   /** initialize all entities
     */
@@ -54,7 +62,7 @@ trait PersistenceGuardian extends ClusterDomainEventHandler { _: SchemaProvider 
 
   def setup(): Behavior[ClusterDomainEvent] = {
     Behaviors.setup[ClusterDomainEvent] { context =>
-      // initialize database
+      // initialize schema
       initSchema()
 
       val system = context.system

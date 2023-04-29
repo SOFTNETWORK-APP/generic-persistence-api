@@ -1,3 +1,0 @@
-package app.softnetwork.persistence.jdbc.query
-
-trait MockPostgresJournalProvider extends PostgresJournalProvider with MockJdbcJournalProvider

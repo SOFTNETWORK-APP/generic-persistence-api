@@ -1,32 +1,21 @@
 package app.softnetwork.persistence.jdbc.scalatest
 
-import app.softnetwork.persistence.jdbc.query.H2SchemaProvider
-import org.scalatest.TestSuite
+import app.softnetwork.persistence.jdbc.schema.H2SchemaProvider
+import org.scalatest.Suite
 
-trait H2TestKit extends TestSuite with H2SchemaProvider with JdbcPersistenceTestKit {
+trait H2TestKit extends JdbcPersistenceTestKit with H2SchemaProvider { _: Suite =>
 
   import app.softnetwork.persistence._
 
-  val H2Database: String = sys.env.getOrElse("H2_DATABASE", generateUUID())
+  val database: String = sys.env.getOrElse("H2_DATABASE", generateUUID())
 
-  val H2User: String = sys.env.getOrElse("H2_USER", "admin")
+  val slickProfile: String = "slick.jdbc.H2Profile$"
 
-  val H2Password: String = sys.env.getOrElse("H2_PASSWORD", "changeit")
+  val jdbcUser: String = sys.env.getOrElse("H2_USER", "admin")
 
-  override lazy val slick: String = s"""
-                      |slick {
-                      |  profile = "slick.jdbc.H2Profile$$"
-                      |  db {
-                      |    url = "jdbc:h2:mem:$H2Database;DATABASE_TO_UPPER=false;"
-                      |    user = "$H2User"
-                      |    password = "$H2Password"
-                      |    driver = "org.h2.Driver"
-                      |    numThreads = 5
-                      |    maxConnections = 5
-                      |    minConnections = 1
-                      |    idleTimeout = 10000 //10 seconds
-                      |  }
-                      |}
-                      |""".stripMargin
+  val jdbcPassword: String = sys.env.getOrElse("H2_PASSWORD", "changeit")
 
+  lazy val jdbcUrl: String = s"jdbc:h2:mem:$database;DATABASE_TO_UPPER=false;"
+
+  val jdbcDriver: String = "org.h2.Driver"
 }

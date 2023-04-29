@@ -1,0 +1,5 @@
+package app.softnetwork.persistence.person
+
+import app.softnetwork.persistence.jdbc.scalatest.PostgresTestKit
+
+trait PostgresPersonToElasticTestKit extends JdbcPersonToElasticTestKit with PostgresTestKit

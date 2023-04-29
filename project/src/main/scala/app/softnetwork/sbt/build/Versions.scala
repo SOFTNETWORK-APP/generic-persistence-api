@@ -38,12 +38,13 @@ object Versions {
 
   val jest = "6.3.1"
 
-  val dockerTestKit = "0.9.9"
-
   val log4j = "2.8.2"
 
   val slick = "3.3.3"
 
   val lightbendAkkaPersistenceJdbc = "5.0.4"
 
+  val akkaPersistenceCassandra = "1.0.6"
+
+  val testContainers = "1.18.0"
 }

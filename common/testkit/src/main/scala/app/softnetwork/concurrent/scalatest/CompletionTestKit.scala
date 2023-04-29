@@ -1,18 +1,19 @@
 package app.softnetwork.concurrent.scalatest
 
 import app.softnetwork.concurrent.Completion
-import com.typesafe.scalalogging.Logger
 import org.scalatest._
-import org.slf4j.LoggerFactory
+import org.slf4j.Logger
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
+import scala.language.reflectiveCalls
+
 /** Created by smanciot on 12/04/2021.
   */
-trait CompletionTestKit extends Completion with Assertions {
+trait CompletionTestKit extends Completion with Assertions { _: { def log: Logger } =>
 
   implicit class AwaitAssertion[T](future: Future[T])(implicit atMost: Duration = defaultTimeout) {
     def assert(fun: T => Assertion): Assertion =
@@ -32,8 +33,6 @@ trait CompletionTestKit extends Completion with Assertions {
   override implicit def toOption[T](t: Try[Option[T]]): Option[T] = toT[Option[T]](t)
 
   override implicit def toSeq[T](t: Try[Seq[T]]): Seq[T] = toT[Seq[T]](t)
-
-  def log: Logger = Logger(LoggerFactory.getLogger(getClass.getName))
 
   def blockUntil(explain: String, maxTries: Int = 20, sleep: Int = 1000)(
     predicate: () => Boolean

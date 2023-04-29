@@ -1,12 +1,13 @@
 # generic-persistence-api
-a CQRS/ES framework in scala using akka persistence
 
-![](docs/diagrams/src/CQRS.svg)
+a **CQRS/ES** framework written in scala using akka persistence
+
+![CQRS](docs/diagrams/src/CQRS.svg)
 
 "CQRS is simply the creation of two objects where there was previously only one. The separation occurs based upon whether the methods are a command or a query (the same definition that is used by Meyer in Command and Query Separation: a command is any method that mutates state and a query is any method that returns a value)."
 —Greg Young, CQRS, Task Based UIs, Event Sourcing agh!
 
-## Write Side
+## CQRS Write Side
 
 **generic-persistence-api** relies on [Akka Persistence](https://doc.akka.io/docs/akka/current/typed/persistence.html) to provide a **scalable** and **resilient** way to implement the write-side of CQRS using commands and events that simplify the implementation of event-sourced systems.
 
@@ -42,7 +43,7 @@ The write-side using Akka **EventSourcedBehavior** typically involves the follow
 3. **Event replay**: When the actor is created or restarted, Akka Persistence automatically replays all the events from the event log, allowing the actor to rebuild its current state based on the events.
 4. **Snapshotting**: To avoid replaying all events every time the actor is created or restarted, Akka EventSourcedBehavior supports snapshotting. Every N events or when a given predicate of the state is fulfilled, the actor can save a **snapshot** of its current state, including any accumulated events and their tags after the previous snapshot. This snapshot is persisted alongside the event log and can be used to restore the state of the actor at a later point in time, rather than replaying all events from the beginning.
 
-"Entity Behavior" is a **specialized factory** that relies on Cluster Sharding to create instances of "EventSourceBehavior" actors, each of which corresponds to a single actor entity managed by a sharding region. 
+"Entity Behavior" is a **specialized factory** that relies on Cluster Sharding to create instances of "EventSourceBehavior" actors, each of which corresponds to a single actor entity managed by a sharding region.
 
 It must define the type of command and event classes that the behavior will handle along with the state class that will handle its in-memory state.
 
@@ -172,7 +173,7 @@ The resulting system is highly efficient, with the ability to quickly rebuild it
 
 Moreover, providing the ability to **tag events** enables **read-side projections** to be easily implemented and maintained, improving the overall performance and scalability of the system.
 
-![](docs/diagrams/out/EntityBehavior.svg)
+![EntityBehavior](docs/diagrams/out/EntityBehavior.svg)
 
 ### Entity Pattern
 
@@ -219,8 +220,7 @@ It exposes several methods to allow a sender to communicate with actor entities.
 
 ````
 
-![](docs/diagrams/out/Patterns.svg)
-
+![Patterns](docs/diagrams/out/Patterns.svg)
 
 ### Commands
 
@@ -230,7 +230,7 @@ Command responses play also an important role in providing feedback to the user 
 
 The framework defines the trait **_Command_** as the root interface of any command sends to a recipient in the system, and the trait **_CommandResult_** as the root interface of any command response.
 
-![](docs/diagrams/out/Command.svg)
+![Command](docs/diagrams/out/Command.svg)
 
 ### Events
 
@@ -240,7 +240,7 @@ If the write-side raises an event whenever the state of the application changes,
 
 The framework defines the trait **_Event_** as the root interface of any event in the system.
 
-![](docs/diagrams/out/Event.svg)
+![Event](docs/diagrams/out/Event.svg)
 
 ### State
 
@@ -254,7 +254,7 @@ When an entity actor is created, it starts with an empty in-memory state and per
 
 The framework defines the trait **_State_** as the root interface of the in-memory state of any entity actor.
 
-![](docs/diagrams/out/State.svg)
+![State](docs/diagrams/out/State.svg)
 
 ### Serialization
 
@@ -265,6 +265,7 @@ When an Akka actor receives a command, it creates one or more domain events and 
 Finally, before persisting a snapshot, the current state of the actor (its in-memory state) is serialized using the configured serialization mechanism.
 
 The framework supports natively three types of **Serializers**:
+
 + **proto**
 + **jackson-cbor**
 + **chill**
@@ -311,7 +312,7 @@ akka {
 }
 ```
 
-![](docs/diagrams/out/Serialization.svg)
+![Serialization](docs/diagrams/out/Serialization.svg)
 
 #### Versioning
 
@@ -320,5 +321,53 @@ You must consider how your system will be able to handle multiple versions of an
 
 ### Event Sourcing
 
-![](docs/diagrams/out/EventSourcing.svg)
+![EventSourcing](docs/diagrams/out/EventSourcing.svg)
 
+## CQRS Read side
+
+Although it is easy to load the current state of an object by replaying its event stream (or its state at some point in the past), it is difficult or expensive to run a query such as, "find all my orders where the total value is greater than $250."
+By implementing the CQRS pattern, such queries will typically be executed on the read side where you can ensure that you can build data projections that are specifically designed to answer such questions.
+
+The read side of CQRS is responsible for providing fast and efficient read access to the data that has been written by the write side.
+
+It can be implemented in various ways, but a common pattern is to use event sourcing. In this approach, the read side subscribes to the event stream published by the write side and processes the events to build and update the read models.
+
+This approach is implemented in the framework through the "event Processor Stream"
+
+### Event Processor Stream
+
+The "Event Processor Stream" implementation of the read side of CQRS subscribes to specific events based on their tags, which are published by the write side through event sourcing. By subscribing to these events, the read side can receive and process only the events that are relevant to its domain.
+
+To ensure that each event is read only once for each stream processor, the read side maintains an offset for each stream processor, which is a pointer to the last event that was processed by that processor. By storing this offset for each stream processor, the read side can resume processing events from the point where each stream processor left off, in case of failure or restart.
+
+The read side uses the event tags to filter the event stream, so that only relevant events are processed. This allows the read side to update its models in real-time based on the events published by the write side, while avoiding duplication or missing events.
+
+The offset handling for each stream processor is a critical component of the "Event Processor Stream" implementation, as it ensures that each event is processed only once for each stream processor. The read side updates the offset for each stream processor each time an event is processed, so that it can resume processing from the point where each stream processor left off in case of failure or restart.
+
+Overall, the "Event Processor Stream" implementation of the read side of CQRS provides an efficient and scalable way to handle a large volume of events, while ensuring that each event is processed only once for each stream processor and that the read models remain up-to-date and consistent with the write side.
+
+### Offset Provider
+
+When reading events from a stream, it is important to keep track of the position in the stream where the last event was read. This position is typically referred to as the "offset". The offset can be used to ensure that each event in the stream is read only once, even if the stream is read multiple times.
+
+Here's an example of how to use an offset to read an event just once from a specific event stream:
+
+1. Initialize offset: The first time the stream is read, the offset is set to the beginning of the stream.
+2. Read events: The application reads events from the event stream, starting from the current offset.
+3. Process event: The application processes each event it read.
+4. Update offset: Once the application has processed an event it read, it updates the offset to the position of the last event it read.
+5. Repeat: The application repeats the process of reading events, starting from the updated offset.
+
+By keeping track of the offset, the application can ensure that each event in the stream is read only once. If the application crashes or is restarted, it can resume reading from the last known offset, ensuring that no events are missed or duplicated.
+
+In some event sourcing systems, the offset is stored along with the event data, making it easy to resume reading from the last known offset. In other systems, the offset is stored separately, for example in a database or distributed cache. It is this second approach that was chosen and implemented within the framework.
+
+Overall, the use of an offset is a key technique in event sourcing systems, as it allows events to be read just once from a specific event stream, ensuring data consistency and avoiding duplicate processing.
+
+### Journal Provider
+
+## Integration with other subsystems
+
+Events provide a useful way of communicating with other subsystems. Your event store can publish events to notify other interested subsystems of changes to the application's state. Again, the event store provides a complete record of all the events that it published to other systems.
+
+## Quick Start - Person Sample

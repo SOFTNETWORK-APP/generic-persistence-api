@@ -89,8 +89,8 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
   def numberOfSnapshots: Int = 2
 
   /** @return
-    *   the key used to define the Entity Type Key of this entity actor that uniquely identifies the type
-    *   of entity in the cluster
+    *   the key used to define the Entity Type Key of this entity actor that uniquely identifies the
+    *   type of entity in the cluster
     */
   def persistenceId: String
 
@@ -111,8 +111,8 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
     *   - actor system
     * @param maybeRole
     *   - an optional node role required to start this entity
-    * @param c - runtime class of C
-    * -
+    * @param c
+    *   - runtime class of C
     * @return
     */
   def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit

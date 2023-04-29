@@ -1,23 +1,68 @@
 package app.softnetwork.elastic.scalatest
 
 import app.softnetwork.concurrent.scalatest.CompletionTestKit
-
 import com.sksamuel.elastic4s.{IndexAndTypes, Indexes}
 import com.sksamuel.elastic4s.http.index.admin.RefreshIndexResponse
-import com.sksamuel.elastic4s.http.{ElasticClient, ElasticDsl}
-
+import com.sksamuel.elastic4s.http.{ElasticClient, ElasticDsl, ElasticProperties}
+import com.typesafe.config.{Config, ConfigFactory}
 import org.elasticsearch.ResourceAlreadyExistsException
 import org.elasticsearch.transport.RemoteTransportException
-
+import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.scalatest.matchers.{MatchResult, Matcher}
+import org.slf4j.Logger
 
+import java.util.UUID
 import scala.util.{Failure, Success}
 
 /** Created by smanciot on 18/05/2021.
   */
-trait ElasticTestKit extends ElasticDsl with CompletionTestKit {
+trait ElasticTestKit extends ElasticDsl with CompletionTestKit with BeforeAndAfterAll { _: Suite =>
 
-  def client: ElasticClient
+  def log: Logger
+
+  def elasticVersion: String = "6.7.2"
+
+  def elasticURL: String
+
+  lazy val elasticConfig: Config = ConfigFactory
+    .parseString(elasticConfigAsString)
+    .withFallback(ConfigFactory.load("softnetwork-elastic.conf"))
+
+  lazy val elasticConfigAsString: String =
+    s"""
+       |elastic {
+       |  credentials {
+       |    url = "$elasticURL"
+       |  }
+       |  multithreaded     = false
+       |  discovery-enabled = false
+       |}
+       |""".stripMargin
+
+  lazy val clusterName: String = s"test-${UUID.randomUUID()}"
+
+  lazy val client: ElasticClient = ElasticClient(ElasticProperties(elasticURL))
+
+  def start(): Unit = ()
+
+  def stop(): Unit = ()
+
+  override def beforeAll(): Unit = {
+    start()
+    client.execute {
+      createIndexTemplate("all_templates", "*").settings(
+        Map("number_of_shards" -> 1, "number_of_replicas" -> 0)
+      )
+    } complete () match {
+      case Success(_) => ()
+      case Failure(f) => throw f
+    }
+  }
+
+  override def afterAll(): Unit = {
+    client.close()
+    stop()
+  }
 
   // Rewriting methods from IndexMatchers in elastic4s with the ElasticClient
   def haveCount(expectedCount: Int): Matcher[String] =

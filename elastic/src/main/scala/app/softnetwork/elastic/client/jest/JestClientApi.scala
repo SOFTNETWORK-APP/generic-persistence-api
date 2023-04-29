@@ -184,7 +184,7 @@ trait JestCountApi extends CountApi with JestClientCompanion {
       }
       promise.future
     }
-    Future.sequence(futures.toSeq)
+    Future.sequence(futures)
   }
 }
 

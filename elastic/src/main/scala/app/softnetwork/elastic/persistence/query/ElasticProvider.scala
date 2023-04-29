@@ -2,7 +2,6 @@ package app.softnetwork.elastic.persistence.query
 
 import app.softnetwork.elastic.client.ElasticClientApi
 import app.softnetwork.elastic.sql.SQLQuery
-import com.typesafe.scalalogging.StrictLogging
 import mustache.Mustache
 import org.json4s.Formats
 import app.softnetwork.persistence._
@@ -10,13 +9,14 @@ import app.softnetwork.persistence.model.Timestamped
 import app.softnetwork.persistence.query.ExternalPersistenceProvider
 import app.softnetwork.serialization.commonFormats
 import app.softnetwork.elastic.persistence.typed.Elastic._
+import com.sksamuel.exts.Logging
 
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 /** Created by smanciot on 16/05/2020.
   */
-trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] with StrictLogging {
+trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] with Logging {
   _: ElasticClientApi with ManifestWrapper[T] =>
 
   implicit def formats: Formats = commonFormats

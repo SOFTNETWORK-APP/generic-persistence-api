@@ -13,8 +13,7 @@ package object message {
   /** Command objects * */
   trait Command
 
-  /**
-    * a command which includes a reference to the actor identity to whom a response has to be sent
+  /** a command which includes a reference to the actor identity to whom a response has to be sent
     *
     * @tparam R
     *   - type of command result
@@ -23,8 +22,8 @@ package object message {
     def replyTo: ActorRef[R]
   }
 
-  /**
-    * a wrapper around a command and its reference to the actor identity to whom a response has to be sent
+  /** a wrapper around a command and its reference to the actor identity to whom a response has to
+    * be sent
     *
     * @tparam C
     *   - type of command
@@ -62,8 +61,7 @@ package object message {
   /** Event objects * */
   trait Event
 
-  /**
-    * A particular event that is intended to be broadcast
+  /** A particular event that is intended to be broadcast
     */
   trait BroadcastEvent extends Event {
     def externalUuid: String
@@ -118,13 +116,11 @@ package object message {
   @SerialVersionUID(0L)
   abstract class CountResult(results: Seq[CountResponse]) extends CommandResult
 
-  /** Protobuf events
-    * Marker trait for serializing an event using Protobuf Serializer
+  /** Protobuf events Marker trait for serializing an event using Protobuf Serializer
     */
   trait ProtobufEvent extends Event
 
-  /** Cbor events
-    * Marker trait for serializing an event using Jackson CBOR Serializer
+  /** Cbor events Marker trait for serializing an event using Jackson CBOR Serializer
     */
   trait CborEvent extends Event
 }

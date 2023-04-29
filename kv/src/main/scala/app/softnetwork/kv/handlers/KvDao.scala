@@ -7,6 +7,7 @@ import app.softnetwork.kv.persistence.typed.KeyValueBehavior
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.typed.CommandTypeKey
+import org.slf4j.Logger
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
@@ -19,26 +20,28 @@ trait KvHandler extends EntityPattern[KvCommand, KvCommandResult] { _: CommandTy
 
 trait KvDao extends GenericKeyValueDao { _: KvHandler =>
 
+  def log: Logger
+
   def lookupKeyValue(key: String)(implicit system: ActorSystem[_]): Future[Option[String]] = {
     implicit val ec: ExecutionContextExecutor = system.executionContext
     this ? (generateUUID(Some(key)), Lookup) map {
       case r: KvFound =>
         import r._
-        logger.info(s"found $value for $key")
+        log.info(s"found $value for $key")
         Some(value)
       case _ =>
-        logger.warn(s"could not find a value for $key")
+        log.warn(s"could not find a value for $key")
         None
     }
   }
 
   def addKeyValue(key: String, value: String)(implicit system: ActorSystem[_]): Unit = {
-    logger.info(s"adding ($key, $value)")
+    log.info(s"adding ($key, $value)")
     this ! (generateUUID(Some(key)), Put(value))
   }
 
   def removeKeyValue(key: String)(implicit system: ActorSystem[_]): Unit = {
-    logger.info(s"removing ($key)")
+    log.info(s"removing ($key)")
     this ! (generateUUID(Some(key)), Remove)
   }
 

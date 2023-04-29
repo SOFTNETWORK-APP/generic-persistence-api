@@ -6,15 +6,19 @@ import app.softnetwork.kv.message.{KvCommandResult, KvFound}
 import app.softnetwork.kv.persistence.data.Kv
 import Kv._
 import app.softnetwork.persistence.typed.scaladsl.SingletonPattern
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
+import scala.language.reflectiveCalls
 
 /** Created by smanciot on 02/06/2020.
   */
 trait Kv2Dao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKeyValueDao {
   override implicit def command2Request(command: KvCommand): Request = replyTo =>
     KvCommandWrapper(command, replyTo)
+
+  def log: Logger
 
   override lazy val behavior: Behavior[KvCommand] = Kv(name)
 
@@ -29,12 +33,12 @@ trait Kv2Dao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKe
   }
 
   def addKeyValue(key: String, value: String)(implicit system: ActorSystem[_]): Unit = {
-    logger.info(s"adding ($key, $value)")
+    log.info(s"adding ($key, $value)")
     this ! Put(key, value)
   }
 
   def removeKeyValue(key: String)(implicit system: ActorSystem[_]): Unit = {
-    logger.info(s"removing ($key)")
+    log.info(s"removing ($key)")
     this ! Remove(key)
   }
 
@@ -43,5 +47,6 @@ trait Kv2Dao extends SingletonPattern[KvCommand, KvCommandResult] with GenericKe
 object Kv2Dao {
   def apply(namespace: String): Kv2Dao = new Kv2Dao {
     override lazy val name: String = namespace
+    lazy val log: Logger = LoggerFactory getLogger getClass.getName
   }
 }

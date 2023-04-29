@@ -5,6 +5,9 @@ import akka.stream.stage.{GraphStage, GraphStageLogic}
 import app.softnetwork.elastic.client.BulkAction.BulkAction
 import app.softnetwork.serialization._
 import com.google.gson.{Gson, JsonElement, JsonObject}
+import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.scalalogging.StrictLogging
+import configs.Configs
 import org.json4s.Formats
 
 import scala.collection.immutable.Seq
@@ -16,7 +19,30 @@ import scala.util.{Failure, Success, Try}
   */
 package object client {
 
-  case class ElasticCredentials(url: String, username: String, password: String)
+  case class ElasticCredentials(
+    url: String = "http://localhost:9200",
+    username: String = "",
+    password: String = ""
+  )
+
+  case class ElasticConfig(
+    credentials: ElasticCredentials = ElasticCredentials(),
+    multithreaded: Boolean = true,
+    discoveryEnabled: Boolean = false
+  )
+
+  object ElasticConfig extends StrictLogging {
+    def apply(config: Config): ElasticConfig = {
+      Configs[ElasticConfig]
+        .get(config.withFallback(ConfigFactory.load("softnetwork-elastic.conf")), "elastic")
+        .toEither match {
+        case Left(configError) =>
+          logger.error(s"Something went wrong with the provided arguments $configError")
+          throw configError.configException
+        case Right(r) => r
+      }
+    }
+  }
 
   object BulkAction extends Enumeration {
     type BulkAction = Value

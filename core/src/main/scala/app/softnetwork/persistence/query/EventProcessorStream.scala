@@ -7,10 +7,10 @@ import akka.persistence.query.Offset
 import akka.persistence.typed.PersistenceId
 import akka.stream.scaladsl.{RestartSource, Sink, Source}
 import akka.stream.{KillSwitches, Materializer, RestartSettings, SharedKillSwitch}
-import com.typesafe.scalalogging.StrictLogging
 import app.softnetwork.persistence.message.Event
 import app.softnetwork.persistence.typed._
 import akka.{actor => classic}
+import org.slf4j.Logger
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
@@ -41,8 +41,10 @@ trait EventStream {
 
 }
 
-trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging {
-  _: JournalProvider =>
+trait EventProcessorStream[E <: Event] extends EventStream {
+  _: JournalProvider with OffsetProvider =>
+
+  def log: Logger
 
   implicit def system: ActorSystem[_]
 
@@ -78,7 +80,7 @@ trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging {
             eventEnvelope.sequenceNr
           ).map(_ => eventEnvelope.offset)
         case other =>
-          logger.error("Unexpected event [{}]", other)
+          log.error("Unexpected event [{}]", other)
           Future.failed(
             new IllegalArgumentException(s"Unexpected event [${other.getClass.getName}]")
           )
@@ -93,9 +95,9 @@ trait EventProcessorStream[E <: Event] extends EventStream with StrictLogging {
         RestartSettings(minBackoff = 500.millis, maxBackoff = 20.seconds, randomFactor = 0.1)
       ) { () =>
         Source.futureSource {
-          initJournalProvider()
+          initOffset()
           readOffset().map { offset =>
-            logger.info(
+            log.info(
               "Starting stream {} for tag [{}] from offset [{}]",
               platformEventProcessorId,
               platformTag,

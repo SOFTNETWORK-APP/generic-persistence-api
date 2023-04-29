@@ -16,28 +16,29 @@
 
 package app.softnetwork.utils
 
-import com.typesafe.scalalogging.StrictLogging
+import app.softnetwork.io._
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.InputStream
-import scala.io.{Source => ScalaIOSource}
 
-object ClasspathResources extends ClasspathResources
+object ClasspathResources extends ClasspathResources{
+  lazy val log: Logger = LoggerFactory getLogger getClass.getName
+}
 
-trait ClasspathResources extends StrictLogging {
+trait ClasspathResources {
 
-  def streamToString(is: InputStream): String = ScalaIOSource.fromInputStream(is).mkString
+  def log: Logger
 
-  def fromClasspathAsString(fileName: String): String = streamToString(
-    fromClasspathAsStream(fileName)
-  )
+  def fromClasspathAsString(file: String): Option[String] =
+    fromClasspathAsStream(file).map(inputStreamToString)
 
-  def fromClasspathAsStream(fileName: String): InputStream = Option(
-    getClass.getClassLoader.getResourceAsStream(fileName)
+  def fromClasspathAsStream(file: String): Option[InputStream] = Option(
+    getClass.getClassLoader.getResourceAsStream(file)
   ) match {
-    case Some(i) => i
-    case _ =>
-      logger.error(s"file $fileName not found in the classpath")
-      null
+    case None =>
+      log.error(s"file $file not found in the classpath")
+      None
+    case some => some
   }
 
 }

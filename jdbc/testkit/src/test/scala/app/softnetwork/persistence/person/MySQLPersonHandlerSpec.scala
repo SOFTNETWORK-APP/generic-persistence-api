@@ -1,0 +1,3 @@
+package app.softnetwork.persistence.person
+
+class MySQLPersonHandlerSpec extends MySQLPersonTestKit

@@ -3,7 +3,7 @@ package app.softnetwork.persistence.query
 import _root_.akka.Done
 import _root_.akka.persistence.typed.PersistenceId
 import akka.actor.typed.eventstream.EventStream.Publish
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.Logger
 import app.softnetwork.persistence._
 import app.softnetwork.persistence.message._
 import app.softnetwork.persistence.model.Timestamped
@@ -14,8 +14,8 @@ import scala.concurrent.Future
   */
 trait State2ExternalProcessorStream[T <: Timestamped, E <: CrudEvent]
     extends EventProcessorStream[E]
-    with ManifestWrapper[T]
-    with StrictLogging { _: JournalProvider with ExternalPersistenceProvider[T] =>
+    with ManifestWrapper[T] {
+  _: JournalProvider with OffsetProvider with ExternalPersistenceProvider[T] =>
 
   def externalProcessor: String
 
@@ -48,11 +48,7 @@ trait State2ExternalProcessorStream[T <: Timestamped, E <: CrudEvent]
       case evt: Created[_] =>
         import evt._
         if (!createDocument(document.asInstanceOf[T])) {
-          logger.error(
-            "document {} has not be created by {}",
-            document.uuid,
-            platformEventProcessorId
-          )
+          log.error(s"document ${document.uuid} has not be created by $platformEventProcessorId")
           done = false
         } else if (forTests) {
           system.eventStream.tell(Publish(evt))
@@ -61,11 +57,7 @@ trait State2ExternalProcessorStream[T <: Timestamped, E <: CrudEvent]
       case evt: Updated[_] =>
         import evt._
         if (!updateDocument(document.asInstanceOf[T], upsert)) {
-          logger.error(
-            "document {} has not be updated by {}",
-            document.uuid,
-            platformEventProcessorId
-          )
+          log.error(s"document ${document.uuid} has not be updated by $platformEventProcessorId")
           done = false
         } else if (forTests) {
           system.eventStream.tell(Publish(evt))
@@ -74,7 +66,7 @@ trait State2ExternalProcessorStream[T <: Timestamped, E <: CrudEvent]
       case evt: Deleted =>
         import evt._
         if (!deleteDocument(uuid)) {
-          logger.error("document {} has not be deleted by {}", uuid, platformEventProcessorId)
+          log.error(s"document $uuid has not be deleted by $platformEventProcessorId")
           done = false
         } else if (forTests) {
           system.eventStream.tell(Publish(evt))
@@ -82,18 +74,14 @@ trait State2ExternalProcessorStream[T <: Timestamped, E <: CrudEvent]
 
       case evt: Upserted =>
         if (!upsertDocument(evt.uuid, evt.data)) {
-          logger.error(
-            "document {} has not been upserted by {}",
-            evt.uuid,
-            platformEventProcessorId
-          )
+          log.error(s"document ${evt.uuid} has not be upserted by $platformEventProcessorId")
           done = false
         } else if (forTests) {
           system.eventStream.tell(Publish(evt))
         }
 
       case other =>
-        logger.warn("{} does not support event [{}]", platformEventProcessorId, other.getClass)
+        log.warn(s"$platformEventProcessorId does not support event [${other.getClass}]")
     }
 
     if (done) {

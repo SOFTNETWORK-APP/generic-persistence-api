@@ -6,6 +6,7 @@ import akka.cluster.ddata.PNCounterKey
 import app.softnetwork.persistence.typed.scaladsl.SingletonPattern
 import app.softnetwork.counter.message._
 import app.softnetwork.counter.persistence.data.Counter
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.language.implicitConversions
@@ -13,6 +14,8 @@ import scala.language.implicitConversions
 /** Created by smanciot on 28/03/2021.
   */
 trait CounterDao extends SingletonPattern[CounterCommand, CounterResult] {
+
+  def log: Logger
 
   implicit def command2Request(command: CounterCommand): Request = replyTo =>
     CounterCommandWrapper(command, replyTo)
@@ -57,5 +60,7 @@ trait CounterDao extends SingletonPattern[CounterCommand, CounterResult] {
 object CounterDao {
   def apply(counter: String): CounterDao = new CounterDao() {
     override lazy val name: String = counter
+
+    override lazy val log: Logger = LoggerFactory getLogger getClass.getName
   }
 }

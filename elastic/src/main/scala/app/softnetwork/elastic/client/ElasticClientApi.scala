@@ -2,27 +2,21 @@ package app.softnetwork.elastic.client
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import _root_.akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl._
-
 import app.softnetwork.persistence.message.CountResponse
-
 import app.softnetwork.persistence.model.Timestamped
 import app.softnetwork.serialization._
-
 import app.softnetwork.elastic.sql.{SQLQueries, SQLQuery}
-
+import com.typesafe.config.{Config, ConfigFactory}
 import org.json4s.{DefaultFormats, Formats}
 import org.json4s.jackson.JsonMethods._
 
 import scala.collection.immutable.Seq
-
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
-
 import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 
@@ -41,7 +35,12 @@ trait ElasticClientApi
     with BulkApi
     with DeleteApi
     with RefreshApi
-    with FlushApi
+    with FlushApi{
+
+  def config: Config = ConfigFactory.load()
+
+  final lazy val elasticConfig: ElasticConfig = ElasticConfig(config)
+}
 
 trait IndicesApi {
   val defaultSettings: String =
