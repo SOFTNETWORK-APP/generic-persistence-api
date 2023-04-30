@@ -3,6 +3,7 @@ package app.softnetwork.persistence.typed
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, SupervisorStrategy}
 
+import akka.cluster.sharding.typed.ShardingEnvelope
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
 
 import akka.persistence.typed._
@@ -113,11 +114,11 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
     *   - an optional node role required to start this entity
     * @param c
     *   - runtime class of C
-    * @return
+    * @return a reference to the corresponding sharding envelope
     */
   def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit
     c: ClassTag[C]
-  ): Unit = {
+  ): ActorRef[ShardingEnvelope[C]] = {
     ClusterSharding(system) init Entity(TypeKey) { entityContext =>
       this(
         entityContext.entityId,
