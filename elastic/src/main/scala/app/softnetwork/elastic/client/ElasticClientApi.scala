@@ -35,7 +35,7 @@ trait ElasticClientApi
     with BulkApi
     with DeleteApi
     with RefreshApi
-    with FlushApi{
+    with FlushApi {
 
   def config: Config = ConfigFactory.load()
 

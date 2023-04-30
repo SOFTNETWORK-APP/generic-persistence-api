@@ -114,7 +114,8 @@ trait EntityBehavior[C <: Command, S <: State, E <: Event, R <: CommandResult]
     *   - an optional node role required to start this entity
     * @param c
     *   - runtime class of C
-    * @return a reference to the corresponding sharding envelope
+    * @return
+    *   a reference to the corresponding sharding envelope
     */
   def init(system: ActorSystem[_], maybeRole: Option[String] = None)(implicit
     c: ClassTag[C]

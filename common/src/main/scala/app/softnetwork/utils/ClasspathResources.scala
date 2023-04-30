@@ -21,7 +21,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import java.io.InputStream
 
-object ClasspathResources extends ClasspathResources{
+object ClasspathResources extends ClasspathResources {
   lazy val log: Logger = LoggerFactory getLogger getClass.getName
 }
 
