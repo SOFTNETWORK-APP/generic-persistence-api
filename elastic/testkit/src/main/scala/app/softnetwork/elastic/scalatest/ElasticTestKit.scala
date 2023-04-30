@@ -204,11 +204,11 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit with BeforeAndAft
     blockUntilEmpty(index)
   }
 
-  def blockUntilDocumentExists(id: String, index: String, `type`: String): Unit = {
+  def blockUntilDocumentExists(id: String, index: String, _type: String): Unit = {
     blockUntil(s"Expected to find document $id") { () =>
       client
         .execute {
-          get(id).from(index / `type`)
+          get(id).from(index / _type)
         } complete () match {
         case Success(s) => s.result.exists
         case _          => false
@@ -296,14 +296,14 @@ trait ElasticTestKit extends ElasticDsl with CompletionTestKit with BeforeAndAft
 
   def blockUntilDocumentHasVersion(
     index: String,
-    `type`: String,
+    _type: String,
     id: String,
     version: Long
   ): Unit = {
     blockUntil(s"Expected document $id to have version $version") { () =>
       client
         .execute {
-          get(id).from(index / `type`)
+          get(id).from(index / _type)
         } complete () match {
         case Success(s) => s.result.version == version
         case Failure(f) => throw f

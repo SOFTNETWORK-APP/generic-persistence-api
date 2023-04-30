@@ -73,8 +73,8 @@ trait JestUpdateSettingsApi extends UpdateSettingsApi with JestClientCompanion {
 }
 
 trait JestMappingApi extends MappingApi with JestClientCompanion {
-  override def setMapping(index: String, `type`: String, mapping: String): Boolean =
-    apply().execute(new PutMapping.Builder(index, `type`, mapping).build()).isSucceeded
+  override def setMapping(index: String, _type: String, mapping: String): Boolean =
+    apply().execute(new PutMapping.Builder(index, _type, mapping).build()).isSucceeded
 }
 
 trait JestRefreshApi extends RefreshApi with JestClientCompanion {
@@ -189,10 +189,10 @@ trait JestCountApi extends CountApi with JestClientCompanion {
 }
 
 trait JestIndexApi extends IndexApi with JestClientCompanion {
-  override def index(index: String, `type`: String, id: String, source: String): Boolean = {
+  override def index(index: String, _type: String, id: String, source: String): Boolean = {
     Try(
       apply().execute(
-        new Index.Builder(source).index(index).`type`(`type`).id(id).build()
+        new Index.Builder(source).index(index).`type`(_type).id(id).build()
       )
     ) match {
       case Success(s) =>
@@ -205,13 +205,13 @@ trait JestIndexApi extends IndexApi with JestClientCompanion {
     }
   }
 
-  override def indexAsync(index: String, `type`: String, id: String, source: String)(implicit
+  override def indexAsync(index: String, _type: String, id: String, source: String)(implicit
     ec: ExecutionContext
   ): Future[Boolean] = {
     import JestClientResultHandler._
     val promise: Promise[Boolean] = Promise()
     apply().executeAsyncPromise(
-      new Index.Builder(source).index(index).`type`(`type`).id(id).build()
+      new Index.Builder(source).index(index).`type`(_type).id(id).build()
     ) onComplete {
       case Success(s) => promise.success(s.isSucceeded)
       case Failure(f) =>
@@ -226,7 +226,7 @@ trait JestIndexApi extends IndexApi with JestClientCompanion {
 trait JestUpdateApi extends UpdateApi with JestClientCompanion {
   override def update(
     index: String,
-    `type`: String,
+    _type: String,
     id: String,
     source: String,
     upsert: Boolean
@@ -238,7 +238,7 @@ trait JestUpdateApi extends UpdateApi with JestClientCompanion {
             docAsUpsert(source)
           else
             source
-        ).index(index).`type`(`type`).id(id).build()
+        ).index(index).`type`(_type).id(id).build()
       )
     ) match {
       case Success(s) =>
@@ -253,7 +253,7 @@ trait JestUpdateApi extends UpdateApi with JestClientCompanion {
 
   override def updateAsync(
     index: String,
-    `type`: String,
+    _type: String,
     id: String,
     source: String,
     upsert: Boolean
@@ -266,7 +266,7 @@ trait JestUpdateApi extends UpdateApi with JestClientCompanion {
           docAsUpsert(source)
         else
           source
-      ).index(index).`type`(`type`).id(id).build()
+      ).index(index).`type`(_type).id(id).build()
     ) onComplete {
       case Success(s) =>
         if (!s.isSucceeded)
@@ -282,9 +282,9 @@ trait JestUpdateApi extends UpdateApi with JestClientCompanion {
 }
 
 trait JestDeleteApi extends DeleteApi with JestClientCompanion {
-  override def delete(uuid: String, index: String, `type`: String): Boolean = {
+  override def delete(uuid: String, index: String, _type: String): Boolean = {
     val result = apply().execute(
-      new Delete.Builder(uuid).index(index).`type`(`type`).build()
+      new Delete.Builder(uuid).index(index).`type`(_type).build()
     )
     if (!result.isSucceeded) {
       logger.error(result.getErrorMessage)
@@ -292,13 +292,13 @@ trait JestDeleteApi extends DeleteApi with JestClientCompanion {
     result.isSucceeded
   }
 
-  override def deleteAsync(uuid: String, index: String, `type`: String)(implicit
+  override def deleteAsync(uuid: String, index: String, _type: String)(implicit
     ec: ExecutionContext
   ): Future[Boolean] = {
     import JestClientResultHandler._
     val promise: Promise[Boolean] = Promise()
     apply().executeAsyncPromise(
-      new Delete.Builder(uuid).index(index).`type`(`type`).build()
+      new Delete.Builder(uuid).index(index).`type`(_type).build()
     ) onComplete {
       case Success(s) =>
         if (!s.isSucceeded)
@@ -319,12 +319,12 @@ trait JestGetApi extends GetApi with JestClientCompanion {
   override def get[U <: Timestamped](
     id: String,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit m: Manifest[U], formats: Formats): Option[U] = {
     val result = apply().execute(
       new Get.Builder(
         index.getOrElse(
-          `type`.getOrElse(
+          maybeType.getOrElse(
             m.runtimeClass.getSimpleName.toLowerCase
           )
         ),
@@ -342,14 +342,14 @@ trait JestGetApi extends GetApi with JestClientCompanion {
   override def getAsync[U <: Timestamped](
     id: String,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]] = {
     import JestClientResultHandler._
     val promise: Promise[Option[U]] = Promise()
     apply().executeAsyncPromise(
       new Get.Builder(
         index.getOrElse(
-          `type`.getOrElse(
+          maybeType.getOrElse(
             m.runtimeClass.getSimpleName.toLowerCase
           )
         ),

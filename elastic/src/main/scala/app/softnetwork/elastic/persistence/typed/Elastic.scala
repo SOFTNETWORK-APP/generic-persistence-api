@@ -12,12 +12,12 @@ import app.softnetwork.persistence._
   */
 object Elastic {
 
-  def index(`type`: String): String = {
-    s"${`type`}s-$environment".toLowerCase
+  def index(_type: String): String = {
+    s"${_type}s-$environment".toLowerCase
   }
 
-  def alias(`type`: String): String = {
-    s"${`type`}s-$environment-v$version".toLowerCase
+  def alias(_type: String): String = {
+    s"${_type}s-$environment-v$version".toLowerCase
   }
 
   def getAlias[T <: Timestamped](implicit m: Manifest[T]): String = {

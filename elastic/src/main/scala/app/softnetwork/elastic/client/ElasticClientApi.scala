@@ -117,7 +117,7 @@ trait UpdateSettingsApi { _: IndicesApi =>
 }
 
 trait MappingApi {
-  def setMapping(index: String, `type`: String, mapping: String): Boolean
+  def setMapping(index: String, _type: String, mapping: String): Boolean
 }
 
 trait RefreshApi {
@@ -132,24 +132,24 @@ trait IndexApi {
   def index[U <: Timestamped](
     entity: U,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit u: ClassTag[U], formats: Formats): Boolean = {
-    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+    val _type = maybeType.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     this.index(index.getOrElse(_type), _type, entity.uuid, serialization.write[U](entity))
   }
 
-  def index(index: String, `type`: String, id: String, source: String): Boolean
+  def index(index: String, _type: String, id: String, source: String): Boolean
 
   def indexAsync[U <: Timestamped](
     entity: U,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
-    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+    val _type = maybeType.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     indexAsync(index.getOrElse(_type), _type, entity.uuid, serialization.write[U](entity))
   }
 
-  def indexAsync(index: String, `type`: String, id: String, source: String)(implicit
+  def indexAsync(index: String, _type: String, id: String, source: String)(implicit
     ec: ExecutionContext
   ): Future[Boolean]
 }
@@ -158,22 +158,22 @@ trait UpdateApi {
   def update[U <: Timestamped](
     entity: U,
     index: Option[String] = None,
-    `type`: Option[String] = None,
+    maybeType: Option[String] = None,
     upsert: Boolean = true
   )(implicit u: ClassTag[U], formats: Formats): Boolean = {
-    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+    val _type = maybeType.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     this.update(index.getOrElse(_type), _type, entity.uuid, serialization.write[U](entity), upsert)
   }
 
-  def update(index: String, `type`: String, id: String, source: String, upsert: Boolean): Boolean
+  def update(index: String, _type: String, id: String, source: String, upsert: Boolean): Boolean
 
   def updateAsync[U <: Timestamped](
     entity: U,
     index: Option[String] = None,
-    `type`: Option[String] = None,
+    maybeType: Option[String] = None,
     upsert: Boolean = true
   )(implicit u: ClassTag[U], ec: ExecutionContext, formats: Formats): Future[Boolean] = {
-    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+    val _type = maybeType.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     this.updateAsync(
       index.getOrElse(_type),
       _type,
@@ -183,7 +183,7 @@ trait UpdateApi {
     )
   }
 
-  def updateAsync(index: String, `type`: String, id: String, source: String, upsert: Boolean)(
+  def updateAsync(index: String, _type: String, id: String, source: String, upsert: Boolean)(
     implicit ec: ExecutionContext
   ): Future[Boolean]
 }
@@ -192,24 +192,24 @@ trait DeleteApi {
   def delete[U <: Timestamped](
     entity: U,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit u: ClassTag[U]): Boolean = {
-    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+    val _type = maybeType.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     delete(entity.uuid, index.getOrElse(_type), _type)
   }
 
-  def delete(uuid: String, index: String, `type`: String): Boolean
+  def delete(uuid: String, index: String, _type: String): Boolean
 
   def deleteAsync[U <: Timestamped](
     entity: U,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit u: ClassTag[U], ec: ExecutionContext): Future[Boolean] = {
-    val _type = `type`.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
+    val _type = maybeType.getOrElse(u.runtimeClass.getSimpleName.toLowerCase)
     deleteAsync(entity.uuid, index.getOrElse(_type), _type)
   }
 
-  def deleteAsync(uuid: String, index: String, `type`: String)(implicit
+  def deleteAsync(uuid: String, index: String, _type: String)(implicit
     ec: ExecutionContext
   ): Future[Boolean]
 
@@ -452,13 +452,13 @@ trait GetApi {
   def get[U <: Timestamped](
     id: String,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit m: Manifest[U], formats: Formats): Option[U]
 
   def getAsync[U <: Timestamped](
     id: String,
     index: Option[String] = None,
-    `type`: Option[String] = None
+    maybeType: Option[String] = None
   )(implicit m: Manifest[U], ec: ExecutionContext, formats: Formats): Future[Option[U]]
 }
 

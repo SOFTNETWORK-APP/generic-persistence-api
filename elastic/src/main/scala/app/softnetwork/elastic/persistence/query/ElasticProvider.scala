@@ -23,15 +23,15 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
 
   protected lazy val index: String = getIndex[T](manifestWrapper.wrapped)
 
-  protected lazy val `type`: String = getType[T](manifestWrapper.wrapped)
+  protected lazy val _type: String = getType[T](manifestWrapper.wrapped)
 
   protected lazy val alias: String = getAlias[T](manifestWrapper.wrapped)
 
   protected def mappingPath: Option[String] = None
 
   protected def loadMapping(path: Option[String] = None): String = {
-    val pathOrElse: String = path.getOrElse(s"""mapping/${`type`}.mustache""")
-    Try(Mustache(pathOrElse).render(Map("type" -> `type`))) match {
+    val pathOrElse: String = path.getOrElse(s"""mapping/${_type}.mustache""")
+    Try(Mustache(pathOrElse).render(Map("type" -> _type))) match {
       case Success(s) =>
         s
       case Failure(f) =>
@@ -44,11 +44,11 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     Try {
       createIndex(index)
       addAlias(index, alias)
-      setMapping(index, `type`, loadMapping(mappingPath))
+      setMapping(index, _type, loadMapping(mappingPath))
     } match {
-      case Success(_) => logger.info(s"index:$index type:${`type`} alias:$alias created")
+      case Success(_) => logger.info(s"index:$index type:${_type} alias:$alias created")
       case Failure(f) =>
-        logger.error(s"!!!!! index:$index type:${`type`} alias:$alias -> ${f.getMessage}", f)
+        logger.error(s"!!!!! index:$index type:${_type} alias:$alias -> ${f.getMessage}", f)
     }
   }
 
@@ -64,7 +64,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     *   whether the operation is successful or not
     */
   override def createDocument(document: T)(implicit t: ClassTag[T]): Boolean = {
-    Try(index(document, Some(index), Some(`type`))) match {
+    Try(index(document, Some(index), Some(_type))) match {
       case Success(_) => true
       case Failure(f) =>
         logger.error(f.getMessage, f)
@@ -85,7 +85,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     *   whether the operation is successful or not
     */
   override def updateDocument(document: T, upsert: Boolean)(implicit t: ClassTag[T]): Boolean = {
-    Try(update(document, Some(index), Some(`type`), upsert)) match {
+    Try(update(document, Some(index), Some(_type), upsert)) match {
       case Success(_) => true
       case Failure(f) =>
         logger.error(f.getMessage, f)
@@ -102,7 +102,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     */
   override def deleteDocument(uuid: String): Boolean = {
     Try(
-      delete(uuid, index, `type`)
+      delete(uuid, index, _type)
     ) match {
       case Success(value) => value
       case Failure(f) =>
@@ -125,7 +125,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     Try(
       update(
         index,
-        `type`,
+        _type,
         uuid,
         data,
         upsert = true
@@ -146,7 +146,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     *   the document retrieved, None otherwise
     */
   override def loadDocument(uuid: String)(implicit m: Manifest[T], formats: Formats): Option[T] = {
-    Try(get(uuid, Some(index), Some(`type`))) match {
+    Try(get(uuid, Some(index), Some(_type))) match {
       case Success(s) => s
       case Failure(f) =>
         logger.error(f.getMessage, f)
