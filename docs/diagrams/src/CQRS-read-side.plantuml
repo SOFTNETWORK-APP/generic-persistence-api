@@ -1,0 +1,34 @@
+@startuml CQRS-read-side
+hide footbox
+skinparam ParticipantPadding 20
+skinparam BoxPadding 10
+skinparam sequenceMessageAlign center
+skinparam monochrome true
+
+box#AntiqueWhite
+boundary "CQRS write side" as ebc
+end box
+
+database Journal as j
+database Offset as o
+participant "Event Processor Stream" as eps
+note right of eps : tag = 'domain-to-external'
+database "Query DB" as q
+
+eps -> eps++: init
+eps -> o++: readOffset()
+return **offset**
+eps -> j: readEventsByTag(**tag**, **offset**)
+
+loop **stream** of events with the tag "domain-to-external" \nstarting at the specified offset
+ebc -> j++: persist domain event with tag(s)\n Set("domain-to-external", ...)
+return
+
+j -->> eps: eventEnvelope
+eps -> eps++: processEvent(eventEnvelope.event)
+eps -> q++ : write
+return
+eps --> o-- :writeOffset(eventEnvelope.offset)
+
+end
+@enduml

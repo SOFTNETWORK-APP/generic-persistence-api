@@ -80,10 +80,8 @@ trait EventProcessorStream[E <: Event] extends EventStream {
             eventEnvelope.sequenceNr
           ).map(_ => eventEnvelope.offset)
         case other =>
-          log.error("Unexpected event [{}]", other)
-          Future.failed(
-            new IllegalArgumentException(s"Unexpected event [${other.getClass.getName}]")
-          )
+          log.warn("Skipped unexpected event [{}]", other)
+          Future.successful(eventEnvelope.offset)
       }
     }
   }

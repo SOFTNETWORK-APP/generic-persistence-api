@@ -337,39 +337,32 @@ The read side of CQRS is responsible for providing fast and efficient read acces
 
 It can be implemented in various ways, but a common pattern is to use event sourcing. In this approach, the read side subscribes to the event stream published by the write side and processes the events to build and update the read models.
 
-This approach is implemented in the framework through the "event Processor Stream"
+This approach is implemented in the framework through the "Event Processor Stream".
 
 ### Event Processor Stream
 
-The "Event Processor Stream" implementation of the read side of CQRS subscribes to specific events based on their tags, which are published by the write side through event sourcing. By subscribing to these events, the read side can receive and process only the events that are relevant to its domain.
-
-To ensure that each event is read only once for each stream processor, the read side maintains an offset for each stream processor, which is a pointer to the last event that was processed by that processor. By storing this offset for each stream processor, the read side can resume processing events from the point where each stream processor left off, in case of failure or restart.
-
-The read side uses the event tags to filter the event stream, so that only relevant events are processed. This allows the read side to update its models in real-time based on the events published by the write side, while avoiding duplication or missing events.
-
-The offset handling for each stream processor is a critical component of the "Event Processor Stream" implementation, as it ensures that each event is processed only once for each stream processor. The read side updates the offset for each stream processor each time an event is processed, so that it can resume processing from the point where each stream processor left off in case of failure or restart.
-
-Overall, the "Event Processor Stream" implementation of the read side of CQRS provides an efficient and scalable way to handle a large volume of events, while ensuring that each event is processed only once for each stream processor and that the read models remain up-to-date and consistent with the write side.
-
-### Offset Provider
+The "Event Processor Stream" implementation of the read side of CQRS subscribes to specific events based on their **tags**, which are published by the write side through event sourcing. By subscribing to these events, the read side can receive and process only the events that are relevant to its domain.
 
 When reading events from a stream, it is important to keep track of the position in the stream where the last event was read. This position is typically referred to as the "offset". The offset can be used to ensure that each event in the stream is read only once, even if the stream is read multiple times.
 
-Here's an example of how to use an offset to read an event just once from a specific event stream:
+To ensure that each event is read only once, the "Event Processor Stream" maintains an **offset** , which is a pointer to the last event that it **successfully** processed. By storing its offset, the processor can resume processing events from the point where it left off, in case of failure or restart. By keeping track of the offset, the "Event Stream Processor" _consumer_ can ensure that each event in the stream is read only once. If the application crashes or is restarted, it can resume reading from the last known offset, ensuring that no events are missed or duplicated.
 
-1. Initialize offset: The first time the stream is read, the offset is set to the beginning of the stream.
-2. Read events: The application reads events from the event stream, starting from the current offset.
-3. Process event: The application processes each event it read.
-4. Update offset: Once the application has processed an event it read, it updates the offset to the position of the last event it read.
-5. Repeat: The application repeats the process of reading events, starting from the updated offset.
+Here's how the "Event Stream Processor" handles offsets:
 
-By keeping track of the offset, the application can ensure that each event in the stream is read only once. If the application crashes or is restarted, it can resume reading from the last known offset, ensuring that no events are missed or duplicated.
+1. **Initialize offset**: When the processor is (re)started, it queries the "Offset Provider" to retrieve its current offset corresponding to the last event it successfully processed in the event stream.
+2. **Read events**: The processor queries the "Journal Provider" for events that have a specific tag, starting from the current offset.
+3. **Process event**: The processor processes each event it read from the event stream.
+4. **Write offset**: Once the processor has successfully processed the event, it updates its offset with the latter's offset value.
 
-In some event sourcing systems, the offset is stored along with the event data, making it easy to resume reading from the last known offset. In other systems, the offset is stored separately, for example in a database or distributed cache. It is this second approach that was chosen and implemented within the framework.
+Since distinct processors may read the same event stream, it is necessary to be able to uniquely distinguish their offset.
 
-Overall, the use of an offset is a key technique in event sourcing systems, as it allows events to be read just once from a specific event stream, ensuring data consistency and avoiding duplicate processing.
+Consequently, the "Event Processor Stream" is uniquely identified by a processor id and a specific tag.
 
-### Journal Provider
+![EventProcessorStream](docs/diagrams/out/EventProcessorStream.svg)
+
+Overall, the "Event Processor Stream" implementation of the read side of CQRS provides an efficient and scalable way to handle a large volume of events, while ensuring that each event is processed only once for each stream processor and that the read models remain up-to-date and consistent with the write side.
+
+![CQRS-read-side](docs/diagrams/out/CQRS_read_side.svg)
 
 ## Integration with other subsystems
 
