@@ -1,3 +1,8 @@
+![Build Status](https://github.com/SOFTNETWORK-APP/generic-persistence-api/workflows/Build/badge.svg)
+[![codecov](https://codecov.io/github/SOFTNETWORK-APP/generic-persistence-api/branch/main/graph/badge.svg?token=M9KVXR8KGS)](https://codecov.io/gh/SOFTNETWORK-APP/generic-persistence-api/)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/122252a6bdfb41c3af16d31f8cefaecc)](https://www.codacy.com/gh/SOFTNETWORK-APP/generic-persistence-api/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=SOFTNETWORK-APP/generic-persistence-api&amp;utm_campaign=Badge_Grade)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # generic-persistence-api
 
 a **CQRS/ES** framework written in scala using akka persistence
