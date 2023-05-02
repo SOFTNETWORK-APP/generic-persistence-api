@@ -160,6 +160,8 @@ trait PersistenceTestKit
   implicit val patience: PatienceConfig =
     PatienceConfig(Settings.DefaultTimeout, Span(100, org.scalatest.time.Millis))
 
+  override def schemaProvider: ActorSystem[_] => SchemaProvider = _ => this
+
   override def beforeAll(): Unit = {
     initAndJoinCluster()
   }

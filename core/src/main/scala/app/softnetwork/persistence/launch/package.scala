@@ -9,7 +9,7 @@ import app.softnetwork.persistence.typed.EntityBehavior
 
 package object launch {
 
-  trait ClusterDomainEventHandler { _: SchemaProvider =>
+  trait ClusterDomainEventHandler {
     def handleEvent(event: ClusterDomainEvent)(implicit system: ActorSystem[_]): Unit = ()
   }
 

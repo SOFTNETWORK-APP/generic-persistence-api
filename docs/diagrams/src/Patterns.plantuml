@@ -14,7 +14,7 @@ package app.softnetwork {
         abstract class CommandTypeKey <C: Command> <<(T,orchid) trait >> {
             +def TypeKey(implicit c: ClassTag[C]): EntityTypeKey[C]
         }
-        note left of CommandTypeKey::TypeKey
+        note right of CommandTypeKey::TypeKey
             A key that uniquely identifies
             the type of entity in the cluster
         end note
@@ -45,6 +45,12 @@ package app.softnetwork {
             }
             EntityPattern +-- RecipientPattern: <<implicit>>
         }
+    }
+    package persistence.service {
+        abstract Service <C: Command, R: CommandResult> <<(T,orchid) trait>>{
+            +def run(entityId: String, command: C): Future[R]
+        }
+        Patterns <|.. Service: <<self>>
     }
 }
 @enduml

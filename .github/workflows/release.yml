@@ -44,8 +44,8 @@ jobs:
         flags: unittests
         fail_ci_if_error: true
         verbose: true
-#    - name: Publish
-#      run: sbt publish
+    - name: Publish
+      run: sbt publish
 
   lint:
     runs-on: ubuntu-latest

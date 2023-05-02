@@ -23,7 +23,7 @@ import scala.language.implicitConversions
 
 /** Created by smanciot on 15/05/2020.
   */
-trait PersistenceGuardian extends ClusterDomainEventHandler { _: SchemaProvider =>
+trait PersistenceGuardian extends ClusterDomainEventHandler {
 
   def config: Config
 
@@ -50,6 +50,8 @@ trait PersistenceGuardian extends ClusterDomainEventHandler { _: SchemaProvider 
 
   def startSystem: ActorSystem[_] => Unit = _ => ()
 
+  def schemaProvider: ActorSystem[_] => SchemaProvider
+
   def banner: String =
     """
       | ____         __ _              _                      _
@@ -62,10 +64,11 @@ trait PersistenceGuardian extends ClusterDomainEventHandler { _: SchemaProvider 
 
   def setup(): Behavior[ClusterDomainEvent] = {
     Behaviors.setup[ClusterDomainEvent] { context =>
-      // initialize schema
-      initSchema()
 
       val system = context.system
+
+      // initialize schema
+      schemaProvider(system).initSchema()
 
       val cluster: Cluster = Cluster(system)
 
