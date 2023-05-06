@@ -24,14 +24,17 @@ trait SlickDatabase extends ClasspathResources {
 
   lazy val db: Database = {
     log.info(profile)
-    SlickExtension(classicSystem).database(config).database
+    val db = SlickExtension(classicSystem).database(config).database
+    classicSystem.registerOnTermination(shutdown())
+    db
   }
-
-  sys.addShutdownHook(shutdown())
 
   def shutdown(): Unit = {
     log.info(s"Shutting down database")
-    db.shutdown
+    Try(db.shutdown) match {
+      case Success(_) =>
+      case Failure(f) => log.error(f.getMessage)
+    }
   }
 
   def withFile(file: String, separator: String = ";"): Unit = {

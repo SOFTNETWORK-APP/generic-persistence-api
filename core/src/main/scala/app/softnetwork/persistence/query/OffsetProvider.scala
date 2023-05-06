@@ -31,8 +31,4 @@ trait OffsetProvider { _: EventStream =>
     */
   protected def writeOffset(offset: Offset): Future[Done]
 
-  protected def stopOffset(): Unit = ()
-
-  sys.addShutdownHook(stopOffset())
-
 }

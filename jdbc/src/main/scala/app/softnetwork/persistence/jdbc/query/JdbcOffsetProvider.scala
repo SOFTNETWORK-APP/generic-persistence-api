@@ -134,8 +134,4 @@ trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase { _: EventStr
     }
   }
 
-  override protected def stopOffset(): Unit = {
-    log.info("Stopping Offset")
-    session.close()
-  }
 }
