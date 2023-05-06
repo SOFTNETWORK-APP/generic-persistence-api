@@ -5,7 +5,7 @@ import akka.persistence.query.{Offset, Sequence}
 
 import scala.concurrent.Future
 
-trait InMemoryOffsetProvider extends OffsetProvider {
+trait InMemoryOffsetProvider extends OffsetProvider { _: EventStream =>
 
   private[this] var _offset: Long = 0L
 

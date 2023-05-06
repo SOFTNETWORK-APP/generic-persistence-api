@@ -10,7 +10,7 @@ import app.softnetwork.concurrent.scalatest.CompletionTestKit
 import app.softnetwork.config.Settings
 import app.softnetwork.persistence.launch.PersistenceGuardian
 import app.softnetwork.persistence.message.Command
-import app.softnetwork.persistence.schema.{InMemorySchemaProvider, SchemaProvider}
+import app.softnetwork.persistence.schema.{InMemorySchema, Schema, SchemaProvider}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
@@ -29,8 +29,9 @@ trait PersistenceTestKit
     with BeforeAndAfterAll
     with Eventually
     with CompletionTestKit
-    with Matchers {
-  _: Suite with SchemaProvider =>
+    with Matchers
+    with SchemaProvider {
+  _: Suite with Schema =>
 
   import app.softnetwork.persistence._
 
@@ -160,7 +161,7 @@ trait PersistenceTestKit
   implicit val patience: PatienceConfig =
     PatienceConfig(Settings.DefaultTimeout, Span(100, org.scalatest.time.Millis))
 
-  override def schemaProvider: ActorSystem[_] => SchemaProvider = _ => this
+  override def schema: ActorSystem[_] => Schema = _ => this
 
   override def beforeAll(): Unit = {
     initAndJoinCluster()
@@ -196,7 +197,7 @@ trait PersistenceTestKit
     ClusterSharding(system).entityRefFor(typeKey, entityId)
 }
 
-trait InMemoryPersistenceTestKit extends PersistenceTestKit with InMemorySchemaProvider {
+trait InMemoryPersistenceTestKit extends PersistenceTestKit with InMemorySchema {
   _: Suite =>
   override lazy val config: Config =
     akkaConfig

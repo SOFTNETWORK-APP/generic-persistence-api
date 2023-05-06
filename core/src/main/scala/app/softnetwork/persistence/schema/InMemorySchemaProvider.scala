@@ -1,9 +1,6 @@
 package app.softnetwork.persistence.schema
+import akka.actor.typed.ActorSystem
 
-/** Created by smanciot on 12/05/2021.
-  */
 trait InMemorySchemaProvider extends SchemaProvider {
-  override def schemaType: SchemaType = EmptySchema
-
-  override def create(schema: String, separator: String): Unit = ()
+  override def schema: ActorSystem[_] => Schema = _ => new InMemorySchema {}
 }

@@ -24,11 +24,7 @@ trait SlickDatabase extends ClasspathResources {
 
   lazy val db: Database = {
     log.info(profile)
-    val slickDatabase = SlickExtension(classicSystem).database(config)
-    slickDatabase.profile
-    val db = slickDatabase.database
-    classicSystem.registerOnTermination(db.shutdown)
-    db
+    SlickExtension(classicSystem).database(config).database
   }
 
   sys.addShutdownHook(shutdown())

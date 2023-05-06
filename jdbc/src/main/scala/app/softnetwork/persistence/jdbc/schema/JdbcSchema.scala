@@ -1,15 +1,10 @@
 package app.softnetwork.persistence.jdbc.schema
 
-import app.softnetwork.persistence.schema.AbstractSchema
+import app.softnetwork.persistence.jdbc.db.SlickDatabase
+import app.softnetwork.persistence.schema.Schema
 
-/** Created by smanciot on 07/05/2021.
-  */
-object JdbcSchema {
+trait JdbcSchema extends Schema with SlickDatabase {
 
-  case object Postgres extends AbstractSchema(schema = "schema/postgres/postgres-create-schema.sql")
-  case object H2 extends AbstractSchema(schema = "schema/h2/h2-create-schema.sql")
-  case object MySQL extends AbstractSchema(schema = "schema/mysql/mysql-create-schema.sql")
-  case object Oracle extends AbstractSchema(schema = "schema/oracle/oracle-create-schema.sql")
-  case object SQLServer
-      extends AbstractSchema(schema = "schema/sqlserver/sqlserver-create-schema.sql")
+  override def create(schema: String, separator: String): Unit = withFile(schema, separator)
+
 }

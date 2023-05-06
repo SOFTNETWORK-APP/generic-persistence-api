@@ -1,8 +1,8 @@
 package app.softnetwork.persistence.jdbc.scalatest
 
+import akka.actor
 import akka.actor.typed.ActorSystem
-import akka.{actor => classic}
-import app.softnetwork.persistence.jdbc.schema.JdbcSchemaProvider
+import app.softnetwork.persistence.jdbc.schema.JdbcSchema
 import app.softnetwork.persistence.scalatest.PersistenceTestKit
 import app.softnetwork.persistence.typed._
 import com.typesafe.config.{Config, ConfigFactory}
@@ -10,11 +10,11 @@ import org.scalatest.Suite
 
 /** Created by smanciot on 14/05/2021.
   */
-trait JdbcPersistenceTestKit extends PersistenceTestKit { _: Suite with JdbcSchemaProvider =>
+trait JdbcPersistenceTestKit extends PersistenceTestKit with JdbcSchema { _: Suite =>
 
   implicit def system: ActorSystem[_] = typedSystem()
 
-  override implicit lazy val classicSystem: classic.ActorSystem = system
+  override implicit lazy val classicSystem: actor.ActorSystem = system
 
   def slickProfile: String
 
@@ -92,16 +92,6 @@ trait JdbcPersistenceTestKit extends PersistenceTestKit { _: Suite with JdbcSche
     akkaConfig
       .withFallback(ConfigFactory.load("softnetwork-jdbc-persistence.conf"))
       .withFallback(ConfigFactory.load())
-  }
-
-  override def beforeAll(): Unit = {
-    initSchema()
-    super.beforeAll()
-  }
-
-  override def afterAll(): Unit = {
-    super.afterAll()
-    db.close()
   }
 
 }

@@ -1,14 +1,9 @@
 package app.softnetwork.persistence.schema
 
-/** Created by smanciot on 07/05/2021.
-  */
+import akka.actor.typed.ActorSystem
+
 trait SchemaProvider {
-  def schemaType: SchemaType
 
-  def initSchema(): Unit = {
-    create(schemaType.schema)
-  }
-
-  def create(schema: String, separator: String = ";"): Unit
+  def schema: ActorSystem[_] => Schema
 
 }

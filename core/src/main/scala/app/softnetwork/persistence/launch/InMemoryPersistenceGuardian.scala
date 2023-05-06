@@ -1,0 +1,5 @@
+package app.softnetwork.persistence.launch
+
+import app.softnetwork.persistence.schema.InMemorySchemaProvider
+
+trait InMemoryPersistenceGuardian extends PersistenceGuardian with InMemorySchemaProvider

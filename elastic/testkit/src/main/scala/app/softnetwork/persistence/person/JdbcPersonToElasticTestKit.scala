@@ -2,7 +2,6 @@ package app.softnetwork.persistence.person
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.persistence.jdbc.query.{JdbcJournalProvider, JdbcOffsetProvider}
-import app.softnetwork.persistence.jdbc.schema.JdbcSchemaProvider
 import app.softnetwork.persistence.person.query.{
   PersonToElasticProcessorStream,
   PersonToExternalProcessorStream
@@ -10,7 +9,6 @@ import app.softnetwork.persistence.person.query.{
 import com.typesafe.config.Config
 
 trait JdbcPersonToElasticTestKit extends PersonToElasticTestKit with JdbcPersonTestKit {
-  _: JdbcSchemaProvider =>
 
   override def person2ExternalProcessorStream: ActorSystem[_] => PersonToExternalProcessorStream =
     sys => {

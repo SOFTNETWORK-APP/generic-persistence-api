@@ -1,9 +1,12 @@
 package app.softnetwork.persistence.jdbc.scalatest
 
-import app.softnetwork.persistence.jdbc.schema.H2SchemaProvider
+import app.softnetwork.persistence.schema._
+import app.softnetwork.persistence.jdbc.schema.JdbcSchemaTypes.H2
 import org.scalatest.Suite
 
-trait H2TestKit extends JdbcPersistenceTestKit with H2SchemaProvider { _: Suite =>
+trait H2TestKit extends JdbcPersistenceTestKit { _: Suite =>
+
+  override val schemaType: SchemaType = H2
 
   import app.softnetwork.persistence._
 

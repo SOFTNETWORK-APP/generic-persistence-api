@@ -13,13 +13,13 @@ import app.softnetwork.persistence.person.query.{
 import app.softnetwork.persistence.person.typed.PersonBehavior
 import app.softnetwork.persistence.query.{EventProcessorStream, ExternalPersistenceProvider}
 import app.softnetwork.persistence.scalatest.PersistenceTestKit
-import app.softnetwork.persistence.schema.SchemaProvider
+import app.softnetwork.persistence.schema.Schema
 import app.softnetwork.serialization.commonFormats
 import org.json4s.Formats
 import org.scalatest.wordspec.AnyWordSpecLike
 
 trait PersonTestKit extends PersonHandler with AnyWordSpecLike with PersistenceTestKit {
-  _: SchemaProvider =>
+  _: Schema =>
 
   implicit def personSystem: ActorSystem[_] = typedSystem()
 

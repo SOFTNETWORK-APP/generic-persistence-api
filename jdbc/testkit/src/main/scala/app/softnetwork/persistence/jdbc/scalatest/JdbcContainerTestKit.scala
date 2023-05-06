@@ -1,10 +1,9 @@
 package app.softnetwork.persistence.jdbc.scalatest
 
-import app.softnetwork.persistence.jdbc.schema.JdbcSchemaProvider
 import org.scalatest.Suite
 import org.testcontainers.containers.JdbcDatabaseContainer
 
-trait JdbcContainerTestKit extends JdbcPersistenceTestKit { _: Suite with JdbcSchemaProvider =>
+trait JdbcContainerTestKit extends JdbcPersistenceTestKit { _: Suite =>
 
   def jdbcContainer: JdbcDatabaseContainer[_]
 

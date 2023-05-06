@@ -3,14 +3,14 @@ package app.softnetwork.persistence.jdbc.query
 import akka.Done
 import akka.persistence.query.{Offset, Sequence}
 import app.softnetwork.persistence.jdbc.db.SlickDatabase
-import app.softnetwork.persistence.query.OffsetProvider
+import app.softnetwork.persistence.query.{EventStream, OffsetProvider}
 import mustache.Mustache
 import slick.jdbc.JdbcBackend.Session
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase {
+trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase { _: EventStream =>
 
   lazy val jdbcEventProcessorOffsets: JdbcEventProcessorOffsets = JdbcEventProcessorOffsets(config)
 
@@ -19,8 +19,6 @@ trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase {
   lazy val offsetTable: String = jdbcEventProcessorOffsets.table
 
   private[this] implicit lazy val session: Session = withDatabase(_.createSession())
-
-  classicSystem.registerOnTermination(() => session.close())
 
   lazy val includeSchema: Boolean = profile.equals("slick.jdbc.PostgresProfile$")
 
@@ -39,6 +37,8 @@ trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase {
           )
         )
       )
+    } else {
+      log.info(s"$offsetSchema.$offsetTable already exists")
     }
   }
 
@@ -55,22 +55,23 @@ trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase {
       statement.setString(1, platformEventProcessorId)
       statement.setString(2, platformTag)
       val resultSet = statement.executeQuery()
-      val sequenceNumber =
+      val maybeOffset =
         if (resultSet.next()) {
           Some(resultSet.getLong("sequence_number"))
         } else {
           None
         }
       statement.close()
-      sequenceNumber
+      maybeOffset
     } match {
-      case Success(sequenceNumber) =>
-        sequenceNumber match {
-          case Some(s) =>
-            log.info(s"SELECT Offset ($platformEventProcessorId, $platformTag) -> $s")
-            Future.successful(Offset.sequence(s))
+      case Success(maybeOffset) =>
+        maybeOffset match {
+          case Some(offset) =>
+            log.info(s"SELECT Offset ($platformEventProcessorId, $platformTag) -> $offset")
+            Future.successful(Offset.sequence(offset))
           case _ =>
             Try {
+              log.info(s"INITIALIZING Offset ($platformEventProcessorId, $platformTag) -> 0")
               val statement = session.prepareStatement(
                 s"INSERT INTO ${if (includeSchema) { offsetSchema + "." }
                 else { "" }}$offsetTable (event_processor_id, tag, sequence_number) VALUES(?, ?, 0)"
@@ -84,7 +85,7 @@ trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase {
                   log.error(
                     s"FAILED TO INSERT Offset ($platformEventProcessorId, $platformTag, 0) -> $s"
                   )
-                Future.successful(startOffset())
+                Future.successful(Offset.sequence(0L))
               case Failure(f) => Future.failed(f)
             }
         }
@@ -128,9 +129,13 @@ trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase {
         }
       case other =>
         Future.failed(
-          new Exception(s"JdbcJournalProvider does not support Offset ${other.getClass}")
+          new Exception(s"JdbcOffsetProvider does not support Offset ${other.getClass}")
         )
     }
   }
 
+  override protected def stopOffset(): Unit = {
+    log.info("Stopping Offset")
+    session.close()
+  }
 }

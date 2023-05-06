@@ -7,7 +7,7 @@ import app.softnetwork.persistence.environment
 
 import scala.concurrent.Future
 
-trait OffsetProvider extends EventStream {
+trait OffsetProvider { _: EventStream =>
 
   implicit def classicSystem: classic.ActorSystem
 
@@ -15,9 +15,7 @@ trait OffsetProvider extends EventStream {
 
   protected final lazy val platformTag: String = s"$tag-$environment"
 
-  protected def initOffset(): Unit = {}
-
-  protected def startOffset(): Offset = Offset.sequence(0L)
+  protected def initOffset(): Unit = ()
 
   /** Read current offset
     *
@@ -32,5 +30,9 @@ trait OffsetProvider extends EventStream {
     * @return
     */
   protected def writeOffset(offset: Offset): Future[Done]
+
+  protected def stopOffset(): Unit = ()
+
+  sys.addShutdownHook(stopOffset())
 
 }

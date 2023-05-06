@@ -6,10 +6,10 @@ import app.softnetwork.elastic.scalatest.ElasticTestKit
 import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.persistence.person.model.Person
 import app.softnetwork.persistence.query.ExternalPersistenceProvider
-import app.softnetwork.persistence.schema.SchemaProvider
+import app.softnetwork.persistence.schema.Schema
 import com.typesafe.config.Config
 
-trait PersonToElasticTestKit extends PersonTestKit with ElasticTestKit { _: SchemaProvider =>
+trait PersonToElasticTestKit extends PersonTestKit with ElasticTestKit { _: Schema =>
 
   override lazy val externalPersistenceProvider: ExternalPersistenceProvider[Person] =
     new ElasticProvider[Person] with JestClientApi with ManifestWrapper[Person] {
