@@ -81,6 +81,51 @@ lazy val coreTestkit = project.in(file("core/testkit"))
     commonTestkit % "compile->compile;test->test;it->it"
   )
 
+lazy val server = project.in(file("server"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings)
+  .enablePlugins(BuildInfoPlugin)
+  .dependsOn(
+    core % "compile->compile;test->test;it->it"
+  )
+
+lazy val serverTestkit = project.in(file("server/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    coreTestkit % "compile->compile;test->test;it->it"
+  )
+
+lazy val sessionCommon = project.in(file("session/common"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .enablePlugins(AkkaGrpcPlugin)
+  .dependsOn(
+    server % "compile->compile;test->test;it->it"
+  )
+
+lazy val sessionCore = project.in(file("session/core"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings, BuildInfoSettings.settings)
+  .enablePlugins(BuildInfoPlugin)
+  .dependsOn(
+    sessionCommon % "compile->compile;test->test;it->it"
+  )
+
+lazy val sessionTestkit = project.in(file("session/testkit"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .enablePlugins(BuildInfoPlugin)
+  .dependsOn(
+    sessionCore % "compile->compile;test->test;it->it"
+  )
+  .dependsOn(
+    serverTestkit % "compile->compile;test->test;it->it"
+  )
+
 lazy val jdbc = project.in(file("jdbc"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
@@ -156,7 +201,12 @@ lazy val root = project.in(file("."))
     counter,
     elastic,
     elasticTestkit,
-    kv
+    kv,
+    server,
+    serverTestkit,
+    sessionCommon,
+    sessionCore,
+    sessionTestkit
   )
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
