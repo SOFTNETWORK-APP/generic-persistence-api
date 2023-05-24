@@ -13,4 +13,12 @@ val akkaHttp: Seq[ModuleID] = Seq(
   "de.heikoseeberger" %% "akka-http-json4s" % Versions.akkaHttpJson4s
 )
 
-libraryDependencies ++= akkaHttp
+val tapir = Seq(
+  "com.softwaremill.sttp.tapir" %% "tapir-core" % Versions.tapir,
+  "com.softwaremill.sttp.tapir" %% "tapir-akka-http-server" % Versions.tapir excludeAll ExclusionRule(organization = "com.typesafe.akka"),
+  "com.softwaremill.sttp.tapir" %% "tapir-json-spray" % Versions.tapir,
+  "com.softwaremill.sttp.tapir" %% "tapir-json-json4s" % Versions.tapir,
+  "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % Versions.tapir
+)
+
+libraryDependencies ++= akkaHttp ++ tapir

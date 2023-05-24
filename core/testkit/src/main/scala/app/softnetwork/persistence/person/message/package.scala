@@ -24,7 +24,7 @@ package object message {
   case object DeletePerson extends PersonCommand
 
   sealed trait PersonCommandResult extends CommandResult
-  case object PersonAdded extends PersonCommandResult
+  case class PersonAdded(uuid: String) extends PersonCommandResult
   case object PersonUpdated extends PersonCommandResult
   case object NameUpdated extends PersonCommandResult
   case object PersonDeleted extends PersonCommandResult

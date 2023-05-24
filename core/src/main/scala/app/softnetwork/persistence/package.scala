@@ -43,4 +43,5 @@ package object persistence {
 
   val version: String = sys.env.getOrElse("VERSION", BuildInfo.version)
 
+  val appName: String = sys.env.getOrElse("APP", BuildInfo.name)
 }

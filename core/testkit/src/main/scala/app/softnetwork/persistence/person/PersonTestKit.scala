@@ -52,7 +52,7 @@ trait PersonTestKit extends PersonHandler with AnyWordSpecLike with PersistenceT
       val probe: TestProbe[PersonEvent] = createTestProbe[PersonEvent]()
       subscribeProbe(probe)
       ?(uuid, AddPerson("name", birthday)) await {
-        case PersonAdded =>
+        case _: PersonAdded =>
           assert(loadPerson(uuid).map(_.name).getOrElse("") == "name")
           probe.receiveMessage() match {
             case _: PersonCreatedEvent =>

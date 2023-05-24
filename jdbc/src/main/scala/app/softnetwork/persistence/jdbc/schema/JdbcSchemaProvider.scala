@@ -2,15 +2,14 @@ package app.softnetwork.persistence.jdbc.schema
 
 import akka.actor
 import akka.actor.typed.ActorSystem
+import app.softnetwork.persistence.launch.PersistenceGuardian
 import app.softnetwork.persistence.schema.{Schema, SchemaProvider, SchemaType}
 import app.softnetwork.persistence.typed._
 import com.typesafe.config.Config
 
-trait JdbcSchemaProvider extends SchemaProvider {
+trait JdbcSchemaProvider extends SchemaProvider { _: PersistenceGuardian =>
 
   def schemaType: SchemaType
-
-  def config: Config
 
   override def schema: ActorSystem[_] => Schema = sys =>
     new JdbcSchema {

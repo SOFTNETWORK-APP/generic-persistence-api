@@ -11,7 +11,7 @@ package object message {
 
   sealed trait RefreshTokenCommand extends EntityCommand {
     def selector: String
-    override val id: String = selector
+    override lazy val id: String = selector
   }
 
   @SerialVersionUID(0L)

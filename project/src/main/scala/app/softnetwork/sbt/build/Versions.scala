@@ -6,11 +6,13 @@ object Versions {
 
   val akkaHttp = "10.2.10"
 
-  val akkaHttpJson4s = "1.37.0" //1.37.0 -> 1.39.2
+  val akkaHttpJson4s = "1.39.2" //1.37.0 -> 1.39.2
 
-  val akkaHttpSession = "0.5.11" // 0.5.11 -> 0.7.0
+  val akkaHttpSession = "0.7.0" // 0.5.11 -> 0.7.0
 
-  val akkaPersistenceJdbc = "3.5.2"
+  val tapir = "1.3.0"
+
+  val akkaPersistenceJdbc = "5.0.4"
 
   val akkaManagement = "1.1.4" // 1.1.4 -> 1.2
 
@@ -22,9 +24,9 @@ object Versions {
 
   val kxbmap = "0.4.4"
 
-  val jackson = "2.11.4"
+  val jackson = "2.12.7" // 2.11.4 -> 2.12.7
 
-  val json4s = "3.6.12"
+  val json4s = "4.0.6" // 3.6.12 -> 4.0.6
 
   val scalaLogging = "3.9.2"
 
@@ -45,8 +47,6 @@ object Versions {
   val log4j = "2.8.2"
 
   val slick = "3.3.3"
-
-  val lightbendAkkaPersistenceJdbc = "5.0.4"
 
   val akkaPersistenceCassandra = "1.0.6"
 

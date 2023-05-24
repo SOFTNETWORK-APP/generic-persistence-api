@@ -30,11 +30,11 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.3.0.3"
+ThisBuild / version := "0.3.1"
 
 ThisBuild / scalaVersion := "2.12.11"
 
-ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature", "-target:jvm-1.8")
+ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature", "-target:jvm-1.8", "-Ypartial-unification")
 
 ThisBuild / javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 

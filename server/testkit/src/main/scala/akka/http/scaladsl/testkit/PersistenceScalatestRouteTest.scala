@@ -54,11 +54,16 @@ trait PersistenceScalatestRouteTest
       .flatMap(header => {
         val cookie = header.value().split("=")
         val name = cookie.head
-        val value = cookie.tail.mkString("").split(";").head
-        var ret: Seq[HttpHeader] = Seq(Cookie(name, value))
-        if (name == "XSRF-TOKEN")
-          ret = ret ++ Seq(RawHeader("X-XSRF-TOKEN", value))
-        ret
+        val value = cookie.tail.mkString("=").split(";").head
+        if (value.isEmpty) {
+          Seq.empty
+        } else {
+          var ret: Seq[HttpHeader] = Seq(Cookie(name, value))
+          // required for akka-http-session
+          if (name == "XSRF-TOKEN")
+            ret = ret ++ Seq(RawHeader("X-XSRF-TOKEN", value))
+          ret
+        }
       })
   }
 

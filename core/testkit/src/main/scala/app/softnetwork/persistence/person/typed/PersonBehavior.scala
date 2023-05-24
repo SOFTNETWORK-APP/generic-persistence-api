@@ -74,7 +74,7 @@ trait PersonBehavior
         import cmd._
         Effect
           .persist(PersonCreatedEvent(Person(entityId, name, birthDate)))
-          .thenRun(_ => PersonAdded ~> replyTo)
+          .thenRun(_ => PersonAdded(entityId) ~> replyTo)
       case LoadPerson =>
         state match {
           case Some(person) => Effect.none.thenRun(_ => PersonLoaded(person) ~> replyTo)

@@ -18,7 +18,7 @@ import org.scalatest.time.Span
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import org.slf4j.Logger
 
-import java.net.{InetAddress, ServerSocket}
+import java.net.ServerSocket
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
@@ -39,7 +39,7 @@ trait PersistenceTestKit
 
   lazy val systemName: String = generateUUID()
 
-  def hostname: String = InetAddress.getLocalHost.getHostAddress
+  def hostname: String = "127.0.0.1"
 
   def dynamicPort: Int = {
     val socket = new ServerSocket(0)
@@ -95,7 +95,8 @@ trait PersistenceTestKit
                 |
                 |akka.management {
                 |  http {
-                |    port = $managementPort
+                |    hostname = $hostname
+                |    port     = $managementPort
                 |  }
                 |  cluster.bootstrap {
                 |    contact-point-discovery {
@@ -104,6 +105,7 @@ trait PersistenceTestKit
                 |  }
                 |}
                 |
+                |akka.remote.artery.canonical.hostname = $hostname
                 |akka.remote.artery.canonical.port = 0
                 |
                 |akka.coordinated-shutdown.exit-jvm = off

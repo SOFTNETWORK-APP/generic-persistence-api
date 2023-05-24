@@ -1,0 +1,3 @@
+package app.softnetwork.session.scalatest
+
+class OneOffCookieSessionTestKitSpec extends SessionTestKitSpec with OneOffCookieSessionTestKit
