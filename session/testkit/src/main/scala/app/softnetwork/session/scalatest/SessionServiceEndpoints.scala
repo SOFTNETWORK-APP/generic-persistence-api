@@ -44,7 +44,7 @@ trait SessionServiceEndpoints
   }
 
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
-    setSession(endpoint.in(jsonBody[CreateSession]))
+    setSession(endpoint.in(jsonBody[CreateSession]).description("the session to create")).post
       .in("session")
       .out(csrfCookie)
       .serverLogic(_ => _ => Future.successful(Right(Some(setNewCsrfToken().valueWithMeta))))

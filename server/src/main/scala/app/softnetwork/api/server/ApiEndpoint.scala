@@ -29,7 +29,11 @@ object ApiEndpoint {
   def endpointsToSwaggerEndpoints(
     endpoints: List[ServerEndpoint[Any, Future]]
   ): List[ServerEndpoint[Any, Future]] =
-    SwaggerInterpreter().fromEndpoints[Future](endpoints.map(_.endpoint), appName, version)
+    SwaggerInterpreter().fromEndpoints[Future](
+      endpoints.map(_.endpoint.prependIn(config.ServerSettings.RootPath)),
+      appName,
+      version
+    )
 
   implicit def endpointsToRoute(endpoints: List[ServerEndpoint[Any, Future]])(implicit
     ec: ExecutionContext

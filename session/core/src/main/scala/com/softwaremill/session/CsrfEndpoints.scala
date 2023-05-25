@@ -90,7 +90,7 @@ trait CsrfEndpoints[T] { _: CsrfCheck =>
       Future
     ]
   ): PartialServerEndpointWithSecurityOutput[
-    (SECURITY_INPUT, Method, Option[String], Option[String], Map[String, String]),
+    (SECURITY_INPUT, Method, Option[String], Option[String] /*, Option[Map[String, String]]*/ ),
     PRINCIPAL,
     Unit,
     Unit,
@@ -106,12 +106,12 @@ trait CsrfEndpoints[T] { _: CsrfCheck =>
       .securityIn(submittedCsrfCookie)
       // extract token from header
       .securityIn(submittedCsrfHeader)
-      // extract token from form
-      .securityIn(formBody[Map[String, String]])
+//      // extract token from form
+//      .securityIn(formBody[Map[String, String]])
       .out(partialServerEndpointWithSecurityOutput.securityOutput)
       .out(csrfCookie)
       .errorOut(statusCode(StatusCode.Unauthorized))
-      .serverSecurityLogicWithOutput { case (si, method, cookie, header, form) =>
+      .serverSecurityLogicWithOutput { case (si, method, cookie, header) =>
         partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(si).map {
           case Left(l) => Left(l)
           case Right(r) =>
@@ -119,7 +119,7 @@ trait CsrfEndpoints[T] { _: CsrfCheck =>
               method,
               cookie,
               header,
-              if (checkHeaderAndForm) form.get(manager.config.csrfSubmittedName) else None
+              /*if (checkHeaderAndForm) form.get(manager.config.csrfSubmittedName) else*/ None
             ).map(result => ((r._1, result._1), r._2))
         }
       }
