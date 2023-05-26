@@ -2,21 +2,23 @@ package app.softnetwork.api.server
 
 import akka.http.scaladsl.server.Route
 import app.softnetwork.persistence.{appName, version}
+import sttp.capabilities.WebSockets
+import sttp.capabilities.akka.AkkaStreams
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 import scala.concurrent.{ExecutionContext, Future}
-
 import scala.language.implicitConversions
 
 trait ApiEndpoint {
 
   import ApiEndpoint._
 
-  def endpoints: List[ServerEndpoint[Any, Future]]
+  def endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
 
-  def swaggerEndpoints: List[ServerEndpoint[Any, Future]] = endpointsToSwaggerEndpoints(endpoints)
+  def swaggerEndpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]] =
+    endpointsToSwaggerEndpoints(endpoints)
 
   def swaggerRoute(implicit ec: ExecutionContext): Route = swaggerEndpoints
 
@@ -27,15 +29,17 @@ trait ApiEndpoint {
 object ApiEndpoint {
 
   def endpointsToSwaggerEndpoints(
-    endpoints: List[ServerEndpoint[Any, Future]]
-  ): List[ServerEndpoint[Any, Future]] =
+    endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
+  ): List[ServerEndpoint[AkkaStreams with WebSockets, Future]] =
     SwaggerInterpreter().fromEndpoints[Future](
       endpoints.map(_.endpoint.prependIn(config.ServerSettings.RootPath)),
       appName,
       version
     )
 
-  implicit def endpointsToRoute(endpoints: List[ServerEndpoint[Any, Future]])(implicit
+  implicit def endpointsToRoute(
+    endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
+  )(implicit
     ec: ExecutionContext
   ): Route = AkkaHttpServerInterpreter().toRoute(endpoints)
 

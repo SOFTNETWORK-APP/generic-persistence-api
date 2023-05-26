@@ -9,13 +9,11 @@ trait SessionServiceRoutes extends ApiRoutes {
 }
 
 trait RefreshableCookieSessionServiceRoutes extends SessionServiceRoutes {
-  override def apiRoutes(system: ActorSystem[_]): Route = RefreshableCookieSessionServiceEndpoints(
-    system
-  ).route
+  override def apiRoutes(system: ActorSystem[_]): Route =
+    SessionServiceEndpoints.refreshable(system).route
 }
 
 trait OneOffCookieSessionServiceRoutes extends SessionServiceRoutes {
-  override def apiRoutes(system: ActorSystem[_]): Route = OneOffCookieSessionServiceEndpoints(
-    system
-  ).route
+  override def apiRoutes(system: ActorSystem[_]): Route =
+    SessionServiceEndpoints.oneOff(system).route
 }

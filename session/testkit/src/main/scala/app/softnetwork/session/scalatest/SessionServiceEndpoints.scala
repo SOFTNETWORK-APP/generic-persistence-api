@@ -68,16 +68,16 @@ trait SessionServiceEndpoints
   lazy val route: Route = apiRoute ~ swaggerRoute
 }
 
-object RefreshableCookieSessionServiceEndpoints {
-  def apply(_system: ActorSystem[_]): SessionServiceEndpoints =
+object SessionServiceEndpoints {
+
+  def refreshable(_system: ActorSystem[_]): SessionServiceEndpoints =
     new SessionServiceEndpoints with RefreshableCookieSessionEndpoints {
       override implicit def system: ActorSystem[_] = _system
     }
-}
 
-object OneOffCookieSessionServiceEndpoints {
-  def apply(_system: ActorSystem[_]): SessionServiceEndpoints =
+  def oneOff(_system: ActorSystem[_]): SessionServiceEndpoints =
     new SessionServiceEndpoints with OneOffCookieSessionEndpoints {
       override implicit def system: ActorSystem[_] = _system
     }
+
 }
