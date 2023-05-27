@@ -4,13 +4,13 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.session.config.Settings.Session.CookieSecret
 import app.softnetwork.session.handlers.SessionRefreshTokenDao
 import com.softwaremill.session.{
-  CookieTransportEndpoints,
   CsrfCheck,
+  GenericOneOffCookieSessionEndpoints,
+  GenericOneOffHeaderSessionEndpoints,
+  GenericRefreshableCookieSessionEndpoints,
+  GenericRefreshableHeaderSessionEndpoints,
   GenericSessionEndpoints,
-  HeaderTransportEndpoints,
-  OneOffSessionContinuity,
   RefreshTokenStorage,
-  RefreshableSessionContinuity,
   SessionConfig,
   SessionContinuityEndpoints,
   SessionManager,
@@ -38,31 +38,26 @@ trait SessionEndpoints extends GenericSessionEndpoints[Session] {
 
 }
 
-trait CookieSessionEndpoints extends SessionEndpoints with CookieTransportEndpoints[Session] {
-  _: SessionContinuityEndpoints[Session] with CsrfCheck =>
-
-}
-
-trait HeaderSessionEndpoints extends SessionEndpoints with HeaderTransportEndpoints[Session] {
-  _: SessionContinuityEndpoints[Session] with CsrfCheck =>
-}
-
 trait OneOffCookieSessionEndpoints
-    extends CookieSessionEndpoints
-    with OneOffSessionContinuity[Session] {
+    extends SessionEndpoints
+    with GenericOneOffCookieSessionEndpoints[Session] {
   _: CsrfCheck =>
 }
 
 trait OneOffHeaderSessionEndpoints
-    extends HeaderSessionEndpoints
-    with OneOffSessionContinuity[Session] {
+    extends SessionEndpoints
+    with GenericOneOffHeaderSessionEndpoints[Session] {
   _: CsrfCheck =>
 }
 
 trait RefreshableCookieSessionEndpoints
-    extends CookieSessionEndpoints
-    with RefreshableSessionContinuity[Session] { _: CsrfCheck => }
+    extends SessionEndpoints
+    with GenericRefreshableCookieSessionEndpoints[Session] {
+  _: CsrfCheck =>
+}
 
 trait RefreshableHeaderSessionEndpoints
-    extends HeaderSessionEndpoints
-    with RefreshableSessionContinuity[Session] { _: CsrfCheck => }
+    extends SessionEndpoints
+    with GenericRefreshableHeaderSessionEndpoints[Session] {
+  _: CsrfCheck =>
+}

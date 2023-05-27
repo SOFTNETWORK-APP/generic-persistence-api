@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.{Route, RouteConcatenation}
 import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.session.service._
 import com.softwaremill.session.{
-  CsrfCheckHeaderAndForm,
+  CsrfCheckHeader,
   SessionContinuityEndpoints,
   SessionTransportEndpoints
 }
@@ -21,7 +21,7 @@ import scala.concurrent.Future
 trait SessionServiceEndpoints
     extends ApiEndpoint
     with SessionEndpoints
-    with CsrfCheckHeaderAndForm
+    with CsrfCheckHeader
     with RouteConcatenation {
   _: SessionTransportEndpoints[Session] with SessionContinuityEndpoints[Session] =>
   import Session._

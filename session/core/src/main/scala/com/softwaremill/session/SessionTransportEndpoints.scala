@@ -1,14 +1,12 @@
 package com.softwaremill.session
 
-import sttp.model.Method
-import sttp.monad.FutureMonad
 import sttp.tapir.PublicEndpoint
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 
 import scala.concurrent.Future
 
 sealed trait SessionTransportEndpoints[T] {
-  _: SessionContinuityEndpoints[T] with CsrfEndpoints[T] =>
+  _: SessionContinuityEndpoints[T] =>
   def setSession[INPUT](
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
@@ -38,62 +36,10 @@ sealed trait SessionTransportEndpoints[T] {
       T
     ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = session(Some(false))
 
-  final def antiCsrfWithRequiredSession: PartialServerEndpointWithSecurityOutput[
-    (Seq[Option[String]], Method, Option[String], Option[String]),
-    T,
-    Unit,
-    Unit,
-    Unit,
-    Unit,
-    Any,
-    Future
-  ] = {
-    val partialServerEndpointWithSecurityOutput =
-      // check anti CSRF token
-      hmacTokenCsrfProtectionEndpoint(
-        // check if a session exists
-        requiredSession
-      )
-    partialServerEndpointWithSecurityOutput.endpoint.serverSecurityLogicWithOutput { inputs =>
-      partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(inputs).map {
-        case Left(l) => Left(l)
-        case Right(r) =>
-          r._2.toOption match {
-            case Some(session) => Right((), session)
-            case _             => Left(())
-          }
-      }
-    }
-  }
-
-  final def antiCsrfWithOptionalSessionEndpoint: PartialServerEndpointWithSecurityOutput[
-    (Seq[Option[String]], Method, Option[String], Option[String]),
-    Option[T],
-    Unit,
-    Unit,
-    Unit,
-    Unit,
-    Any,
-    Future
-  ] = {
-    val partialServerEndpointWithSecurityOutput =
-      // check anti CSRF token
-      hmacTokenCsrfProtectionEndpoint(
-        // optional session
-        optionalSession
-      )
-    partialServerEndpointWithSecurityOutput.endpoint.serverSecurityLogicWithOutput { inputs =>
-      partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(inputs).map {
-        case Left(l)  => Left(l)
-        case Right(r) => Right((), r._2.toOption)
-      }
-    }
-  }
-
 }
 
 trait CookieTransportEndpoints[T] extends SessionTransportEndpoints[T] {
-  _: SessionContinuityEndpoints[T] with CsrfEndpoints[T] =>
+  _: SessionContinuityEndpoints[T] =>
   override def setSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
   ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
@@ -107,7 +53,7 @@ trait CookieTransportEndpoints[T] extends SessionTransportEndpoints[T] {
 }
 
 trait HeaderTransportEndpoints[T] extends SessionTransportEndpoints[T] {
-  _: SessionContinuityEndpoints[T] with CsrfEndpoints[T] =>
+  _: SessionContinuityEndpoints[T] =>
   override def setSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
   ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
