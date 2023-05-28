@@ -4,11 +4,6 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.{Route, RouteConcatenation}
 import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.session.service._
-import com.softwaremill.session.{
-  CsrfCheckHeader,
-  SessionContinuityEndpoints,
-  SessionTransportEndpoints
-}
 import org.json4s.Formats
 import org.softnetwork.session.model.Session
 import sttp.tapir._
@@ -16,19 +11,21 @@ import sttp.tapir.generic.auto._
 import sttp.tapir.json.json4s.jsonBody
 import sttp.tapir.server.ServerEndpoint
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-trait SessionServiceEndpoints
-    extends ApiEndpoint
-    with SessionEndpoints
-    with CsrfCheckHeader
-    with RouteConcatenation {
-  _: SessionTransportEndpoints[Session] with SessionContinuityEndpoints[Session] =>
+trait SessionServiceEndpoints extends ApiEndpoint with RouteConcatenation {
+
   import Session._
 
   import app.softnetwork.serialization._
 
   implicit def formats: Formats = commonFormats
+
+  implicit def system: ActorSystem[_]
+
+  implicit def ec: ExecutionContext = system.executionContext
+
+  def sessionEndpoints: SessionEndpoints
 
   implicit def f: CreateSession => Option[Session] = session => {
     val s = Session(session.id)
@@ -44,21 +41,29 @@ trait SessionServiceEndpoints
   }
 
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
-    setSession(endpoint.in(jsonBody[CreateSession]).description("the session to create")).post
+    sessionEndpoints.transport
+      .setSession(endpoint.in(jsonBody[CreateSession]).description("the session to create"))
+      .post
       .in("session")
-      .out(csrfCookie)
-      .serverLogic(_ => _ => Future.successful(Right(Some(setNewCsrfToken().valueWithMeta))))
+      .out(sessionEndpoints.csrfCookie)
+      .serverLogic(_ =>
+        _ => Future.successful(Right(Some(sessionEndpoints.setNewCsrfToken().valueWithMeta)))
+      )
   }
 
   val retrieveSessionEndpoint: ServerEndpoint[Any, Future] =
-    hmacTokenCsrfProtectionEndpoint(requiredSession).get
+    sessionEndpoints
+      .hmacTokenCsrfProtectionEndpoint(sessionEndpoints.transport.requiredSession)
+      .get
       .in("session")
       .serverLogic(_ => _ => Future.successful(Right(())))
 
   val invalidateSessionEndpoint: ServerEndpoint[Any, Future] =
-    invalidateSession(
-      hmacTokenCsrfProtectionEndpoint(requiredSession)
-    ).delete
+    sessionEndpoints.continuity
+      .invalidateSession(
+        sessionEndpoints.hmacTokenCsrfProtectionEndpoint(sessionEndpoints.transport.requiredSession)
+      )
+      .delete
       .in("session")
       .serverLogic(_ => _ => Future.successful(Right()))
 
@@ -70,14 +75,10 @@ trait SessionServiceEndpoints
 
 object SessionServiceEndpoints {
 
-  def refreshable(_system: ActorSystem[_]): SessionServiceEndpoints =
-    new SessionServiceEndpoints with RefreshableCookieSessionEndpoints {
+  def apply(_system: ActorSystem[_], _sessionEndpoints: SessionEndpoints): SessionServiceEndpoints =
+    new SessionServiceEndpoints {
       override implicit def system: ActorSystem[_] = _system
-    }
-
-  def oneOff(_system: ActorSystem[_]): SessionServiceEndpoints =
-    new SessionServiceEndpoints with OneOffCookieSessionEndpoints {
-      override implicit def system: ActorSystem[_] = _system
+      override def sessionEndpoints: SessionEndpoints = _sessionEndpoints
     }
 
 }

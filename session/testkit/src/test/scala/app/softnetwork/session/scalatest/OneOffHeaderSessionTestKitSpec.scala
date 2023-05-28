@@ -2,7 +2,7 @@ package app.softnetwork.session.scalatest
 
 import com.softwaremill.session.CsrfCheckHeader
 
-class OneOffCookieSessionTestKitSpec
+class OneOffHeaderSessionTestKitSpec
     extends SessionTestKitSpec
-    with OneOffCookieSessionTestKit
+    with OneOffHeaderSessionTestKit
     with CsrfCheckHeader

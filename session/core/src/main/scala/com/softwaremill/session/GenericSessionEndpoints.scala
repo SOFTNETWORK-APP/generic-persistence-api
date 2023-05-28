@@ -7,7 +7,7 @@ import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 import scala.concurrent.Future
 
 trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
-  _: SessionTransportEndpoints[T] with SessionContinuityEndpoints[T] with CsrfCheck =>
+  _: SessionTransportEndpoints[T] with SessionContinuityEndpoints[T] =>
 
   final def antiCsrfWithRequiredSession: PartialServerEndpointWithSecurityOutput[
     (Seq[Option[String]], Method, Option[String], Option[String]),
@@ -63,40 +63,28 @@ trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
 
 }
 
-trait GenericCookieSessionEndpoints[T] extends GenericSessionEndpoints[T] with CookieTransportEndpoints[T] {
-  _: SessionContinuityEndpoints[T] with CsrfCheck =>
-}
-
-trait GenericHeaderSessionEndpoints[T] extends GenericSessionEndpoints[T] with HeaderTransportEndpoints[T] {
-  _: SessionContinuityEndpoints[T] with CsrfCheck =>
-}
-
 trait GenericOneOffCookieSessionEndpoints[T]
-  extends GenericCookieSessionEndpoints[T]
+    extends GenericSessionEndpoints[T]
+    with CookieTransportEndpoints[T]
     with OneOffSessionContinuity[T]
-    with OneOffSessionEndpoints[T] {
-  _: CsrfCheck =>
-}
+    with OneOffSessionEndpoints[T]
 
 trait GenericOneOffHeaderSessionEndpoints[T]
-  extends GenericHeaderSessionEndpoints[T]
+    extends GenericSessionEndpoints[T]
+    with HeaderTransportEndpoints[T]
     with OneOffSessionContinuity[T]
-    with OneOffSessionEndpoints[T] {
-  _: CsrfCheck =>
-}
+    with OneOffSessionEndpoints[T]
 
 trait GenericRefreshableCookieSessionEndpoints[T]
-  extends GenericCookieSessionEndpoints[T]
+    extends GenericSessionEndpoints[T]
+    with CookieTransportEndpoints[T]
     with RefreshableSessionContinuity[T]
     with RefreshableSessionEndpoints[T]
-    with OneOffSessionEndpoints[T] {
-  _: CsrfCheck =>
-}
+    with OneOffSessionEndpoints[T]
 
 trait GenericRefreshableHeaderSessionEndpoints[T]
-  extends GenericHeaderSessionEndpoints[T]
+    extends GenericSessionEndpoints[T]
+    with HeaderTransportEndpoints[T]
     with RefreshableSessionContinuity[T]
     with RefreshableSessionEndpoints[T]
-    with OneOffSessionEndpoints[T] {
-  _: CsrfCheck =>
-}
+    with OneOffSessionEndpoints[T]

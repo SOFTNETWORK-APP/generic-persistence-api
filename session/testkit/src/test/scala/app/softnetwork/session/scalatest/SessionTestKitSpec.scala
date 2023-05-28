@@ -1,5 +1,6 @@
 package app.softnetwork.session.scalatest
 
+import app.softnetwork.session.config.Settings
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -29,4 +30,6 @@ class SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
       assert(extractSession().isEmpty)
     }
   }
+
+  override def sessionHeaderName: String = Settings.Session.CookieName
 }

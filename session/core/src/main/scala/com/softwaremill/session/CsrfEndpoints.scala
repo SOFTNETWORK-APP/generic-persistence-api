@@ -9,7 +9,7 @@ import sttp.tapir.{EndpointIO, _}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait CsrfEndpoints[T] { _: CsrfCheck =>
+trait CsrfEndpoints[T] extends CsrfCheck {
 
   import com.softwaremill.session.AkkaToTapirImplicits._
 
@@ -124,4 +124,16 @@ trait CsrfEndpoints[T] { _: CsrfCheck =>
         }
       }
 
+}
+
+sealed trait CsrfCheck {
+  def checkHeaderAndForm: Boolean
+}
+
+trait CsrfCheckHeader extends CsrfCheck {
+  val checkHeaderAndForm: Boolean = false
+}
+
+trait CsrfCheckHeaderAndForm extends CsrfCheck {
+  val checkHeaderAndForm: Boolean = true
 }

@@ -42,7 +42,7 @@ trait RefreshableSessionEndpoints[T] extends Completion {
   }
 
   def sendRefreshTokenToClientAsHeader: EndpointIO.Header[Option[String]] = {
-    header[Option[String]](manager.config.sessionHeaderConfig.sendToClientHeaderName)
+    header[Option[String]](manager.config.refreshTokenHeaderConfig.sendToClientHeaderName)
   }
 
   private[session] def rotateToken(

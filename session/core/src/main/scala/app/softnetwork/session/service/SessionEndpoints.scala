@@ -4,7 +4,6 @@ import akka.actor.typed.ActorSystem
 import app.softnetwork.session.config.Settings.Session.CookieSecret
 import app.softnetwork.session.handlers.SessionRefreshTokenDao
 import com.softwaremill.session.{
-  CsrfCheck,
   GenericOneOffCookieSessionEndpoints,
   GenericOneOffHeaderSessionEndpoints,
   GenericRefreshableCookieSessionEndpoints,
@@ -21,7 +20,7 @@ import org.softnetwork.session.model.Session
 import scala.concurrent.ExecutionContext
 
 trait SessionEndpoints extends GenericSessionEndpoints[Session] {
-  _: SessionTransportEndpoints[Session] with SessionContinuityEndpoints[Session] with CsrfCheck =>
+  _: SessionTransportEndpoints[Session] with SessionContinuityEndpoints[Session] =>
 
   import Session._
 
@@ -36,28 +35,45 @@ trait SessionEndpoints extends GenericSessionEndpoints[Session] {
     system
   )
 
+  def transport: SessionTransportEndpoints[Session] = this
+
+  def continuity: SessionContinuityEndpoints[Session] = this
 }
 
-trait OneOffCookieSessionEndpoints
+case class OneOffCookieSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints
-    with GenericOneOffCookieSessionEndpoints[Session] {
-  _: CsrfCheck =>
-}
+    with GenericOneOffCookieSessionEndpoints[Session]
 
-trait OneOffHeaderSessionEndpoints
+case class OneOffHeaderSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints
-    with GenericOneOffHeaderSessionEndpoints[Session] {
-  _: CsrfCheck =>
-}
+    with GenericOneOffHeaderSessionEndpoints[Session]
 
-trait RefreshableCookieSessionEndpoints
+case class RefreshableCookieSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints
-    with GenericRefreshableCookieSessionEndpoints[Session] {
-  _: CsrfCheck =>
-}
+    with GenericRefreshableCookieSessionEndpoints[Session]
 
-trait RefreshableHeaderSessionEndpoints
+case class RefreshableHeaderSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints
-    with GenericRefreshableHeaderSessionEndpoints[Session] {
-  _: CsrfCheck =>
+    with GenericRefreshableHeaderSessionEndpoints[Session]
+
+object SessionEndpoints {
+  def oneOffCookie(implicit
+    system: ActorSystem[_],
+    checkHeaderAndForm: Boolean = false
+  ): SessionEndpoints = OneOffCookieSessionEndpoints(system, checkHeaderAndForm)
+
+  def oneOffHeader(implicit
+    system: ActorSystem[_],
+    checkHeaderAndForm: Boolean = false
+  ): SessionEndpoints = OneOffHeaderSessionEndpoints(system, checkHeaderAndForm)
+
+  def refreshableCookie(implicit
+    system: ActorSystem[_],
+    checkHeaderAndForm: Boolean = false
+  ): SessionEndpoints = RefreshableCookieSessionEndpoints(system, checkHeaderAndForm)
+
+  def refreshableHeader(implicit
+    system: ActorSystem[_],
+    checkHeaderAndForm: Boolean = false
+  ): SessionEndpoints = RefreshableHeaderSessionEndpoints(system, checkHeaderAndForm)
 }

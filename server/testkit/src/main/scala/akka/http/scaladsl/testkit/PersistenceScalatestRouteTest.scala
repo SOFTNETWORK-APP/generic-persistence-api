@@ -2,7 +2,7 @@ package akka.http.scaladsl.testkit
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader}
+import akka.http.scaladsl.model.headers.{`Set-Cookie`, Cookie, HttpCookiePair, RawHeader}
 import akka.http.scaladsl.server.directives.RouteDirectives
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import app.softnetwork.api.server.scalatest.ServerTestKit
@@ -44,6 +44,10 @@ trait PersistenceScalatestRouteTest
 
   lazy val routes: Route = mainRoutes(typedSystem())
 
+  @deprecated(
+    "this method has been replaced by extractHeaders and will be removed",
+    since = "0.3.1.1"
+  )
   def extractCookies(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
     headers
       .filter(header => {
@@ -58,18 +62,46 @@ trait PersistenceScalatestRouteTest
         if (value.isEmpty) {
           Seq.empty
         } else {
-          var ret: Seq[HttpHeader] = Seq(Cookie(name, value))
-          // required for akka-http-session
-          if (name == "XSRF-TOKEN")
-            ret = ret ++ Seq(RawHeader("X-XSRF-TOKEN", value))
-          ret
+          Seq(Cookie(name, value))
         }
       })
   }
 
+  @deprecated("this method has been replaced by findHeader and will be removed", since = "0.3.1.1")
   def findCookie(name: String): HttpHeader => Option[HttpCookiePair] = {
     case Cookie(cookies) => cookies.find(_.name == name)
     case _               => None
+  }
+
+  def extractHeaders(headers: Seq[HttpHeader]): Seq[HttpHeader] =
+    headers
+      .flatMap {
+        case header: `Set-Cookie` =>
+          val cookie = header.value().split("=")
+          val name = cookie.head
+          val value = cookie.tail.mkString("=").split(";").head
+          log.info(s"${header.name()}: ${header.value()}")
+          if (value.isEmpty) {
+            Seq.empty
+          } else {
+            Seq(Cookie(name, value))
+          }
+        case header: RawHeader =>
+          val name = header.name
+          val value = header.value
+          log.info(s"$name: $value")
+          if (value.isEmpty) {
+            Seq.empty
+          } else {
+            Seq(RawHeader(name, value))
+          }
+        case _ => Seq.empty
+      }
+
+  def findHeader(name: String): HttpHeader => Option[String] = {
+    case Cookie(cookies)                => cookies.find(_.name == name).map(_.value)
+    case r: RawHeader if r.name == name => Some(r.value)
+    case _                              => None
   }
 
 }

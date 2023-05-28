@@ -68,7 +68,6 @@ trait RefreshTokenBehavior[T <: SessionData]
             RefreshTokenRemoved(cmd.selector)
           )
           .thenRun(_ => RefreshTokenRemoved(cmd.selector) ~> replyTo)
-          .thenStop()
 
       case _: LookupRefreshToken =>
         Effect.none.thenRun(_ =>
