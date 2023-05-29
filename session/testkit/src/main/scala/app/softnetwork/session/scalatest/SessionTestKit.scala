@@ -49,8 +49,26 @@ trait SessionTestKit
 
   def sessionHeaderName: String
 
-  final def extractSession(): Option[Session] = {
-    extractSession(httpHeaders.flatMap(findHeader(sessionHeaderName)(_)).headOption)
+  def refreshableSession: Boolean
+
+  final def extractSession(checkStatus: Boolean = true): Option[Session] = {
+    withHeaders(Get(s"/$RootPath/session")) ~> routes ~> check {
+      if (checkStatus) {
+        status shouldEqual StatusCodes.OK
+      }
+      refreshSession(headers)
+    }
+    extractSession(httpHeaders.flatMap(headerValue(sessionHeaderName)(_)).headOption)
+  }
+
+  def refreshSession(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
+    if (refreshableSession) {
+      val updatedHttpHeaders = extractHeaders(headers)
+      httpHeaders = httpHeaders.filterNot(existHeader(sessionHeaderName)(_)) ++ Seq(
+        updatedHttpHeaders.find(existHeader(sessionHeaderName)(_))
+      ).flatten
+    }
+    httpHeaders
   }
 
   def extractSession(value: Option[String]): Option[Session] =
@@ -60,7 +78,7 @@ trait SessionTestKit
     }
 
   def invalidateSession(): Unit = {
-    if (httpHeaders.nonEmpty) {
+    if (!httpHeaders.forall(_.name() == "Api-Version")) {
       withHeaders(Delete(s"/$RootPath/session")) ~> routes ~> check {
         status shouldEqual StatusCodes.OK
         httpHeaders = extractHeaders(headers)

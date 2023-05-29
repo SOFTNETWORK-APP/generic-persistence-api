@@ -98,12 +98,20 @@ trait PersistenceScalatestRouteTest
         case _ => Seq.empty
       }
 
-  def findHeader(name: String): HttpHeader => Option[String] = {
+  def headerValue(name: String): HttpHeader => Option[String] = {
     case Cookie(cookies)                => cookies.find(_.name == name).map(_.value)
     case r: RawHeader if r.name == name => Some(r.value)
     case _                              => None
   }
 
+  def findHeader(name: String): HttpHeader => Option[HttpHeader] = {
+    case c: Cookie if c.cookies.exists(_.name == name) => Some(c)
+    case other if other.name() == name                 => Some(other)
+    case _                                             => None
+  }
+
+  def existHeader(name: String): HttpHeader => Boolean = header =>
+    findHeader(name)(header).isDefined
 }
 
 trait InMemoryPersistenceScalatestRouteTest

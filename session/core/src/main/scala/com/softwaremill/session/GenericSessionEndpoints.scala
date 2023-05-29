@@ -1,6 +1,7 @@
 package com.softwaremill.session
 
 import sttp.model.Method
+import sttp.model.headers.CookieValueWithMeta
 import sttp.monad.FutureMonad
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 
@@ -14,7 +15,7 @@ trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
     T,
     Unit,
     Unit,
-    Unit,
+    (Seq[Option[String]], Option[CookieValueWithMeta]),
     Unit,
     Any,
     Future
@@ -25,16 +26,18 @@ trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
         // check if a session exists
         requiredSession
       )
-    partialServerEndpointWithSecurityOutput.endpoint.serverSecurityLogicWithOutput { inputs =>
-      partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(inputs).map {
-        case Left(l) => Left(l)
-        case Right(r) =>
-          r._2.toOption match {
-            case Some(session) => Right((), session)
-            case _             => Left(())
-          }
+    partialServerEndpointWithSecurityOutput.endpoint
+      .out(partialServerEndpointWithSecurityOutput.securityOutput)
+      .serverSecurityLogicWithOutput { inputs =>
+        partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(inputs).map {
+          case Left(l) => Left(l)
+          case Right(r) =>
+            r._2.toOption match {
+              case Some(session) => Right(r._1, session)
+              case _             => Left(())
+            }
+        }
       }
-    }
   }
 
   final def antiCsrfWithOptionalSessionEndpoint: PartialServerEndpointWithSecurityOutput[
@@ -42,7 +45,7 @@ trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
     Option[T],
     Unit,
     Unit,
-    Unit,
+    (Seq[Option[String]], Option[CookieValueWithMeta]),
     Unit,
     Any,
     Future
@@ -53,12 +56,14 @@ trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
         // optional session
         optionalSession
       )
-    partialServerEndpointWithSecurityOutput.endpoint.serverSecurityLogicWithOutput { inputs =>
-      partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(inputs).map {
-        case Left(l)  => Left(l)
-        case Right(r) => Right((), r._2.toOption)
+    partialServerEndpointWithSecurityOutput.endpoint
+      .out(partialServerEndpointWithSecurityOutput.securityOutput)
+      .serverSecurityLogicWithOutput { inputs =>
+        partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(inputs).map {
+          case Left(l)  => Left(l)
+          case Right(r) => Right(r._1, r._2.toOption)
+        }
       }
-    }
   }
 
 }

@@ -8,6 +8,8 @@ class SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
 
   override lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
+  override val refreshableSession: Boolean = false
+
   val id: String = "id"
 
   val profile: String = "profile"
@@ -27,7 +29,7 @@ class SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
     }
     "be invalidated" in {
       invalidateSession()
-      assert(extractSession().isEmpty)
+      assert(extractSession(false).isEmpty)
     }
   }
 

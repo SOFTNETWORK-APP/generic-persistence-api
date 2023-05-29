@@ -11,6 +11,8 @@ import scala.util.{Failure, Success}
 trait RefreshableSessionTestKit extends SessionTestKit with SessionServiceEndpointsRoutes {
   _: Suite with CsrfCheck =>
 
+  override val refreshableSession: Boolean = true
+
   implicit lazy val refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(
     typedSystem()
   )
