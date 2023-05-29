@@ -17,7 +17,7 @@ trait SessionTestKit
 
   import app.softnetwork.serialization._
 
-  private[this] var httpHeaders: Seq[HttpHeader] = Seq.empty
+  var httpHeaders: Seq[HttpHeader] = Seq.empty
 
   private[this] def headerToHeaders: HttpHeader => Seq[HttpHeader] = {
     case cookie: Cookie =>
