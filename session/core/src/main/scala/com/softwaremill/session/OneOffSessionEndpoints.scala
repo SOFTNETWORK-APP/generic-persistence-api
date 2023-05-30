@@ -35,18 +35,18 @@ trait OneOffSessionEndpoints[T] {
   private[session] def setOneOffCookieSessionLogic[INPUT](
     input: INPUT,
     cookie: Option[String]
-  )(implicit f: INPUT => Option[T]): Either[Unit, (Some[CookieValueWithMeta], Unit)] =
+  )(implicit f: INPUT => Option[T]): Either[Unit, (Some[CookieValueWithMeta], T)] =
     implicitly[Option[T]](input) match {
       case Some(v) =>
         cookie match {
           case Some(value) =>
             Right(
               Some(manager.clientSessionManager.createCookieWithValue(value).valueWithMeta),
-              ()
+              v
             )
           case _ =>
             val cookie: CookieWithMeta = manager.clientSessionManager.createCookie(v)
-            Right(Some(cookie.valueWithMeta), ())
+            Right(Some(cookie.valueWithMeta), v)
         }
       case _ => Left(())
     }
@@ -55,7 +55,7 @@ trait OneOffSessionEndpoints[T] {
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
     (INPUT, Option[String]),
-    Unit,
+    T,
     INPUT,
     Unit,
     Option[CookieValueWithMeta],
@@ -74,15 +74,15 @@ trait OneOffSessionEndpoints[T] {
   private[session] def setOneOffHeaderSessionLogic[INPUT](
     input: INPUT,
     header: Option[String]
-  )(implicit f: INPUT => Option[T]): Either[Unit, (Some[String], Unit)] =
+  )(implicit f: INPUT => Option[T]): Either[Unit, (Some[String], T)] =
     implicitly[Option[T]](input) match {
       case Some(v) =>
         header match {
           case Some(value) =>
-            Right(Some(value), ())
+            Right(Some(value), v)
           case _ =>
             val header: Header = manager.clientSessionManager.createHeader(v)
-            Right(Some(header.value), ())
+            Right(Some(header.value), v)
         }
       case _ => Left(())
     }
@@ -91,7 +91,7 @@ trait OneOffSessionEndpoints[T] {
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
     (INPUT, Option[String]),
-    Unit,
+    T,
     INPUT,
     Unit,
     Option[

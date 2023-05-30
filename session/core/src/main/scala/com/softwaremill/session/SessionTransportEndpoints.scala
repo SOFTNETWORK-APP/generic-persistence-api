@@ -11,7 +11,7 @@ sealed trait SessionTransportEndpoints[T] {
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
     _,
-    Unit,
+    T,
     INPUT,
     Unit,
     _,
@@ -42,7 +42,7 @@ trait CookieTransportEndpoints[T] extends SessionTransportEndpoints[T] {
   _: SessionContinuityEndpoints[T] =>
   override def setSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
     setCookieSession(endpoint)
 
   override def session(
@@ -56,7 +56,7 @@ trait HeaderTransportEndpoints[T] extends SessionTransportEndpoints[T] {
   _: SessionContinuityEndpoints[T] =>
   override def setSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
     setHeaderSession(endpoint)
 
   override def session(

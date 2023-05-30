@@ -10,7 +10,7 @@ sealed trait SessionContinuityEndpoints[T] {
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
     _,
-    Unit,
+    T,
     INPUT,
     Unit,
     _,
@@ -23,7 +23,7 @@ sealed trait SessionContinuityEndpoints[T] {
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
     _,
-    Unit,
+    T,
     INPUT,
     Unit,
     _,
@@ -75,12 +75,12 @@ trait OneOffSessionContinuity[T] extends SessionContinuityEndpoints[T] {
   _: OneOffSessionEndpoints[T] =>
   override def setCookieSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
     setOneOffCookieSession(endpoint)
 
   override def setHeaderSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
     setOneOffHeaderSession(endpoint)
 
   override def cookieSession(
@@ -114,12 +114,12 @@ trait RefreshableSessionContinuity[T] extends SessionContinuityEndpoints[T] {
   _: RefreshableSessionEndpoints[T] =>
   override def setCookieSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
     setRefreshableCookieSession(endpoint)
 
   override def setHeaderSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, INPUT, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
     setRefreshableHeaderSession(endpoint)
 
   override def cookieSession(

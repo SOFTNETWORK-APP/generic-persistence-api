@@ -63,9 +63,9 @@ trait RefreshableSessionEndpoints[T] extends Completion {
   private[session] def setRefreshableSessionLogic[INPUT](
     input: INPUT,
     existing: Option[String]
-  )(implicit f: INPUT => Option[T]): Either[Unit, (Option[String], Unit)] =
+  )(implicit f: INPUT => Option[T]): Either[Unit, (Option[String], T)] =
     implicitly[Option[T]](input) match {
-      case Some(v) => Right(rotateToken(v, existing), ())
+      case Some(v) => Right(rotateToken(v, existing), v)
       case _       => Left(())
     }
 
@@ -73,7 +73,7 @@ trait RefreshableSessionEndpoints[T] extends Completion {
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
     (INPUT, Option[String], Option[String]),
-    Unit,
+    T,
     INPUT,
     Unit,
     (Option[CookieValueWithMeta], Option[CookieValueWithMeta]),
@@ -102,7 +102,7 @@ trait RefreshableSessionEndpoints[T] extends Completion {
     endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
   )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
     (INPUT, Option[String], Option[String]),
-    Unit,
+    T,
     INPUT,
     Unit,
     (Option[String], Option[String]),
