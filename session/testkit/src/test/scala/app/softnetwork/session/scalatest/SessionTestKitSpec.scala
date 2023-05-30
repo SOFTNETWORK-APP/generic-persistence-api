@@ -1,14 +1,17 @@
 package app.softnetwork.session.scalatest
 
+import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.session.config.Settings
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.slf4j.{Logger, LoggerFactory}
 
-class SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
+trait SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit { _: ApiRoutes =>
 
   override lazy val log: Logger = LoggerFactory getLogger getClass.getName
 
   override val refreshableSession: Boolean = false
+
+  override def sessionHeaderName: String = Settings.Session.CookieName
 
   val id: String = "id"
 
@@ -33,5 +36,4 @@ class SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
     }
   }
 
-  override def sessionHeaderName: String = Settings.Session.CookieName
 }

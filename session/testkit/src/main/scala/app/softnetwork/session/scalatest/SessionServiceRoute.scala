@@ -11,26 +11,26 @@ import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.Formats
 import org.softnetwork.session.model.Session
 
-import scala.concurrent.ExecutionContext
-
-trait SessionServiceRoute
-    extends SessionService
-    with Directives
-    with DefaultComplete
-    with Json4sSupport {
+trait SessionServiceRoute extends Directives with DefaultComplete with Json4sSupport {
 
   import Session._
   import app.softnetwork.serialization._
 
   implicit def formats: Formats = commonFormats
 
-  implicit lazy val ec: ExecutionContext = system.executionContext
+  def sessionService: SessionService
 
   val route: Route = {
     pathPrefix("session") {
       pathEnd {
         get {
-          complete(StatusCodes.OK)
+          // check anti CSRF token
+          hmacTokenCsrfProtection(checkHeader) {
+            // check if a session exists
+            sessionService.requiredSession { _ =>
+              complete(StatusCodes.NotFound) // simulate an error
+            }
+          }
         } ~
         post {
           entity(as[CreateSession]) { session =>
@@ -44,7 +44,7 @@ trait SessionServiceRoute
               case _       =>
             }
             // create a new session
-            sessionToDirective(s)(ec) {
+            sessionService.setSession(s) {
               // create a new anti csrf token
               setNewCsrfToken(checkHeader) {
                 complete(HttpResponse(StatusCodes.OK))
@@ -56,9 +56,9 @@ trait SessionServiceRoute
           // check anti CSRF token
           hmacTokenCsrfProtection(checkHeader) {
             // check if a session exists
-            _requiredSession(ec) { _ =>
+            sessionService.requiredSession { _ =>
               // invalidate session
-              _invalidateSession(ec) {
+              sessionService.invalidateSession {
                 complete(HttpResponse(StatusCodes.OK))
               }
             }
@@ -70,9 +70,22 @@ trait SessionServiceRoute
 }
 
 object SessionServiceRoute {
-  def apply(_system: ActorSystem[_]): SessionServiceRoute = {
+  def apply(_sessionService: SessionService): SessionServiceRoute = {
     new SessionServiceRoute {
-      override implicit def system: ActorSystem[_] = _system
+      override def sessionService: SessionService = _sessionService
     }
   }
+
+  def oneOffCookie(system: ActorSystem[_]): SessionServiceRoute =
+    SessionServiceRoute(SessionService.oneOffCookie(system))
+
+  def oneOffHeader(system: ActorSystem[_]): SessionServiceRoute =
+    SessionServiceRoute(SessionService.oneOffHeader(system))
+
+  def refreshableCookie(system: ActorSystem[_]): SessionServiceRoute =
+    SessionServiceRoute(SessionService.refreshableCookie(system))
+
+  def refreshableHeader(system: ActorSystem[_]): SessionServiceRoute =
+    SessionServiceRoute(SessionService.refreshableHeader(system))
+
 }

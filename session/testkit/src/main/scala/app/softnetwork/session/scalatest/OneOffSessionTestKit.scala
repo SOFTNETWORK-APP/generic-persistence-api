@@ -1,11 +1,11 @@
 package app.softnetwork.session.scalatest
 
-import com.softwaremill.session.CsrfCheck
+import app.softnetwork.api.server.ApiRoutes
 import org.scalatest.Suite
 import org.softnetwork.session.model.Session
 
-trait OneOffSessionTestKit extends SessionTestKit with SessionServiceEndpointsRoutes {
-  _: Suite with CsrfCheck =>
+trait OneOffSessionTestKit extends SessionTestKit {
+  _: Suite with ApiRoutes =>
 
   override val refreshableSession: Boolean = false
 

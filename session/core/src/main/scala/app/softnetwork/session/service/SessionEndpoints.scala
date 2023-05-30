@@ -35,9 +35,6 @@ trait SessionEndpoints extends GenericSessionEndpoints[Session] {
     system
   )
 
-  def transport: SessionTransportEndpoints[Session] = this
-
-  def continuity: SessionContinuityEndpoints[Session] = this
 }
 
 case class OneOffCookieSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
@@ -57,22 +54,22 @@ case class RefreshableHeaderSessionEndpoints(system: ActorSystem[_], checkHeader
     with GenericRefreshableHeaderSessionEndpoints[Session]
 
 object SessionEndpoints {
-  def oneOffCookie(implicit
+  def oneOffCookie(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = OneOffCookieSessionEndpoints(system, checkHeaderAndForm)
 
-  def oneOffHeader(implicit
+  def oneOffHeader(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = OneOffHeaderSessionEndpoints(system, checkHeaderAndForm)
 
-  def refreshableCookie(implicit
+  def refreshableCookie(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = RefreshableCookieSessionEndpoints(system, checkHeaderAndForm)
 
-  def refreshableHeader(implicit
+  def refreshableHeader(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = RefreshableHeaderSessionEndpoints(system, checkHeaderAndForm)

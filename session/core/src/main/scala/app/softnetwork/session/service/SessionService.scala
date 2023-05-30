@@ -2,8 +2,12 @@ package app.softnetwork.session.service
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.{Directive0, Directive1}
-import com.softwaremill.session.RefreshTokenStorage
-import com.softwaremill.session.SessionDirectives._
+import com.softwaremill.session.{
+  RefreshTokenStorage,
+  SessionContinuity,
+  SessionDirectives,
+  SetSessionTransport
+}
 import com.softwaremill.session.SessionOptions._
 import org.softnetwork.session.model.Session
 import app.softnetwork.session.handlers.SessionRefreshTokenDao
@@ -14,23 +18,73 @@ import scala.concurrent.ExecutionContext
   */
 trait SessionService {
 
-  import Session._
-
   implicit def system: ActorSystem[_]
+
+  implicit def ec: ExecutionContext = system.executionContext
 
   implicit lazy val refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(
     system
   )
 
-  protected def sessionToDirective(session: Session)(implicit ec: ExecutionContext): Directive0 =
-    setSession(if (session.refreshable) refreshable else oneOff, usingCookies, session)
+  def sessionContinuity: SessionContinuity[Session]
 
-  protected def _requiredSession(implicit ec: ExecutionContext): Directive1[Session] =
-    requiredSession(refreshable, usingCookies)
+  def sessionTransport: SetSessionTransport
 
-  protected def _invalidateSession(implicit ec: ExecutionContext): Directive0 =
-    invalidateSession(refreshable, usingCookies)
+  def setSession(session: Session): Directive0 =
+    SessionDirectives.setSession(sessionContinuity, sessionTransport, session)
 
-  protected def _optionalSession(implicit ec: ExecutionContext): Directive1[Option[Session]] =
-    optionalSession(refreshable, usingCookies)
+  def requiredSession: Directive1[Session] =
+    SessionDirectives.requiredSession(sessionContinuity, sessionTransport)
+
+  def invalidateSession: Directive0 =
+    SessionDirectives.invalidateSession(sessionContinuity, sessionTransport)
+
+  def optionalSession: Directive1[Option[Session]] =
+    SessionDirectives.optionalSession(sessionContinuity, sessionTransport)
+}
+
+case class OneOffCookieSessionService(system: ActorSystem[_]) extends SessionService {
+  import Session._
+
+  override def sessionContinuity: SessionContinuity[Session] = oneOff
+
+  override def sessionTransport: SetSessionTransport = usingCookies
+}
+
+case class OneOffHeaderSessionService(system: ActorSystem[_]) extends SessionService {
+  import Session._
+
+  override def sessionContinuity: SessionContinuity[Session] = oneOff
+
+  override def sessionTransport: SetSessionTransport = usingHeaders
+}
+
+case class RefreshableCookieSessionService(system: ActorSystem[_]) extends SessionService {
+  import Session._
+
+  override def sessionContinuity: SessionContinuity[Session] = refreshable
+
+  override def sessionTransport: SetSessionTransport = usingCookies
+}
+
+case class RefreshableHeaderSessionService(system: ActorSystem[_]) extends SessionService {
+  import Session._
+
+  override def sessionContinuity: SessionContinuity[Session] = refreshable
+
+  override def sessionTransport: SetSessionTransport = usingHeaders
+}
+
+object SessionService {
+  def oneOffCookie(system: ActorSystem[_]): SessionService = OneOffCookieSessionService(system)
+
+  def oneOffHeader(system: ActorSystem[_]): SessionService = OneOffHeaderSessionService(system)
+
+  def refreshableCookie(system: ActorSystem[_]): SessionService = RefreshableCookieSessionService(
+    system
+  )
+
+  def refreshableHeader(system: ActorSystem[_]): SessionService = RefreshableHeaderSessionService(
+    system
+  )
 }

@@ -61,7 +61,7 @@ sealed trait SessionContinuityEndpoints[T] {
     ]
   ): PartialServerEndpointWithSecurityOutput[
     _,
-    Unit,
+    PRINCIPAL,
     Unit,
     Unit,
     _,
@@ -106,7 +106,7 @@ trait OneOffSessionContinuity[T] extends SessionContinuityEndpoints[T] {
       Any,
       Future
     ]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, Unit, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, PRINCIPAL, Unit, Unit, _, Unit, Any, Future] =
     invalidateOneOffSession(partial)
 }
 
@@ -145,6 +145,6 @@ trait RefreshableSessionContinuity[T] extends SessionContinuityEndpoints[T] {
       Any,
       Future
     ]
-  ): PartialServerEndpointWithSecurityOutput[_, Unit, Unit, Unit, _, Unit, Any, Future] =
+  ): PartialServerEndpointWithSecurityOutput[_, PRINCIPAL, Unit, Unit, _, Unit, Any, Future] =
     invalidateRefreshableSession(partial)
 }

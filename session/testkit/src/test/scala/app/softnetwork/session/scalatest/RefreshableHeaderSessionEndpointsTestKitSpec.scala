@@ -2,7 +2,7 @@ package app.softnetwork.session.scalatest
 
 import com.softwaremill.session.CsrfCheckHeader
 
-class RefreshableHeaderSessionTestKitSpec
+class RefreshableHeaderSessionEndpointsTestKitSpec
     extends SessionTestKitSpec
-    with RefreshableHeaderSessionTestKit
+    with RefreshableHeaderSessionEndpointsTestKit
     with CsrfCheckHeader

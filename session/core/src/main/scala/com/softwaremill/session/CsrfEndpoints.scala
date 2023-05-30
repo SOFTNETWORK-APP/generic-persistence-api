@@ -79,7 +79,7 @@ trait CsrfEndpoints[T] extends CsrfCheck {
     PRINCIPAL,
     SECURITY_OUTPUT
   ](
-    partialServerEndpointWithSecurityOutput: PartialServerEndpointWithSecurityOutput[
+    partial: PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
@@ -99,7 +99,7 @@ trait CsrfEndpoints[T] extends CsrfCheck {
     Any,
     Future
   ] =
-    partialServerEndpointWithSecurityOutput.endpoint
+    partial.endpoint
       // extract request method
       .securityIn(extractFromRequest(req => req.method))
       // extract csrf cookie
@@ -108,11 +108,11 @@ trait CsrfEndpoints[T] extends CsrfCheck {
       .securityIn(submittedCsrfHeader)
 //      // extract token from form
 //      .securityIn(formBody[Map[String, String]])
-      .out(partialServerEndpointWithSecurityOutput.securityOutput)
+      .out(partial.securityOutput)
       .out(csrfCookie)
       .errorOut(statusCode(StatusCode.Unauthorized))
       .serverSecurityLogicWithOutput { case (si, method, cookie, header) =>
-        partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(si).map {
+        partial.securityLogic(new FutureMonad())(si).map {
           case Left(l) => Left(l)
           case Right(r) =>
             hmacTokenCsrfProtection(

@@ -40,7 +40,7 @@ trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
       }
   }
 
-  final def antiCsrfWithOptionalSessionEndpoint: PartialServerEndpointWithSecurityOutput[
+  final def antiCsrfWithOptionalSession: PartialServerEndpointWithSecurityOutput[
     (Seq[Option[String]], Method, Option[String], Option[String]),
     Option[T],
     Unit,
@@ -66,6 +66,9 @@ trait GenericSessionEndpoints[T] extends CsrfEndpoints[T] {
       }
   }
 
+  def transport: SessionTransportEndpoints[T] = this
+
+  def continuity: SessionContinuityEndpoints[T] = this
 }
 
 trait GenericOneOffCookieSessionEndpoints[T]

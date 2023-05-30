@@ -1,11 +1,12 @@
 package app.softnetwork.session.scalatest
 
 import akka.http.scaladsl.model.headers.RawHeader
+import app.softnetwork.api.server.ApiRoutes
 import com.softwaremill.session.HeaderConfig
 import org.scalatest.Suite
 
 trait HeaderSessionTestKit extends SessionTestKit {
-  _: Suite =>
+  _: Suite with ApiRoutes =>
 
   def headerConfig: HeaderConfig
 

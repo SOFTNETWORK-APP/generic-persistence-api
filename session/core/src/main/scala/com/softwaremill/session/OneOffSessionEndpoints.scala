@@ -1,5 +1,6 @@
 package com.softwaremill.session
 
+import akka.http.scaladsl.model.DateTime
 import sttp.model.{Header, StatusCode}
 import sttp.model.headers.{CookieValueWithMeta, CookieWithMeta}
 import sttp.monad.FutureMonad
@@ -219,31 +220,45 @@ trait OneOffSessionEndpoints[T] {
         Future.successful(oneOffCookieOrHeaderSessionLogic(cookie, header, required))
       }
 
-  private[session] def invalidateOneOffSessionLogic(
+  private[session] def invalidateOneOffSessionLogic[PRINCIPAL](
     maybeCookie: Option[String],
-    maybeHeader: Option[String]
-  ): Either[Unit, ((Option[CookieValueWithMeta], Option[String]), Unit)] = {
+    maybeHeader: Option[String],
+    principal: PRINCIPAL
+  ): Either[Unit, ((Option[CookieValueWithMeta], Option[String]), PRINCIPAL)] = {
     maybeCookie match {
       case Some(_) =>
         maybeHeader match {
           case Some(_) =>
             Right(
               (
-                Some(manager.clientSessionManager.createCookieWithValue("").valueWithMeta),
+                Some(
+                  manager.clientSessionManager
+                    .createCookieWithValue("deleted")
+                    .withExpires(DateTime.MinValue)
+                    .valueWithMeta
+                ),
                 Some("")
               ),
-              ()
+              principal
             )
           case _ =>
             Right(
-              (Some(manager.clientSessionManager.createCookieWithValue("").valueWithMeta), None),
-              ()
+              (
+                Some(
+                  manager.clientSessionManager
+                    .createCookieWithValue("deleted")
+                    .withExpires(DateTime.MinValue)
+                    .valueWithMeta
+                ),
+                None
+              ),
+              principal
             )
         }
       case _ =>
         maybeHeader match {
-          case Some(_) => Right((None, Some("")), ())
-          case _       => Right((None, None), ())
+          case Some(_) => Right((None, Some("")), principal)
+          case _       => Right((None, None), principal)
         }
     }
   }
@@ -265,25 +280,26 @@ trait OneOffSessionEndpoints[T] {
     ]
   ): PartialServerEndpointWithSecurityOutput[
     (SECURITY_INPUT, Option[String], Option[String]),
+    PRINCIPAL,
     Unit,
     Unit,
-    Unit,
-    (Option[CookieValueWithMeta], Option[String]),
+    ( /*SECURITY_OUTPUT, */ Option[CookieValueWithMeta], Option[String]),
     Unit,
     Any,
     Future
-  ] = {
+  ] =
     partial.endpoint
       .securityIn(getSessionFromClientAsCookie)
       .securityIn(getSessionFromClientAsHeader)
+//      .out(partial.securityOutput)
       .out(sendSessionToClientAsCookie)
       .out(sendSessionToClientAsHeader)
       .serverSecurityLogicWithOutput { case (si, cookie, header) =>
         partial.securityLogic(new FutureMonad())(si).map {
           case Left(l) => Left(l)
-          case Right(_) =>
-            invalidateOneOffSessionLogic(cookie, header)
+          case Right(r) =>
+            invalidateOneOffSessionLogic(cookie, header, r._2)
+//              .map(result => (( /*r._1, */ result._1, result._2), r._2))
         }
       }
-  }
 }

@@ -59,7 +59,7 @@ trait PersistenceScalatestRouteTest
         val cookie = header.value().split("=")
         val name = cookie.head
         val value = cookie.tail.mkString("=").split(";").head
-        if (value.isEmpty) {
+        if (value == "deleted") {
           Seq.empty
         } else {
           Seq(Cookie(name, value))
@@ -73,15 +73,16 @@ trait PersistenceScalatestRouteTest
     case _               => None
   }
 
-  def extractHeaders(headers: Seq[HttpHeader]): Seq[HttpHeader] =
-    headers
+  def extractHeaders(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
+    var lines = "\n***** Begin Server Headers *****\n"
+    val ret = headers
       .flatMap {
         case header: `Set-Cookie` =>
           val cookie = header.value().split("=")
           val name = cookie.head
           val value = cookie.tail.mkString("=").split(";").head
-          log.info(s"${header.name()}: ${header.value()}")
-          if (value.isEmpty) {
+          lines += s"\t${header.name()}: ${header.value()}\n"
+          if (value == "deleted") {
             Seq.empty
           } else {
             Seq(Cookie(name, value))
@@ -89,7 +90,7 @@ trait PersistenceScalatestRouteTest
         case header: RawHeader =>
           val name = header.name
           val value = header.value
-          log.info(s"$name: $value")
+          lines += s"\t$name: $value\n"
           if (value.isEmpty) {
             Seq.empty
           } else {
@@ -97,6 +98,10 @@ trait PersistenceScalatestRouteTest
           }
         case _ => Seq.empty
       }
+    lines += "***** End Server Headers *****"
+    log.info(lines)
+    ret
+  }
 
   def headerValue(name: String): HttpHeader => Option[String] = {
     case Cookie(cookies)                => cookies.find(_.name == name).map(_.value)
