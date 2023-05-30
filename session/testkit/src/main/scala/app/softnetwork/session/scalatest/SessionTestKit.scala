@@ -32,13 +32,14 @@ trait SessionTestKit
   def mapRawHeader: RawHeader => Option[RawHeader] = raw => Some(raw)
 
   def withHeaders(request: HttpMessage): request.Self = {
+    val clientHeaders = httpHeaders.flatMap(headerToHeaders)
     var lines = "\n***** Begin Client Headers *****\n"
-    for (header <- httpHeaders) {
+    for (header <- clientHeaders) {
       lines += s"\t${header.name()}: ${header.value()}\n"
     }
     lines += "***** End Client Headers *****"
     log.info(lines)
-    request.withHeaders(request.headers ++ httpHeaders.flatMap(headerToHeaders): _*)
+    request.withHeaders(request.headers ++ clientHeaders: _*)
   }
 
   def createSession(

@@ -222,10 +222,17 @@ trait RefreshableSessionEndpoints[T] extends Completion {
   //TODO def refreshableCookieOrHeaderSession(required: Option[Boolean] = None) = {}
 
   private[session] def invalidateRefreshableSessionLogic[PRINCIPAL](
+    result: ((Option[CookieValueWithMeta], Option[String]), PRINCIPAL),
     cookie: Option[String],
-    header: Option[String],
-    principal: PRINCIPAL
-  ): Either[Nothing, ((Option[CookieValueWithMeta], Option[String]), PRINCIPAL)] =
+    header: Option[String]
+  ): Either[
+    Nothing,
+    (
+      (Option[CookieValueWithMeta], Option[String], Option[CookieValueWithMeta], Option[String]),
+      PRINCIPAL
+    )
+  ] = {
+    val principal = result._2
     cookie match {
       case Some(c) =>
         refreshable.refreshTokenManager.removeToken(c) complete () match {
@@ -235,19 +242,21 @@ trait RefreshableSessionEndpoints[T] extends Completion {
               .withExpires(DateTime.MinValue)
               .valueWithMeta
             header match {
-              case Some(_) => Right((Some(deleted), Some("")), principal)
-              case _       => Right((Some(deleted), None), principal)
+              case Some(_) =>
+                Right((result._1._1, result._1._2, Some(deleted), Some("")), principal)
+              case _ => Right((result._1._1, result._1._2, Some(deleted), None), principal)
             }
         }
       case _ =>
         header match {
           case Some(h) =>
             refreshable.refreshTokenManager.removeToken(h) complete () match {
-              case _ => Right((None, Some("")), principal)
+              case _ => Right((result._1._1, result._1._2, None, Some("")), principal)
             }
-          case _ => Right((None, None), principal)
+          case _ => Right((result._1._1, result._1._2, None, None), principal)
         }
     }
+  }
 
   def invalidateRefreshableSession[
     SECURITY_INPUT,
@@ -270,7 +279,7 @@ trait RefreshableSessionEndpoints[T] extends Completion {
     Unit,
     Unit,
     (
-      /*SECURITY_OUTPUT, */ Option[CookieValueWithMeta],
+      Option[CookieValueWithMeta],
       Option[String],
       Option[CookieValueWithMeta],
       Option[String]
@@ -288,12 +297,8 @@ trait RefreshableSessionEndpoints[T] extends Completion {
       .out(sendRefreshTokenToClientAsHeader)
       .serverSecurityLogicWithOutput { case (si, sc, sh, cookie, header) =>
         partialOneOffSession.securityLogic(new FutureMonad())(si, sc, sh).map {
-          case Left(l) => Left(l)
-          case Right(r) =>
-            invalidateRefreshableSessionLogic(cookie, header, r._2)
-              .map(result =>
-                ((r._1._1, r._1._2 /*, r._1._3*/, result._1._1, result._1._2), result._2)
-              )
+          case Left(l)  => Left(l)
+          case Right(r) => invalidateRefreshableSessionLogic(r, cookie, header)
         }
       }
   }

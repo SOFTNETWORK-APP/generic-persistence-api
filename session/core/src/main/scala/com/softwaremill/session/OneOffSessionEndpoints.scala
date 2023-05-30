@@ -220,11 +220,12 @@ trait OneOffSessionEndpoints[T] {
         Future.successful(oneOffCookieOrHeaderSessionLogic(cookie, header, required))
       }
 
-  private[session] def invalidateOneOffSessionLogic[PRINCIPAL](
+  private[session] def invalidateOneOffSessionLogic[SECURITY_OUTPUT, PRINCIPAL](
+    result: (SECURITY_OUTPUT, PRINCIPAL),
     maybeCookie: Option[String],
-    maybeHeader: Option[String],
-    principal: PRINCIPAL
+    maybeHeader: Option[String]
   ): Either[Unit, ((Option[CookieValueWithMeta], Option[String]), PRINCIPAL)] = {
+    val principal = result._2
     maybeCookie match {
       case Some(_) =>
         maybeHeader match {
@@ -283,7 +284,7 @@ trait OneOffSessionEndpoints[T] {
     PRINCIPAL,
     Unit,
     Unit,
-    ( /*SECURITY_OUTPUT, */ Option[CookieValueWithMeta], Option[String]),
+    (Option[CookieValueWithMeta], Option[String]),
     Unit,
     Any,
     Future
@@ -291,15 +292,12 @@ trait OneOffSessionEndpoints[T] {
     partial.endpoint
       .securityIn(getSessionFromClientAsCookie)
       .securityIn(getSessionFromClientAsHeader)
-//      .out(partial.securityOutput)
       .out(sendSessionToClientAsCookie)
       .out(sendSessionToClientAsHeader)
       .serverSecurityLogicWithOutput { case (si, cookie, header) =>
         partial.securityLogic(new FutureMonad())(si).map {
-          case Left(l) => Left(l)
-          case Right(r) =>
-            invalidateOneOffSessionLogic(cookie, header, r._2)
-//              .map(result => (( /*r._1, */ result._1, result._2), r._2))
+          case Left(l)  => Left(l)
+          case Right(r) => invalidateOneOffSessionLogic(r, cookie, header)
         }
       }
 }
