@@ -13,8 +13,12 @@ trait HeaderSessionTestKit extends SessionTestKit {
   final override val sessionHeaderName: String = headerConfig.sendToClientHeaderName
 
   final override def mapRawHeader: RawHeader => Option[RawHeader] = raw =>
-    if (raw.name == sessionHeaderName)
-      Some(RawHeader(headerConfig.getFromClientHeaderName, raw.value))
+    if (raw.name == sessionManager.config.sessionHeaderConfig.sendToClientHeaderName)
+      Some(RawHeader(sessionManager.config.sessionHeaderConfig.getFromClientHeaderName, raw.value))
+    else if (raw.name == sessionManager.config.refreshTokenHeaderConfig.sendToClientHeaderName)
+      Some(
+        RawHeader(sessionManager.config.refreshTokenHeaderConfig.getFromClientHeaderName, raw.value)
+      )
     else
       Some(raw)
 }
