@@ -5,7 +5,7 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, ExceptionHandler, Route}
-import app.softnetwork.persistence.version
+import app.softnetwork.api.server.config.ServerSettings
 import org.json4s.Formats
 import app.softnetwork.serialization._
 import org.slf4j.Logger
@@ -15,6 +15,8 @@ import scala.util.{Failure, Success, Try}
 /** Created by smanciot on 19/04/2021.
   */
 trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
+
+  val applicationVersion: String = ServerSettings.ApplicationVersion
 
   override implicit def formats: Formats = commonFormats
 
@@ -36,7 +38,7 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
       logRequestResult("RestAll") {
         pathPrefix(config.ServerSettings.RootPath) {
           Try(
-            respondWithHeaders(RawHeader("Api-Version", version)) {
+            respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
               HealthCheckService.route ~ apiRoutes(system)
             }
           ) match {

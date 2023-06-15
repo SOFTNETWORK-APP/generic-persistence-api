@@ -1,7 +1,7 @@
 package app.softnetwork.api.server
 
 import akka.http.scaladsl.server.Route
-import app.softnetwork.persistence.{appName, version}
+import app.softnetwork.api.server.config.ServerSettings
 import sttp.capabilities.WebSockets
 import sttp.capabilities.akka.AkkaStreams
 import sttp.tapir.server.ServerEndpoint
@@ -15,10 +15,14 @@ trait ApiEndpoint {
 
   import ApiEndpoint._
 
+  val applicationName: String = ServerSettings.ApplicationName
+
+  val applicationVersion: String = ServerSettings.ApplicationVersion
+
   def endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
 
   def swaggerEndpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]] =
-    endpointsToSwaggerEndpoints(endpoints)
+    endpointsToSwaggerEndpoints(endpoints, applicationName, applicationVersion)
 
   def swaggerRoute(implicit ec: ExecutionContext): Route = swaggerEndpoints
 
@@ -29,12 +33,14 @@ trait ApiEndpoint {
 object ApiEndpoint {
 
   def endpointsToSwaggerEndpoints(
-    endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
+    endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]],
+    applicationName: String,
+    applicationVersion: String
   ): List[ServerEndpoint[AkkaStreams with WebSockets, Future]] =
     SwaggerInterpreter().fromEndpoints[Future](
       endpoints.map(_.endpoint.prependIn(config.ServerSettings.RootPath)),
-      appName,
-      version
+      applicationName,
+      applicationVersion
     )
 
   implicit def endpointsToRoute(
