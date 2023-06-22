@@ -1,150 +1,242 @@
 package com.softwaremill.session
 
-import sttp.tapir.PublicEndpoint
+import app.softnetwork.concurrent.Completion
+import sttp.monad.FutureMonad
+import sttp.tapir._
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 sealed trait SessionContinuityEndpoints[T] {
-  def setCookieSession[INPUT](
-    endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
-  )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
-    _,
-    T,
-    INPUT,
-    Unit,
-    _,
-    Unit,
-    Any,
-    Future
-  ]
+  implicit def manager: SessionManager[T]
 
-  def setHeaderSession[INPUT](
-    endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
-  )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
-    _,
-    T,
-    INPUT,
-    Unit,
-    _,
-    Unit,
-    Any,
-    Future
-  ]
+  implicit def ec: ExecutionContext
 
-  def cookieSession(
-    required: Option[Boolean] = None
-  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
+  def options2session(values: Seq[Option[String]]): Option[T] = //TODO find a more appropriate name
+    values.flatMap(extractSession).headOption
+
+  def extractSession(maybeValue: Option[String]): Option[T]
+
+  def setSession[INPUT](st: SetSessionTransport)(endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any])(
+    implicit f: INPUT => Option[T]
+  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
     T
   ], Unit, Unit, Seq[Option[String]], Unit, Any, Future]
 
-  def headerSession(
-    required: Option[Boolean] = None
-  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
-    T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future]
+  def session(
+    st: GetSessionTransport,
+    required: Option[Boolean]
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future]
+
+  def optionalSession(st: GetSessionTransport): PartialServerEndpointWithSecurityOutput[Seq[
+    Option[String]
+  ], Option[T], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
+    val partial = session(st, Some(false))
+    partial.endpoint
+      .out(partial.securityOutput)
+      .serverSecurityLogicWithOutput { inputs =>
+        partial.securityLogic(new FutureMonad())(inputs).map {
+          case Left(l)  => Left(l)
+          case Right(r) => Right(r._1, r._2.toOption)
+        }
+      }
+  }
+
+  def requiredSession(st: GetSessionTransport): PartialServerEndpointWithSecurityOutput[Seq[
+    Option[String]
+  ], T, Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
+    val partial = session(st, Some(true))
+    partial.endpoint
+      .out(partial.securityOutput)
+      .serverSecurityLogicWithOutput { inputs =>
+        partial.securityLogic(new FutureMonad())(inputs).map {
+          case Left(l) => Left(l)
+          case Right(r) =>
+            r._2.toOption match {
+              case Some(session) => Right(r._1, session)
+              case _             => Left(())
+            }
+        }
+      }
+  }
 
   def invalidateSession[
     SECURITY_INPUT,
-    PRINCIPAL,
-    SECURITY_OUTPUT
+    PRINCIPAL
   ](
-    partial: PartialServerEndpointWithSecurityOutput[
+    body: PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
       Unit,
-      SECURITY_OUTPUT,
+      _,
       Unit,
       Any,
       Future
     ]
   ): PartialServerEndpointWithSecurityOutput[
-    _,
+    (SECURITY_INPUT, Seq[Option[String]]),
     PRINCIPAL,
     Unit,
     Unit,
-    _,
+    Seq[Option[String]],
     Unit,
     Any,
     Future
   ]
+
+  def touchSession(
+    st: GetSessionTransport,
+    required: Option[Boolean]
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future]
+
+  def touchOptionalSession(st: GetSessionTransport): PartialServerEndpointWithSecurityOutput[Seq[
+    Option[String]
+  ], Option[T], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
+    val partial = touchSession(st, Some(false))
+    partial.endpoint
+      .out(partial.securityOutput)
+      .serverSecurityLogicWithOutput { inputs =>
+        partial.securityLogic(new FutureMonad())(inputs).map {
+          case Left(l)  => Left(l)
+          case Right(r) => Right(r._1, r._2.toOption)
+        }
+      }
+  }
+
+  def touchRequiredSession(st: GetSessionTransport): PartialServerEndpointWithSecurityOutput[Seq[
+    Option[String]
+  ], T, Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
+    val partial = touchSession(st, Some(true))
+    partial.endpoint
+      .out(partial.securityOutput)
+      .serverSecurityLogicWithOutput { inputs =>
+        partial.securityLogic(new FutureMonad())(inputs).map {
+          case Left(l) => Left(l)
+          case Right(r) =>
+            r._2.toOption match {
+              case Some(session) => Right(r._1, session)
+              case _             => Left(())
+            }
+        }
+      }
+  }
+
 }
 
 trait OneOffSessionContinuity[T] extends SessionContinuityEndpoints[T] {
   _: OneOffSessionEndpoints[T] =>
-  override def setCookieSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
+
+  override def extractSession(maybeValue: Option[String]): Option[T] = extractOneOffSession(
+    maybeValue
+  )
+
+  override def setSession[INPUT](
+    st: SetSessionTransport
+  )(endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
-    setOneOffCookieSession(endpoint)
-
-  override def setHeaderSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
-    f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
-    setOneOffHeaderSession(endpoint)
-
-  override def cookieSession(
-    required: Option[Boolean]
-  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
+  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = oneOffCookieSession(required)
+  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] =
+    setOneOffSession(st)(endpoint)
 
-  override def headerSession(
+  override def session(
+    st: GetSessionTransport,
     required: Option[Boolean]
-  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
-    T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = oneOffHeaderSession(required)
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future] =
+    oneOffSession(st, required)
 
-  override def invalidateSession[SECURITY_INPUT, PRINCIPAL, SECURITY_OUTPUT](
-    partial: PartialServerEndpointWithSecurityOutput[
+  override def invalidateSession[SECURITY_INPUT, PRINCIPAL](
+    body: PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
       Unit,
-      SECURITY_OUTPUT,
+      _,
       Unit,
       Any,
       Future
     ]
-  ): PartialServerEndpointWithSecurityOutput[_, PRINCIPAL, Unit, Unit, _, Unit, Any, Future] =
-    invalidateOneOffSession(partial)
+  ): PartialServerEndpointWithSecurityOutput[
+    (SECURITY_INPUT, Seq[Option[String]]),
+    PRINCIPAL,
+    Unit,
+    Unit,
+    Seq[Option[String]],
+    Unit,
+    Any,
+    Future
+  ] =
+    invalidateOneOffSession(body)
+
+  override def touchSession(
+    st: GetSessionTransport,
+    required: Option[Boolean]
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future] = touchOneOffSession(st, required)
 }
 
-trait RefreshableSessionContinuity[T] extends SessionContinuityEndpoints[T] {
-  _: RefreshableSessionEndpoints[T] =>
-  override def setCookieSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
+trait RefreshableSessionContinuity[T] extends SessionContinuityEndpoints[T] with Completion {
+  this: RefreshableSessionEndpoints[T] with OneOffSessionEndpoints[T] =>
+
+  override def extractSession(maybeValue: Option[String]): Option[T] = extractRefreshableSession(
+    maybeValue
+  )
+
+  def removeToken(value: String): Try[Unit] =
+    refreshable.refreshTokenManager.removeToken(value) complete ()
+
+  override def setSession[INPUT](
+    st: SetSessionTransport
+  )(endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
-    setRefreshableCookieSession(endpoint)
-
-  override def setHeaderSession[INPUT](endpoint: PublicEndpoint[INPUT, Unit, Unit, Any])(implicit
-    f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[_, T, INPUT, Unit, _, Unit, Any, Future] =
-    setRefreshableHeaderSession(endpoint)
-
-  override def cookieSession(
-    required: Option[Boolean]
-  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
+  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = refreshableCookieSession(required)
+  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] =
+    setRefreshableSession(st)(endpoint)
 
-  override def headerSession(
+  override def session(
+    st: GetSessionTransport,
     required: Option[Boolean]
-  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
-    T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = refreshableHeaderSession(required)
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future] = refreshableSession(st, required)
 
-  override def invalidateSession[SECURITY_INPUT, PRINCIPAL, SECURITY_OUTPUT](
-    partial: PartialServerEndpointWithSecurityOutput[
+  override def invalidateSession[SECURITY_INPUT, PRINCIPAL](
+    body: PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
       Unit,
-      SECURITY_OUTPUT,
+      _,
       Unit,
       Any,
       Future
     ]
-  ): PartialServerEndpointWithSecurityOutput[_, PRINCIPAL, Unit, Unit, _, Unit, Any, Future] =
-    invalidateRefreshableSession(partial)
+  ): PartialServerEndpointWithSecurityOutput[
+    (SECURITY_INPUT, Seq[Option[String]]),
+    PRINCIPAL,
+    Unit,
+    Unit,
+    Seq[Option[String]],
+    Unit,
+    Any,
+    Future
+  ] =
+    invalidateRefreshableSession(body)
+
+  override def touchSession(
+    st: GetSessionTransport,
+    required: Option[Boolean]
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future] = touchRefreshableSession(st, required)
 }

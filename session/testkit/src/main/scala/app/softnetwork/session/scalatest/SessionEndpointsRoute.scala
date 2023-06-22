@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.{Route, RouteConcatenation}
 import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.session.service._
-import org.json4s.Formats
+import com.softwaremill.session._
 import org.softnetwork.session.model.Session
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -19,8 +19,6 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
   import Session._
 
   import app.softnetwork.serialization._
-
-  implicit def formats: Formats = commonFormats
 
   implicit def system: ActorSystem[_]
 
@@ -41,19 +39,30 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
     Some(s)
   }
 
+  def sc: SessionContinuityEndpoints[Session] = sessionEndpoints.sc
+
+  def st: SetSessionTransport = sessionEndpoints.st
+
+  def checkMode: TapirCsrfCheckMode[Session] = sessionEndpoints.checkMode
+
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
-    sessionEndpoints.transport
-      .setSession(endpoint.in(jsonBody[CreateSession]).description("the session to create"))
+    sessionEndpoints
+      .setSession(sc, st)(
+        endpoint.securityIn(jsonBody[CreateSession]).description("the session to create")
+      )
       .post
       .in("session")
-      .out(sessionEndpoints.csrfCookie)
+      .out(sessionEndpoints.csrfCookie(checkMode))
       .serverLogic(_ =>
-        _ => Future.successful(Right(Some(sessionEndpoints.setNewCsrfToken().valueWithMeta)))
+        _ =>
+          Future.successful(Right(Some(sessionEndpoints.setNewCsrfToken(checkMode).valueWithMeta)))
       )
   }
 
   val retrieveSessionEndpoint: ServerEndpoint[Any, Future] =
-    sessionEndpoints.antiCsrfWithRequiredSession.get
+    sessionEndpoints
+      .antiCsrfWithRequiredSession(sc, st, checkMode)
+      .get
       .in("session")
       .out(
         oneOf[BusinessError](
@@ -66,9 +75,9 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
       .serverLogic(_ => _ => Future.successful(Right(NotFound))) // simulate an error
 
   val invalidateSessionEndpoint: ServerEndpoint[Any, Future] =
-    sessionEndpoints.continuity
-      .invalidateSession(
-        sessionEndpoints.antiCsrfWithRequiredSession
+    sessionEndpoints
+      .invalidateSession(sc)(
+        sessionEndpoints.antiCsrfWithRequiredSession(sc, st, checkMode)
       )
       .delete
       .in("session")

@@ -6,21 +6,13 @@ import sttp.model.StatusCode
 import sttp.model.headers.CookieValueWithMeta
 import sttp.monad.FutureMonad
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
-import sttp.tapir.{
-  cookie,
-  header,
-  setCookieOpt,
-  statusCode,
-  EndpointIO,
-  EndpointInput,
-  PublicEndpoint
-}
+import sttp.tapir.{cookie, header, setCookieOpt, statusCode, Endpoint, EndpointIO, EndpointInput}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
-trait RefreshableSessionEndpoints[T] extends Completion {
+private[session] trait RefreshableSessionEndpoints[T] extends Completion {
   this: OneOffSessionEndpoints[T] =>
   import com.softwaremill.session.AkkaToTapirImplicits._
 
@@ -46,7 +38,19 @@ trait RefreshableSessionEndpoints[T] extends Completion {
     header[Option[String]](manager.config.refreshTokenHeaderConfig.sendToClientHeaderName)
   }
 
-  private[session] def rotateToken(
+  def setRefreshableSession[INPUT](st: SetSessionTransport)(
+    endpoint: => Endpoint[INPUT, Unit, Unit, Unit, Any]
+  )(implicit
+    f: INPUT => Option[T]
+  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
+    T
+  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] =
+    st match {
+      case CookieST => setRefreshableCookieSession(endpoint)
+      case HeaderST => setRefreshableHeaderSession(endpoint)
+    }
+
+  private[this] def rotateToken(
     v: T,
     existing: Option[String]
   ): Option[String] = {
@@ -57,77 +61,108 @@ trait RefreshableSessionEndpoints[T] extends Completion {
     }
   }
 
-  implicit def refreshTokenToCookie(refreshToken: Option[String]): Option[CookieValueWithMeta] =
-    refreshToken.map(refreshable.refreshTokenManager.createCookie(_).valueWithMeta)
-
-  private[session] def setRefreshableSessionLogic[INPUT](
+  def setRefreshableSessionLogic[INPUT](
     input: INPUT,
     existing: Option[String]
-  )(implicit f: INPUT => Option[T]): Either[Unit, (Option[String], T)] =
+  )(implicit f: INPUT => Option[T]): Either[Unit, Option[String]] =
     implicitly[Option[T]](input) match {
-      case Some(v) => Right(rotateToken(v, existing), v)
+      case Some(v) => Right(rotateToken(v, existing))
       case _       => Left(())
     }
 
   def setRefreshableCookieSession[INPUT](
-    endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
-  )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
-    (INPUT, Option[String], Option[String]),
-    T,
-    INPUT,
-    Unit,
-    (Option[CookieValueWithMeta], Option[CookieValueWithMeta]),
-    Unit,
-    Any,
-    Future
-  ] = {
-    val partialServerEndpointWithSecurityOutput = setOneOffCookieSession(endpoint)
-    partialServerEndpointWithSecurityOutput.endpoint
+    endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any]
+  )(implicit
+    f: INPUT => Option[T]
+  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
+    T
+  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
+    val partial = setOneOffSession(CookieST)(endpoint)
+    partial.endpoint
       .securityIn(getRefreshTokenFromClientAsCookie)
-      .out(partialServerEndpointWithSecurityOutput.securityOutput)
+      .mapSecurityIn(a => (a._1, a._2 :+ a._3))(oo => (oo._1, Seq(oo._2.head), oo._2.last))
+      .out(partial.securityOutput)
       .out(sendRefreshTokenToClientAsCookie)
-      .serverSecurityLogicWithOutput { case (input, cookie, existing) =>
-        partialServerEndpointWithSecurityOutput
-          .securityLogic(new FutureMonad())(input, cookie)
+      .mapOut(o => o._1 :+ o._2.map(_.value))(oo =>
+        (Seq(oo.head), oo.last.map(refreshable.refreshTokenManager.createCookie(_).valueWithMeta))
+      )
+      .serverSecurityLogicWithOutput { inputs =>
+        partial
+          .securityLogic(new FutureMonad())((inputs._1, Seq(inputs._2.head)))
           .map {
             case Left(l) => Left(l)
             case Right(r) =>
-              setRefreshableSessionLogic(input, existing)
-                .map(result => ((r._1, result._1), result._2))
+              setRefreshableSessionLogic(r._2, inputs._2.last)
+                .map(result =>
+                  (
+                    r._1 :+ result,
+                    r._2
+                  )
+                )
           }
       }
   }
 
   def setRefreshableHeaderSession[INPUT](
-    endpoint: PublicEndpoint[INPUT, Unit, Unit, Any]
-  )(implicit f: INPUT => Option[T]): PartialServerEndpointWithSecurityOutput[
-    (INPUT, Option[String], Option[String]),
-    T,
-    INPUT,
-    Unit,
-    (Option[String], Option[String]),
-    Unit,
-    Any,
-    Future
-  ] = {
-    val partialServerEndpointWithSecurityOutput = setOneOffHeaderSession(endpoint)
-    partialServerEndpointWithSecurityOutput.endpoint
+    endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any]
+  )(implicit
+    f: INPUT => Option[T]
+  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
+    T
+  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
+    val partial = setOneOffSession(HeaderST)(endpoint)
+    partial.endpoint
       .securityIn(getRefreshTokenFromClientAsHeader)
-      .out(partialServerEndpointWithSecurityOutput.securityOutput)
+      .mapSecurityIn(a => (a._1, a._2 :+ a._3))(oo => (oo._1, Seq(oo._2.head), oo._2.last))
+      .out(partial.securityOutput)
       .out(sendRefreshTokenToClientAsHeader)
-      .serverSecurityLogicWithOutput { case (input, header, existing) =>
-        partialServerEndpointWithSecurityOutput
-          .securityLogic(new FutureMonad())(input, header)
+      .mapOut(o => o._1 :+ o._2)(oo => (Seq(oo.head), oo.last))
+      .serverSecurityLogicWithOutput { inputs =>
+        partial
+          .securityLogic(new FutureMonad())((inputs._1, Seq(inputs._2.head)))
           .map {
             case Left(l) => Left(l)
             case Right(r) =>
-              setRefreshableSessionLogic(input, existing)
-                .map(result => ((r._1, result._1), result._2))
+              setRefreshableSessionLogic(r._2, inputs._2.last)
+                .map(result =>
+                  (
+                    r._1 :+ result,
+                    r._2
+                  )
+                )
           }
       }
   }
 
-  private[session] def refreshTokenLogic(
+  def extractRefreshableSession(maybeValue: Option[String]): Option[T] = {
+    extractOneOffSession(maybeValue) match {
+      case None =>
+        maybeValue match {
+          case Some(value) =>
+            refreshable.refreshTokenManager
+              .sessionFromValue(value) complete () match {
+              case Success(value) => value.toOption
+              case Failure(_)     => None
+            }
+          case _ => None
+        }
+      case some => some
+    }
+  }
+
+  def refreshableSession(
+    st: GetSessionTransport,
+    required: Option[Boolean] = None
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future] =
+    st match {
+      case CookieST         => refreshableCookieSession(required)
+      case HeaderST         => refreshableHeaderSession(required)
+      case CookieOrHeaderST => refreshableCookieOrHeaderSession(required)
+    }
+
+  private[this] def refreshTokenLogic(
     refreshToken: Option[String],
     required: Option[Boolean]
   ): Either[Unit, (Option[String], SessionResult[T])] =
@@ -154,42 +189,111 @@ trait RefreshableSessionEndpoints[T] extends Completion {
           Right(None, SessionResult.NoSession)
     }
 
-  private[session] def refreshableSessionLogic(
-    session: Option[SessionResult[T]],
-    refreshToken: Option[String],
+  private[this] def refreshableSessionLogic(
+    oneOffSession: Option[SessionResult[T]],
+    oneOffInputs: Seq[Option[String]],
+    maybeCookie: Option[String],
+    maybeHeader: Option[String],
+    st: GetSessionTransport,
     required: Option[Boolean]
-  ): Either[Unit, (Option[String], SessionResult[T])] =
-    session match {
+  ): Either[Unit, (Seq[Option[String]], SessionResult[T])] = {
+    val refreshToken = maybeCookie.fold(maybeHeader)(Some(_))
+    def refresh(): Either[Unit, (Seq[Option[String]], SessionResult[T])] =
+      refreshTokenLogic(refreshToken, required) match {
+        case Left(l) => Left(l)
+        case Right(r) =>
+          r._2.toOption match {
+            case Some(value) =>
+              val oneOffValue = Some(manager.clientSessionManager.encode(value))
+              st match {
+                case CookieST | HeaderST =>
+                  Right((Seq(oneOffInputs.head.flatMap(_ => oneOffValue), r._1), r._2))
+                case CookieOrHeaderST =>
+                  val oneOffCookie = oneOffInputs.head
+                  val oneOffHeader = oneOffInputs.last
+                  Right(
+                    (
+                      Seq(
+                        oneOffCookie.flatMap(_ => oneOffValue),
+                        oneOffHeader.flatMap(_ => oneOffValue),
+                        maybeCookie.flatMap(_ => r._1),
+                        maybeHeader.flatMap(_ => r._1)
+                      ),
+                      r._2
+                    )
+                  )
+              }
+            case _ =>
+              st match {
+                case CookieST | HeaderST =>
+                  Right((oneOffInputs :+ r._1, r._2))
+                case CookieOrHeaderST =>
+                  Right(
+                    (
+                      oneOffInputs :+
+                      maybeCookie.flatMap(_ => r._1) :+
+                      maybeHeader.flatMap(_ => r._1),
+                      r._2
+                    )
+                  )
+              }
+          }
+      }
+    oneOffSession match {
       case Some(result) =>
         result match {
-          case SessionResult.NoSession | SessionResult.Expired =>
-            refreshTokenLogic(refreshToken, required)
-          case s => Right(refreshToken, s)
+          case SessionResult.NoSession | SessionResult.Expired => refresh()
+          case s =>
+            st match {
+              case CookieST | HeaderST =>
+                Right((oneOffInputs :+ refreshToken, s))
+              case CookieOrHeaderST =>
+                Right(
+                  (
+                    oneOffInputs :+
+                    maybeCookie.flatMap(_ => refreshToken) :+
+                    maybeHeader.flatMap(_ => refreshToken),
+                    s
+                  )
+                )
+            }
         }
-      case _ => refreshTokenLogic(refreshToken, required)
+      case _ => refresh()
     }
+  }
 
   def refreshableCookieSession(
     required: Option[Boolean] = None
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
     T
   ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
-    val partialServerEndpointWithSecurityOutput = oneOffCookieSession(Some(false))
-    partialServerEndpointWithSecurityOutput.endpoint
+    val partial = oneOffCookieSession(Some(false))
+    partial.endpoint
       .securityIn(getRefreshTokenFromClientAsCookie)
       .mapSecurityIn(inputs => inputs._1 :+ inputs._2)(seq => (seq.reverse.tail, seq.last))
-      .out(partialServerEndpointWithSecurityOutput.securityOutput)
+      .out(partial.securityOutput)
       .out(sendRefreshTokenToClientAsCookie)
-      .mapOut(outputs => outputs._1 :+ outputs._2.map(_.value))(seq => (seq.reverse.tail, seq.last))
+      .mapOut(outputs => outputs._1 :+ outputs._2.map(_.value))(seq =>
+        (
+          seq.reverse.tail,
+          seq.last.map(refreshable.refreshTokenManager.createCookie(_).valueWithMeta)
+        )
+      )
       .errorOut(statusCode(StatusCode.Unauthorized))
       .serverSecurityLogicWithOutput { inputs =>
-        val cookie = inputs.head
+        val oneOffInputs: Seq[Option[String]] = Seq(inputs.head)
         val refreshToken = inputs.last
-        partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(Seq(cookie)).map {
+        partial.securityLogic(new FutureMonad())(oneOffInputs).map {
           case Left(l) => Left(l)
           case Right(r) =>
-            refreshableSessionLogic(Some(r._2), refreshToken, required)
-              .map(result => (r._1 :+ result._1, result._2))
+            refreshableSessionLogic(
+              Some(r._2),
+              oneOffInputs,
+              refreshToken,
+              None,
+              CookieST,
+              required
+            )
         }
       }
   }
@@ -199,36 +303,82 @@ trait RefreshableSessionEndpoints[T] extends Completion {
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
     T
   ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] = {
-    val partialServerEndpointWithSecurityOutput = oneOffHeaderSession(Some(false))
-    partialServerEndpointWithSecurityOutput.endpoint
+    val partial = oneOffHeaderSession(Some(false))
+    partial.endpoint
       .securityIn(getRefreshTokenFromClientAsHeader)
       .mapSecurityIn(inputs => inputs._1 :+ inputs._2)(seq => (seq.reverse.tail, seq.last))
-      .out(partialServerEndpointWithSecurityOutput.securityOutput)
+      .out(partial.securityOutput)
       .out(sendRefreshTokenToClientAsHeader)
       .mapOut(outputs => outputs._1 :+ outputs._2)(seq => (seq.reverse.tail, seq.last))
       .errorOut(statusCode(StatusCode.Unauthorized))
       .serverSecurityLogicWithOutput { inputs =>
-        val header = inputs.head
+        val oneOffInputs: Seq[Option[String]] = Seq(inputs.head)
         val refreshToken = inputs.last
-        partialServerEndpointWithSecurityOutput.securityLogic(new FutureMonad())(Seq(header)).map {
+        partial.securityLogic(new FutureMonad())(oneOffInputs).map {
           case Left(l) => Left(l)
           case Right(r) =>
-            refreshableSessionLogic(Some(r._2), refreshToken, required)
-              .map(result => (r._1 :+ result._1, result._2))
+            refreshableSessionLogic(
+              Some(r._2),
+              oneOffInputs,
+              None,
+              refreshToken,
+              HeaderST,
+              required
+            )
         }
       }
   }
 
-  //TODO def refreshableCookieOrHeaderSession(required: Option[Boolean] = None) = {}
+  def refreshableCookieOrHeaderSession(
+    required: Option[Boolean] = None
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future] = {
+    val partial = oneOffCookieOrHeaderSession(Some(false))
+    partial.endpoint
+      .securityIn(getRefreshTokenFromClientAsCookie)
+      .securityIn(getRefreshTokenFromClientAsHeader)
+      .mapSecurityIn(inputs => inputs._1 :+ inputs._2 :+ inputs._3)(oo =>
+        (oo.take(oo.size - 2), oo.takeRight(2).head, oo.last)
+      )
+      .out(partial.securityOutput)
+      .out(sendRefreshTokenToClientAsCookie)
+      .out(sendRefreshTokenToClientAsHeader)
+      .mapOut(outputs => outputs._1 :+ outputs._2.map(_.value) :+ outputs._3)(oo =>
+        (
+          oo.take(oo.size - 2),
+          oo.takeRight(2).head.map(refreshable.refreshTokenManager.createCookie(_).valueWithMeta),
+          oo.last
+        )
+      )
+      .errorOut(statusCode(StatusCode.Unauthorized))
+      .serverSecurityLogicWithOutput { inputs =>
+        val oneOffInputs: Seq[Option[String]] = inputs.take(2)
+        val maybeCookie = inputs.takeRight(2).head
+        val maybeHeader = inputs.last
+        partial.securityLogic(new FutureMonad())(oneOffInputs).map {
+          case Left(l) => Left(l)
+          case Right(r) =>
+            refreshableSessionLogic(
+              Some(r._2),
+              oneOffInputs,
+              maybeCookie,
+              maybeHeader,
+              CookieOrHeaderST,
+              required
+            )
+        }
+      }
+  }
 
-  private[session] def invalidateRefreshableSessionLogic[PRINCIPAL](
-    result: ((Option[CookieValueWithMeta], Option[String]), PRINCIPAL),
+  private[this] def invalidateRefreshableSessionLogic[PRINCIPAL](
+    result: (Seq[Option[String]], PRINCIPAL),
     cookie: Option[String],
     header: Option[String]
   ): Either[
     Nothing,
     (
-      (Option[CookieValueWithMeta], Option[String], Option[CookieValueWithMeta], Option[String]),
+      Seq[Option[String]],
       PRINCIPAL
     )
   ] = {
@@ -237,53 +387,42 @@ trait RefreshableSessionEndpoints[T] extends Completion {
       case Some(c) =>
         refreshable.refreshTokenManager.removeToken(c) complete () match {
           case _ =>
-            val deleted = refreshable.refreshTokenManager
-              .createCookie("deleted")
-              .withExpires(DateTime.MinValue)
-              .valueWithMeta
             header match {
-              case Some(_) =>
-                Right((result._1._1, result._1._2, Some(deleted), Some("")), principal)
-              case _ => Right((result._1._1, result._1._2, Some(deleted), None), principal)
+              case Some(_) => Right(result._1 :+ Some("deleted") :+ Some(""), principal)
+              case _       => Right(result._1 :+ Some("deleted") :+ None, principal)
             }
         }
       case _ =>
         header match {
           case Some(h) =>
             refreshable.refreshTokenManager.removeToken(h) complete () match {
-              case _ => Right((result._1._1, result._1._2, None, Some("")), principal)
+              case _ => Right(result._1 :+ None :+ Some(""), principal)
             }
-          case _ => Right((result._1._1, result._1._2, None, None), principal)
+          case _ => Right(result._1 :+ None :+ None, principal)
         }
     }
   }
 
   def invalidateRefreshableSession[
     SECURITY_INPUT,
-    PRINCIPAL,
-    SECURITY_OUTPUT
+    PRINCIPAL
   ](
     partial: PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
       Unit,
-      SECURITY_OUTPUT,
+      _,
       Unit,
       Any,
       Future
     ]
   ): PartialServerEndpointWithSecurityOutput[
-    (SECURITY_INPUT, Option[String], Option[String], Option[String], Option[String]),
+    (SECURITY_INPUT, Seq[Option[String]]),
     PRINCIPAL,
     Unit,
     Unit,
-    (
-      Option[CookieValueWithMeta],
-      Option[String],
-      Option[CookieValueWithMeta],
-      Option[String]
-    ),
+    Seq[Option[String]],
     Unit,
     Any,
     Future
@@ -292,13 +431,83 @@ trait RefreshableSessionEndpoints[T] extends Completion {
     partialOneOffSession.endpoint
       .securityIn(getRefreshTokenFromClientAsCookie)
       .securityIn(getRefreshTokenFromClientAsHeader)
+      .mapSecurityIn(inputs => (inputs._1, inputs._2 :+ inputs._3 :+ inputs._4))(oo =>
+        (oo._1, oo._2.take(oo._2.size - 2), oo._2.takeRight(2).head, oo._2.last)
+      )
       .out(partialOneOffSession.securityOutput)
       .out(sendRefreshTokenToClientAsCookie)
       .out(sendRefreshTokenToClientAsHeader)
-      .serverSecurityLogicWithOutput { case (si, sc, sh, cookie, header) =>
-        partialOneOffSession.securityLogic(new FutureMonad())(si, sc, sh).map {
-          case Left(l)  => Left(l)
-          case Right(r) => invalidateRefreshableSessionLogic(r, cookie, header)
+      .mapOut(outputs => outputs._1 :+ outputs._2.map(_.value) :+ outputs._3)(oo =>
+        (
+          oo.take(oo.size - 2),
+          oo.takeRight(2)
+            .head
+            .map(
+              refreshable.refreshTokenManager
+                .createCookie(_)
+                .withExpires(DateTime.MinValue)
+                .valueWithMeta
+            ),
+          oo.last
+        )
+      )
+      .serverSecurityLogicWithOutput { inputs =>
+        partialOneOffSession
+          .securityLogic(new FutureMonad())((inputs._1, inputs._2.take(inputs._2.size - 2)))
+          .map {
+            case Left(l) => Left(l)
+            case Right(r) =>
+              invalidateRefreshableSessionLogic(r, inputs._2.takeRight(2).head, inputs._2.last)
+          }
+      }
+  }
+
+  def touchRefreshableSession(
+    st: GetSessionTransport,
+    required: Option[Boolean]
+  ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
+    Option[String]
+  ], Unit, Any, Future] = {
+    val partial = refreshableSession(st, required)
+    partial.endpoint
+      .out(partial.securityOutput)
+      .serverSecurityLogicWithOutput { inputs =>
+        partial.securityLogic(new FutureMonad())(inputs).map {
+          case Left(l) => Left(l)
+          case Right(r) =>
+            val session = r._2
+            st match {
+              case CookieST =>
+                refreshableSessionLogic(
+                  Some(session),
+                  Seq(inputs.head),
+                  inputs.last,
+                  None,
+                  CookieST,
+                  Some(false)
+                )
+              case HeaderST =>
+                refreshableSessionLogic(
+                  Some(session),
+                  Seq(inputs.head),
+                  None,
+                  inputs.last,
+                  HeaderST,
+                  Some(false)
+                )
+              case CookieOrHeaderST =>
+                val oneOffInputs: Seq[Option[String]] = inputs.take(2)
+                val maybeCookie = inputs.takeRight(2).head
+                val maybeHeader = inputs.last
+                refreshableSessionLogic(
+                  Some(session),
+                  oneOffInputs,
+                  maybeCookie,
+                  maybeHeader,
+                  CookieOrHeaderST,
+                  Some(false)
+                )
+            }
         }
       }
   }

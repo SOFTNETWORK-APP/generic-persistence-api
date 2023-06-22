@@ -3,26 +3,13 @@ package app.softnetwork.session.service
 import akka.actor.typed.ActorSystem
 import app.softnetwork.session.config.Settings.Session.CookieSecret
 import app.softnetwork.session.handlers.SessionRefreshTokenDao
-import com.softwaremill.session.{
-  GenericOneOffCookieSessionEndpoints,
-  GenericOneOffHeaderSessionEndpoints,
-  GenericRefreshableCookieSessionEndpoints,
-  GenericRefreshableHeaderSessionEndpoints,
-  GenericSessionEndpoints,
-  RefreshTokenStorage,
-  SessionConfig,
-  SessionContinuityEndpoints,
-  SessionManager,
-  SessionTransportEndpoints
-}
+import com.softwaremill.session._
 import org.softnetwork.session.model.Session
 
 import scala.concurrent.ExecutionContext
+import scala.language.implicitConversions
 
-trait SessionEndpoints extends GenericSessionEndpoints[Session] {
-  _: SessionTransportEndpoints[Session] with SessionContinuityEndpoints[Session] =>
-
-  import Session._
+trait SessionEndpoints extends TapirEndpoints {
 
   implicit val manager: SessionManager[Session] =
     new SessionManager[Session](SessionConfig.default(CookieSecret))
@@ -35,23 +22,61 @@ trait SessionEndpoints extends GenericSessionEndpoints[Session] {
     system
   )
 
+  import TapirSessionOptions._
+
+  lazy val oneOffSession: SessionContinuityEndpoints[Session] = oneOff
+
+  lazy val refreshableSession: SessionContinuityEndpoints[Session] = refreshable
+
+  import TapirCsrfOptions._
+
+  lazy val checkHeaderMode: TapirCsrfCheckMode[Session] = checkHeader
+
+  lazy val checkHeaderAndFormMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
+
+  lazy val sc: SessionContinuityEndpoints[Session] = oneOffSession
+
+  lazy val st: SetSessionTransport = CookieST
+
+  lazy val gt: GetSessionTransport = st
+
+  lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderMode
+
+  implicit def booleanToCheckMode(checkHeaderAndForm: Boolean): TapirCsrfCheckMode[Session] =
+    if (checkHeaderAndForm) {
+      checkHeaderAndFormMode
+    } else {
+      checkHeaderMode
+    }
 }
 
 case class OneOffCookieSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
-    extends SessionEndpoints
-    with GenericOneOffCookieSessionEndpoints[Session]
+    extends SessionEndpoints {
+  override lazy val sc: SessionContinuityEndpoints[Session] = oneOffSession
+  override lazy val st: SetSessionTransport = CookieST
+  override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
+}
 
 case class OneOffHeaderSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
-    extends SessionEndpoints
-    with GenericOneOffHeaderSessionEndpoints[Session]
+    extends SessionEndpoints {
+  override lazy val sc: SessionContinuityEndpoints[Session] = oneOffSession
+  override lazy val st: SetSessionTransport = HeaderST
+  override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
+}
 
 case class RefreshableCookieSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
-    extends SessionEndpoints
-    with GenericRefreshableCookieSessionEndpoints[Session]
+    extends SessionEndpoints {
+  override lazy val sc: SessionContinuityEndpoints[Session] = refreshableSession
+  override lazy val st: SetSessionTransport = CookieST
+  override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
+}
 
 case class RefreshableHeaderSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
-    extends SessionEndpoints
-    with GenericRefreshableHeaderSessionEndpoints[Session]
+    extends SessionEndpoints {
+  override lazy val sc: SessionContinuityEndpoints[Session] = refreshableSession
+  override lazy val st: SetSessionTransport = HeaderST
+  override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
+}
 
 object SessionEndpoints {
   def oneOffCookie(

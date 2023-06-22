@@ -5,11 +5,11 @@ import sttp.model.headers.{CookieValueWithMeta, CookieWithMeta}
 import sttp.model.{Method, StatusCode}
 import sttp.monad.FutureMonad
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
-import sttp.tapir.{EndpointIO, _}
+import sttp.tapir._
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait CsrfEndpoints[T] extends CsrfCheck {
+private[session] trait CsrfEndpoints[T] extends CsrfCheck {
 
   import com.softwaremill.session.AkkaToTapirImplicits._
 
@@ -17,32 +17,27 @@ trait CsrfEndpoints[T] extends CsrfCheck {
 
   implicit def ec: ExecutionContext
 
-  /** Protects against CSRF attacks using a double-submit cookie. The cookie will be set on any
-    * `GET` request which doesn't have the token set in the header. For all other requests, the
-    * value of the token from the CSRF cookie must match the value in the custom header (TODO or
-    * request body, if `checkFormBody` is `true`).
-    *
-    * The cookie value is the concatenation of a timestamp and its HMAC hash following the OWASP
-    * recommendation for CSRF prevention:
-    * @see
-    *   <a
-    *   href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#hmac-based-token-pattern">OWASP</a>
-    *
-    * Note that this scheme can be broken when not all subdomains are protected or not using HTTPS
-    * and secure cookies, and the token is placed in the request body (not in the header).
-    *
-    * See the documentation for more details.
-    */
-  def hmacTokenCsrfProtection(
+  def csrfCookie: EndpointIO.Header[Option[CookieValueWithMeta]] =
+    setCookieOpt(manager.config.csrfCookieConfig.name).description("set csrf token as cookie")
+
+  def submittedCsrfCookie: EndpointInput.Cookie[Option[String]] =
+    cookie(manager.config.csrfCookieConfig.name)
+
+  def submittedCsrfHeader: EndpointIO.Header[Option[String]] = header[Option[String]](
+    manager.config.csrfSubmittedName
+  ).description("read csrf token as header")
+
+  def setNewCsrfToken(): CookieWithMeta = manager.csrfManager.createCookie()
+
+  def hmacTokenCsrfProtectionLogic(
     method: Method,
-    csrfTokenCookie: Option[String],
-    csrfTokenAsHeader: Option[String],
-    csrfTokenAsForm: Option[String]
+    csrfTokenFromCookie: Option[String],
+    submittedCsrfToken: Option[String]
   ): Either[Unit, (Option[CookieValueWithMeta], Unit)] = {
-    csrfTokenCookie match {
+    csrfTokenFromCookie match {
       case Some(cookie) =>
         val token = cookie
-        csrfTokenAsHeader.fold(csrfTokenAsForm)(Option(_)) match {
+        submittedCsrfToken match {
           case Some(submitted) =>
             if (submitted == token && token.nonEmpty && manager.csrfManager.validateToken(token)) {
               Right((None, ()))
@@ -62,24 +57,12 @@ trait CsrfEndpoints[T] extends CsrfCheck {
     }
   }
 
-  def submittedCsrfCookie: EndpointInput.Cookie[Option[String]] =
-    cookie(manager.config.csrfCookieConfig.name)
-
-  def csrfCookie: EndpointIO.Header[Option[CookieValueWithMeta]] =
-    setCookieOpt(manager.config.csrfCookieConfig.name).description("set csrf token as cookie")
-
-  def submittedCsrfHeader: EndpointIO.Header[Option[String]] = header[Option[String]](
-    manager.config.csrfSubmittedName
-  ).description("read csrf token as header")
-
-  def setNewCsrfToken(): CookieWithMeta = manager.csrfManager.createCookie()
-
-  def hmacTokenCsrfProtectionEndpoint[
+  def hmacTokenCsrfProtection[
     SECURITY_INPUT,
     PRINCIPAL,
     SECURITY_OUTPUT
   ](
-    partial: PartialServerEndpointWithSecurityOutput[
+    body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
@@ -90,7 +73,7 @@ trait CsrfEndpoints[T] extends CsrfCheck {
       Future
     ]
   ): PartialServerEndpointWithSecurityOutput[
-    (SECURITY_INPUT, Method, Option[String], Option[String] /*, Option[Map[String, String]]*/ ),
+    (SECURITY_INPUT, Option[String], Method, Option[String], Map[String, String]),
     PRINCIPAL,
     Unit,
     Unit,
@@ -98,31 +81,75 @@ trait CsrfEndpoints[T] extends CsrfCheck {
     Unit,
     Any,
     Future
-  ] =
-    partial.endpoint
-      // extract request method
-      .securityIn(extractFromRequest(req => req.method))
-      // extract csrf cookie
-      .securityIn(submittedCsrfCookie)
-      // extract token from header
-      .securityIn(submittedCsrfHeader)
-//      // extract token from form
-//      .securityIn(formBody[Map[String, String]])
-      .out(partial.securityOutput)
-      .out(csrfCookie)
-      .errorOut(statusCode(StatusCode.Unauthorized))
-      .serverSecurityLogicWithOutput { case (si, method, cookie, header) =>
-        partial.securityLogic(new FutureMonad())(si).map {
-          case Left(l) => Left(l)
-          case Right(r) =>
-            hmacTokenCsrfProtection(
-              method,
-              cookie,
-              header,
-              /*if (checkHeaderAndForm) form.get(manager.config.csrfSubmittedName) else*/ None
-            ).map(result => ((r._1, result._1), r._2))
+  ] = {
+    val partial =
+      // extract csrf token from cookie
+      csrfTokenFromCookie()
+        // extract request method
+        .securityIn(extractFromRequest(req => req.method))
+        // extract submitted csrf token from header
+        .securityIn(submittedCsrfHeader)
+        // extract submitted csrf token from form
+        .securityIn(formBody[Map[String, String]])
+        .out(csrfCookie)
+        .errorOut(statusCode(StatusCode.Unauthorized))
+        .serverSecurityLogicWithOutput {
+          case (
+                csrfTokenFromCookie,
+                method,
+                submittedCsrfTokenFromHeader,
+                submittedCsrfTokenFromForm
+              ) =>
+            Future.successful(
+              hmacTokenCsrfProtectionLogic(
+                method,
+                csrfTokenFromCookie,
+                if (checkHeaderAndForm)
+                  submittedCsrfTokenFromHeader.fold(
+                    submittedCsrfTokenFromForm.get(manager.config.csrfSubmittedName)
+                  )(Option(_))
+                else
+                  submittedCsrfTokenFromHeader
+              )
+            )
         }
+    partial.endpoint
+      .prependSecurityIn(body.securityInput)
+      .out(body.securityOutput)
+      .out(partial.securityOutput)
+      .serverSecurityLogicWithOutput {
+        case (
+              securityInput,
+              csrfTokenFromCookie,
+              method,
+              submittedCsrfTokenFromHeader,
+              submittedCsrfTokenFromForm
+            ) =>
+          partial
+            .securityLogic(new FutureMonad())(
+              (
+                csrfTokenFromCookie,
+                method,
+                submittedCsrfTokenFromHeader,
+                submittedCsrfTokenFromForm
+              )
+            )
+            .flatMap {
+              case Left(l) => Future.successful(Left(l))
+              case Right(r) =>
+                body.securityLogic(new FutureMonad())(securityInput).map {
+                  case Left(l2) => Left(l2)
+                  case Right(r2) =>
+                    Right(((r2._1, r._1), r2._2))
+                }
+            }
       }
+  }
+
+  def csrfTokenFromCookie(): Endpoint[Option[String], Unit, Unit, Unit, Any] =
+    endpoint
+      // extract csrf token from cookie
+      .securityIn(submittedCsrfCookie)
 
 }
 

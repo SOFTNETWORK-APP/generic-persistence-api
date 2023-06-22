@@ -6,7 +6,6 @@ import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.persistence.generateUUID
 import app.softnetwork.persistence.person.message._
 import app.softnetwork.persistence.service.Service
-import org.json4s.Formats
 import org.slf4j.{Logger, LoggerFactory}
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -22,8 +21,6 @@ trait PersonService
     with ApiEndpoint {
 
   import app.softnetwork.serialization._
-
-  implicit def formats: Formats = commonFormats
 
   val rootEndpoint: Endpoint[Unit, Unit, PersonCommandResult, Unit, Any] = endpoint
     .in("person")
