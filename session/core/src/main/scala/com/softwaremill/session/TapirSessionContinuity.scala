@@ -8,7 +8,7 @@ import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-sealed trait SessionContinuityEndpoints[T] {
+sealed trait TapirSessionContinuity[T] {
   implicit def manager: SessionManager[T]
 
   implicit def ec: ExecutionContext
@@ -129,8 +129,8 @@ sealed trait SessionContinuityEndpoints[T] {
 
 }
 
-trait OneOffSessionContinuity[T] extends SessionContinuityEndpoints[T] {
-  _: OneOffSessionEndpoints[T] =>
+trait OneOffTapirSessionContinuity[T] extends TapirSessionContinuity[T] {
+  _: OneOffTapirSession[T] =>
 
   override def extractSession(maybeValue: Option[String]): Option[T] = extractOneOffSession(
     maybeValue
@@ -184,8 +184,8 @@ trait OneOffSessionContinuity[T] extends SessionContinuityEndpoints[T] {
   ], Unit, Any, Future] = touchOneOffSession(st, required)
 }
 
-trait RefreshableSessionContinuity[T] extends SessionContinuityEndpoints[T] with Completion {
-  this: RefreshableSessionEndpoints[T] with OneOffSessionEndpoints[T] =>
+trait RefreshableTapirSessionContinuity[T] extends TapirSessionContinuity[T] with Completion {
+  this: RefreshableTapirSession[T] with OneOffTapirSession[T] =>
 
   override def extractSession(maybeValue: Option[String]): Option[T] = extractRefreshableSession(
     maybeValue

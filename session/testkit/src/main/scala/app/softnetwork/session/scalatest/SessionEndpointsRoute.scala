@@ -4,7 +4,7 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.{Route, RouteConcatenation}
 import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.session.service._
-import com.softwaremill.session._
+import com.softwaremill.session.{SessionEndpoints => _, _}
 import org.softnetwork.session.model.Session
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -39,7 +39,7 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
     Some(s)
   }
 
-  def sc: SessionContinuityEndpoints[Session] = sessionEndpoints.sc
+  def sc: TapirSessionContinuity[Session] = sessionEndpoints.sc
 
   def st: SetSessionTransport = sessionEndpoints.st
 

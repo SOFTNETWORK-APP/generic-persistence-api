@@ -9,8 +9,8 @@ import sttp.tapir.{cookie, header, _}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-private[session] trait OneOffSessionEndpoints[T] {
-  import AkkaToTapirImplicits._
+private[session] trait OneOffTapirSession[T] {
+  import TapirImplicits._
 
   implicit def manager: SessionManager[T]
 

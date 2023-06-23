@@ -9,7 +9,7 @@ import sttp.model.headers.{CookieValueWithMeta, CookieWithMeta}
 import java.time.Instant
 import scala.language.implicitConversions
 
-object AkkaToTapirImplicits {
+object TapirImplicits {
 
   implicit def akkaSameSiteToTapirSameSite(
     maybeSameSite: Option[AkkaHeaders.SameSite]

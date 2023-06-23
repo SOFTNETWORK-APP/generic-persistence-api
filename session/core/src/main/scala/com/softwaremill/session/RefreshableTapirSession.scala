@@ -12,9 +12,9 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
-private[session] trait RefreshableSessionEndpoints[T] extends Completion {
-  this: OneOffSessionEndpoints[T] =>
-  import com.softwaremill.session.AkkaToTapirImplicits._
+private[session] trait RefreshableTapirSession[T] extends Completion {
+  this: OneOffTapirSession[T] =>
+  import com.softwaremill.session.TapirImplicits._
 
   implicit def refreshTokenStorage: RefreshTokenStorage[T]
 

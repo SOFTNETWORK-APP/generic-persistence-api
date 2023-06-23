@@ -6,10 +6,10 @@ import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 
 import scala.concurrent.Future
 
-trait TapirEndpoints extends TapirSession with TapirCsrf {
+trait TapirEndpoints extends SessionEndpoints with CsrfEndpoints {
 
   def antiCsrfWithRequiredSession[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport,
     checkMode: TapirCsrfCheckMode[T]
   ): PartialServerEndpointWithSecurityOutput[
@@ -27,7 +27,7 @@ trait TapirEndpoints extends TapirSession with TapirCsrf {
     }
 
   def antiCsrfWithOptionalSession[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport,
     checkMode: TapirCsrfCheckMode[T]
   ): PartialServerEndpointWithSecurityOutput[

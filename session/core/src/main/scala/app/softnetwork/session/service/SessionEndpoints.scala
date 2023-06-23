@@ -24,9 +24,9 @@ trait SessionEndpoints extends TapirEndpoints {
 
   import TapirSessionOptions._
 
-  lazy val oneOffSession: SessionContinuityEndpoints[Session] = oneOff
+  lazy val oneOffSession: TapirSessionContinuity[Session] = oneOff
 
-  lazy val refreshableSession: SessionContinuityEndpoints[Session] = refreshable
+  lazy val refreshableSession: TapirSessionContinuity[Session] = refreshable
 
   import TapirCsrfOptions._
 
@@ -34,7 +34,7 @@ trait SessionEndpoints extends TapirEndpoints {
 
   lazy val checkHeaderAndFormMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
 
-  lazy val sc: SessionContinuityEndpoints[Session] = oneOffSession
+  lazy val sc: TapirSessionContinuity[Session] = oneOffSession
 
   lazy val st: SetSessionTransport = CookieST
 
@@ -52,28 +52,28 @@ trait SessionEndpoints extends TapirEndpoints {
 
 case class OneOffCookieSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints {
-  override lazy val sc: SessionContinuityEndpoints[Session] = oneOffSession
+  override lazy val sc: TapirSessionContinuity[Session] = oneOffSession
   override lazy val st: SetSessionTransport = CookieST
   override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
 }
 
 case class OneOffHeaderSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints {
-  override lazy val sc: SessionContinuityEndpoints[Session] = oneOffSession
+  override lazy val sc: TapirSessionContinuity[Session] = oneOffSession
   override lazy val st: SetSessionTransport = HeaderST
   override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
 }
 
 case class RefreshableCookieSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints {
-  override lazy val sc: SessionContinuityEndpoints[Session] = refreshableSession
+  override lazy val sc: TapirSessionContinuity[Session] = refreshableSession
   override lazy val st: SetSessionTransport = CookieST
   override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
 }
 
 case class RefreshableHeaderSessionEndpoints(system: ActorSystem[_], checkHeaderAndForm: Boolean)
     extends SessionEndpoints {
-  override lazy val sc: SessionContinuityEndpoints[Session] = refreshableSession
+  override lazy val sc: TapirSessionContinuity[Session] = refreshableSession
   override lazy val st: SetSessionTransport = HeaderST
   override lazy val checkMode: TapirCsrfCheckMode[Session] = checkHeaderAndForm
 }

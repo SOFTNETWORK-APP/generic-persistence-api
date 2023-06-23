@@ -5,7 +5,7 @@ import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait TapirSession {
+trait SessionEndpoints {
 
   /** Set the session cookie with the session content. The content is signed, optionally encrypted
     * and with an optional expiry date.
@@ -14,7 +14,7 @@ trait TapirSession {
     * cookie.
     */
   def setSession[T, INPUT](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: SetSessionTransport
   )(endpoint: => Endpoint[INPUT, Unit, Unit, Unit, Any])(implicit
     f: INPUT => Option[T]
@@ -29,7 +29,7 @@ trait TapirSession {
     * If refreshable, tries to create a new session based on the refresh token cookie.
     */
   def session[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport,
     required: Option[Boolean]
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
@@ -46,7 +46,7 @@ trait TapirSession {
     * users.
     */
   def invalidateSession[T, SECURITY_INPUT, PRINCIPAL](
-    sc: SessionContinuityEndpoints[T]
+    sc: TapirSessionContinuity[T]
   )(
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
@@ -73,7 +73,7 @@ trait TapirSession {
   /** Read an optional session from the session cookie.
     */
   def optionalSession[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], Option[T], Unit, Unit, Seq[
     Option[String]
@@ -83,7 +83,7 @@ trait TapirSession {
   /** Read a required session from the session cookie.
     */
   def requiredSession[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], T, Unit, Unit, Seq[
     Option[String]
@@ -91,7 +91,7 @@ trait TapirSession {
     sc.requiredSession(st)
 
   def touchSession[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport,
     required: Option[Boolean]
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[T], Unit, Unit, Seq[
@@ -103,7 +103,7 @@ trait TapirSession {
     * [[SessionConfig.sessionMaxAgeSeconds]] option, as it sets the expiry date anew.
     */
   def touchOptionalSession[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], Option[T], Unit, Unit, Seq[
     Option[String]
@@ -115,7 +115,7 @@ trait TapirSession {
     * [[SessionConfig.sessionMaxAgeSeconds]] option, as it sets the expiry date anew.
     */
   def touchRequiredSession[T](
-    sc: SessionContinuityEndpoints[T],
+    sc: TapirSessionContinuity[T],
     st: GetSessionTransport
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], T, Unit, Unit, Seq[
     Option[String]
@@ -137,15 +137,15 @@ object TapirSessionOptions {
 }
 
 class OneOffTapir[T](implicit val manager: SessionManager[T], val ec: ExecutionContext)
-    extends OneOffSessionContinuity[T]
-    with OneOffSessionEndpoints[T]
+    extends OneOffTapirSessionContinuity[T]
+    with OneOffTapirSession[T]
 
 class RefreshableTapir[T](implicit
   val manager: SessionManager[T],
   val refreshTokenStorage: RefreshTokenStorage[T],
   val ec: ExecutionContext
-) extends RefreshableSessionContinuity[T]
-    with RefreshableSessionEndpoints[T]
-    with OneOffSessionEndpoints[T]
+) extends RefreshableTapirSessionContinuity[T]
+    with RefreshableTapirSession[T]
+    with OneOffTapirSession[T]
 
-object TapirSession extends TapirSession {}
+object SessionEndpoints extends SessionEndpoints {}
