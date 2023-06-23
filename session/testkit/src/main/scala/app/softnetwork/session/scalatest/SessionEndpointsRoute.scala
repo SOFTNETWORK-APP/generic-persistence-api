@@ -7,10 +7,11 @@ import app.softnetwork.session.service._
 import com.softwaremill.session.{SessionEndpoints => _, _}
 import org.softnetwork.session.model.Session
 import sttp.model.StatusCode
+import sttp.model.headers.CookieValueWithMeta
 import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.json4s.jsonBody
-import sttp.tapir.server.ServerEndpoint
+import sttp.tapir.server.{PartialServerEndpointWithSecurityOutput, ServerEndpoint}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -43,19 +44,27 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
 
   def st: SetSessionTransport = sessionEndpoints.st
 
+  def gt: GetSessionTransport = sessionEndpoints.gt
+
   def checkMode: TapirCsrfCheckMode[Session] = sessionEndpoints.checkMode
 
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
+    import TapirImplicits._
     sessionEndpoints
-      .setSession(sc, st)(
+      .setSession(sc, st) {
         endpoint.securityIn(jsonBody[CreateSession]).description("the session to create")
-      )
+      }
       .post
       .in("session")
-      .out(sessionEndpoints.csrfCookie(checkMode))
+      .out(
+        setCookieOpt(sessionEndpoints.manager.config.csrfCookieConfig.name)
+          .description("set csrf token as cookie")
+      )
       .serverLogic(_ =>
         _ =>
-          Future.successful(Right(Some(sessionEndpoints.setNewCsrfToken(checkMode).valueWithMeta)))
+          Future.successful(
+            Right(Some(sessionEndpoints.manager.csrfManager.createCookie().valueWithMeta))
+          )
       )
   }
 
@@ -76,7 +85,7 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
 
   val invalidateSessionEndpoint: ServerEndpoint[Any, Future] =
     sessionEndpoints
-      .invalidateSession(sc)(
+      .invalidateSession(sc, gt)(
         sessionEndpoints.antiCsrfWithRequiredSession(sc, st, checkMode)
       )
       .delete

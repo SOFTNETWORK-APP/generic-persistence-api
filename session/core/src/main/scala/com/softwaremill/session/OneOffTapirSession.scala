@@ -119,13 +119,6 @@ private[session] trait OneOffTapirSession[T] {
       case CookieOrHeaderST => oneOffCookieOrHeaderSession(required)
     }
 
-  private[this] def oneOffCookieSessionLogic(
-    cookie: Option[String],
-    required: Option[Boolean]
-  ): Either[Unit, (Option[CookieValueWithMeta], SessionResult[T])] = {
-    oneOffCookieOrHeaderSessionLogic(cookie, None, required).map(e => (e._1._1, e._2))
-  }
-
   def oneOffCookieSession(
     required: Option[Boolean] = None
   ): PartialServerEndpointWithSecurityOutput[Seq[Option[String]], SessionResult[
@@ -140,22 +133,18 @@ private[session] trait OneOffTapirSession[T] {
       )
       .errorOut(statusCode(StatusCode.Unauthorized))
       .serverSecurityLogicWithOutput { inputs =>
-        Future.successful(oneOffCookieSessionLogic(inputs.head, required) match {
-          case Left(l)  => Left(l)
-          case Right(r) => Right(Seq(r._1.map(_.value)), r._2)
-        })
+        Future.successful(
+          oneOffCookieOrHeaderSessionLogic(inputs.head, None, required)
+            .map(e => (e._1._1, e._2)) match {
+            case Left(l)  => Left(l)
+            case Right(r) => Right((Seq(r._1), r._2))
+          }
+        )
       }
   }
 
   def extractOneOffSession(maybeValue: Option[String]): Option[T] =
     maybeValue.flatMap(manager.clientSessionManager.decode(_).toOption)
-
-  private[this] def oneOffHeaderSessionLogic(
-    header: Option[String],
-    required: Option[Boolean]
-  ): Either[Unit, (Option[String], SessionResult[T])] = {
-    oneOffCookieOrHeaderSessionLogic(None, header, required).map(e => (e._1._2, e._2))
-  }
 
   def oneOffHeaderSession(
     required: Option[Boolean] = None
@@ -171,49 +160,52 @@ private[session] trait OneOffTapirSession[T] {
       .mapOut(Seq(_))(_.head)
       .errorOut(statusCode(StatusCode.Unauthorized))
       .serverSecurityLogicWithOutput { inputs =>
-        Future.successful(oneOffHeaderSessionLogic(inputs.head, required) match {
-          case Left(l)  => Left(l)
-          case Right(r) => Right(Seq(r._1), r._2)
-        })
+        Future.successful(
+          oneOffCookieOrHeaderSessionLogic(None, inputs.head, required)
+            .map(e => (e._1._2, e._2)) match {
+            case Left(l)  => Left(l)
+            case Right(r) => Right((Seq(r._1), r._2))
+          }
+        )
       }
 
   def oneOffCookieOrHeaderSessionLogic(
     maybeCookie: Option[String],
     maybeHeader: Option[String],
     required: Option[Boolean]
-  ): Either[Unit, ((Option[CookieValueWithMeta], Option[String]), SessionResult[T])] = {
-    maybeCookie match {
-      case Some(cookie) =>
-        val decoded = manager.clientSessionManager.decode(cookie)
+  ): Either[Unit, ((Option[String], Option[String]), SessionResult[T])] = {
+    // read session from the cookie and/or header
+    val oneOff = maybeCookie.fold(maybeHeader)(Some(_))
+    oneOff match {
+      case Some(value) =>
+        val decoded = manager.clientSessionManager.decode(value)
         decoded match {
-          case SessionResult.Expired | SessionResult.Corrupt(_) =>
-            Right((None, maybeHeader), decoded)
+          case s: SessionResult.DecodedLegacy[T] =>
+            Right(
+              (
+                (
+                  Some(manager.clientSessionManager.encode(s.session)),
+                  maybeHeader.map(_ => value)
+                ),
+                s
+              )
+            )
           case s =>
             Right(
               (
-                Some(manager.clientSessionManager.createCookieWithValue(cookie).valueWithMeta),
-                maybeHeader
-              ),
-              s
+                (
+                  None,
+                  None
+                ),
+                s
+              )
             )
         }
       case _ =>
-        maybeHeader match {
-          case Some(header) =>
-            val decoded = manager.clientSessionManager.decode(header)
-            decoded match {
-              case SessionResult.Expired | SessionResult.Corrupt(_) =>
-                if (required.getOrElse(false))
-                  Left(())
-                else
-                  Right((None, None), decoded)
-              case s => Right((None, Some(header)), s)
-            }
-          case _ =>
-            if (required.getOrElse(false))
-              Left(())
-            else
-              Right((None, None), SessionResult.NoSession)
+        if (required.getOrElse(false)) {
+          Left(())
+        } else {
+          Right(((None, None), SessionResult.NoSession))
         }
     }
   }
@@ -239,7 +231,7 @@ private[session] trait OneOffTapirSession[T] {
       .serverSecurityLogicWithOutput { inputs =>
         Future.successful(
           oneOffCookieOrHeaderSessionLogic(inputs.head, inputs.last, required)
-            .map(result => (Seq(result._1._1.map(_.value), result._1._2), result._2))
+            .map(result => (Seq(result._1._1, result._1._2), result._2))
         )
       }
 
@@ -254,25 +246,29 @@ private[session] trait OneOffTapirSession[T] {
         maybeHeader match {
           case Some(_) =>
             Right(
-              Seq(
-                Some("deleted"),
-                Some("")
-              ),
-              principal
+              (
+                Seq(
+                  Some("deleted"),
+                  Some("")
+                ),
+                principal
+              )
             )
           case _ =>
             Right(
-              Seq(
-                Some("deleted"),
-                None
-              ),
-              principal
+              (
+                Seq(
+                  Some("deleted"),
+                  None
+                ),
+                principal
+              )
             )
         }
       case _ =>
         maybeHeader match {
-          case Some(_) => Right(Seq(None, Some("")), principal)
-          case _       => Right(Seq(None, None), principal)
+          case Some(_) => Right((Seq(None, Some("")), principal))
+          case _       => Right((Seq(None, None), principal))
         }
     }
   }
@@ -280,7 +276,7 @@ private[session] trait OneOffTapirSession[T] {
   def invalidateOneOffSession[
     SECURITY_INPUT,
     PRINCIPAL
-  ](
+  ](st: GetSessionTransport)(
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
@@ -343,12 +339,12 @@ private[session] trait OneOffTapirSession[T] {
             val session = r._2
             st match {
               case CookieST | HeaderST =>
-                setOneOffSessionLogic(session.toOption, inputs.head)
+                setOneOffSessionLogic(session.toOption, None)
                   .map(result => (Seq(result), session))
               case CookieOrHeaderST =>
                 val maybeCookie = inputs.head
                 val maybeHeader = inputs.last
-                setOneOffSessionLogic(session.toOption, inputs.head)
+                setOneOffSessionLogic(session.toOption, None)
                   .map(result =>
                     (
                       Seq(maybeCookie.flatMap(_ => result), maybeHeader.flatMap(_ => result)),

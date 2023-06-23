@@ -46,7 +46,8 @@ trait SessionEndpoints {
     * users.
     */
   def invalidateSession[T, SECURITY_INPUT, PRINCIPAL](
-    sc: TapirSessionContinuity[T]
+    sc: TapirSessionContinuity[T],
+    st: GetSessionTransport
   )(
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
@@ -68,7 +69,7 @@ trait SessionEndpoints {
     Any,
     Future
   ] =
-    sc.invalidateSession(body)
+    sc.invalidateSession(st)(body)
 
   /** Read an optional session from the session cookie.
     */
@@ -148,4 +149,4 @@ class RefreshableTapir[T](implicit
     with RefreshableTapirSession[T]
     with OneOffTapirSession[T]
 
-object SessionEndpoints extends SessionEndpoints {}
+object SessionEndpoints extends SessionEndpoints

@@ -1,6 +1,5 @@
 package com.softwaremill.session
 
-import app.softnetwork.concurrent.Completion
 import sttp.monad.FutureMonad
 import sttp.tapir._
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
@@ -40,7 +39,7 @@ sealed trait TapirSessionContinuity[T] {
       .serverSecurityLogicWithOutput { inputs =>
         partial.securityLogic(new FutureMonad())(inputs).map {
           case Left(l)  => Left(l)
-          case Right(r) => Right(r._1, r._2.toOption)
+          case Right(r) => Right((r._1, r._2.toOption))
         }
       }
   }
@@ -56,7 +55,7 @@ sealed trait TapirSessionContinuity[T] {
           case Left(l) => Left(l)
           case Right(r) =>
             r._2.toOption match {
-              case Some(session) => Right(r._1, session)
+              case Some(session) => Right((r._1, session))
               case _             => Left(())
             }
         }
@@ -66,8 +65,8 @@ sealed trait TapirSessionContinuity[T] {
   def invalidateSession[
     SECURITY_INPUT,
     PRINCIPAL
-  ](
-    body: PartialServerEndpointWithSecurityOutput[
+  ](st: GetSessionTransport)(
+    body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
@@ -104,7 +103,7 @@ sealed trait TapirSessionContinuity[T] {
       .serverSecurityLogicWithOutput { inputs =>
         partial.securityLogic(new FutureMonad())(inputs).map {
           case Left(l)  => Left(l)
-          case Right(r) => Right(r._1, r._2.toOption)
+          case Right(r) => Right((r._1, r._2.toOption))
         }
       }
   }
@@ -120,7 +119,7 @@ sealed trait TapirSessionContinuity[T] {
           case Left(l) => Left(l)
           case Right(r) =>
             r._2.toOption match {
-              case Some(session) => Right(r._1, session)
+              case Some(session) => Right((r._1, session))
               case _             => Left(())
             }
         }
@@ -153,8 +152,8 @@ trait OneOffTapirSessionContinuity[T] extends TapirSessionContinuity[T] {
   ], Unit, Any, Future] =
     oneOffSession(st, required)
 
-  override def invalidateSession[SECURITY_INPUT, PRINCIPAL](
-    body: PartialServerEndpointWithSecurityOutput[
+  override def invalidateSession[SECURITY_INPUT, PRINCIPAL](st: GetSessionTransport)(
+    body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
@@ -174,7 +173,7 @@ trait OneOffTapirSessionContinuity[T] extends TapirSessionContinuity[T] {
     Any,
     Future
   ] =
-    invalidateOneOffSession(body)
+    invalidateOneOffSession(st)(body)
 
   override def touchSession(
     st: GetSessionTransport,
@@ -192,7 +191,7 @@ trait RefreshableTapirSessionContinuity[T] extends TapirSessionContinuity[T] wit
   )
 
   def removeToken(value: String): Try[Unit] =
-    refreshable.refreshTokenManager.removeToken(value) complete ()
+    refreshable.refreshTokenManager.removeToken(value).complete()
 
   override def setSession[INPUT](
     st: SetSessionTransport
@@ -210,8 +209,8 @@ trait RefreshableTapirSessionContinuity[T] extends TapirSessionContinuity[T] wit
     Option[String]
   ], Unit, Any, Future] = refreshableSession(st, required)
 
-  override def invalidateSession[SECURITY_INPUT, PRINCIPAL](
-    body: PartialServerEndpointWithSecurityOutput[
+  override def invalidateSession[SECURITY_INPUT, PRINCIPAL](st: GetSessionTransport)(
+    body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
@@ -231,7 +230,7 @@ trait RefreshableTapirSessionContinuity[T] extends TapirSessionContinuity[T] wit
     Any,
     Future
   ] =
-    invalidateRefreshableSession(body)
+    invalidateRefreshableSession(st)(body)
 
   override def touchSession(
     st: GetSessionTransport,

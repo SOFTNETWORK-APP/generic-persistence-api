@@ -1,7 +1,6 @@
 package com.softwaremill.session
 
 import akka.http.scaladsl.model.DateTime
-import app.softnetwork.concurrent.Completion
 import sttp.model.StatusCode
 import sttp.model.headers.CookieValueWithMeta
 import sttp.monad.FutureMonad
@@ -9,7 +8,6 @@ import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 import sttp.tapir.{cookie, header, setCookieOpt, statusCode, Endpoint, EndpointIO, EndpointInput}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
 private[session] trait RefreshableTapirSession[T] extends Completion {
@@ -55,7 +53,8 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
     existing: Option[String]
   ): Option[String] = {
     refreshable.refreshTokenManager
-      .rotateToken(v, existing) complete () match {
+      .rotateToken(v, existing)
+      .complete() match {
       case Success(value) => Some(value)
       case Failure(_)     => None
     }
@@ -140,7 +139,8 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
         maybeValue match {
           case Some(value) =>
             refreshable.refreshTokenManager
-              .sessionFromValue(value) complete () match {
+              .sessionFromValue(value)
+              .complete() match {
               case Success(value) => value.toOption
               case Failure(_)     => None
             }
@@ -162,103 +162,108 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
       case CookieOrHeaderST => refreshableCookieOrHeaderSession(required)
     }
 
-  private[this] def refreshTokenLogic(
-    refreshToken: Option[String],
-    required: Option[Boolean]
-  ): Either[Unit, (Option[String], SessionResult[T])] =
-    refreshToken match {
-      case Some(value) =>
-        refreshable.refreshTokenManager
-          .sessionFromValue(value) complete () match {
-          case Success(value) =>
-            value match {
-              case s @ SessionResult.CreatedFromToken(session) =>
-                Right(rotateToken(session, refreshToken), s)
-              case s => Right(None, s)
-            }
-          case Failure(_) =>
-            if (required.getOrElse(false))
-              Left(())
-            else
-              Right(None, SessionResult.NoSession)
-        }
-      case _ =>
-        if (required.getOrElse(false))
-          Left(())
-        else
-          Right(None, SessionResult.NoSession)
-    }
-
   private[this] def refreshableSessionLogic(
     oneOffSession: Option[SessionResult[T]],
-    oneOffInputs: Seq[Option[String]],
     maybeCookie: Option[String],
     maybeHeader: Option[String],
     st: GetSessionTransport,
-    required: Option[Boolean]
+    required: Option[Boolean],
+    touch: Boolean = false
   ): Either[Unit, (Seq[Option[String]], SessionResult[T])] = {
+
+    // read refresh token from cookie or header
     val refreshToken = maybeCookie.fold(maybeHeader)(Some(_))
-    def refresh(): Either[Unit, (Seq[Option[String]], SessionResult[T])] =
-      refreshTokenLogic(refreshToken, required) match {
-        case Left(l) => Left(l)
-        case Right(r) =>
-          r._2.toOption match {
-            case Some(value) =>
-              val oneOffValue = Some(manager.clientSessionManager.encode(value))
-              st match {
-                case CookieST | HeaderST =>
-                  Right((Seq(oneOffInputs.head.flatMap(_ => oneOffValue), r._1), r._2))
-                case CookieOrHeaderST =>
-                  val oneOffCookie = oneOffInputs.head
-                  val oneOffHeader = oneOffInputs.last
-                  Right(
-                    (
-                      Seq(
-                        oneOffCookie.flatMap(_ => oneOffValue),
-                        oneOffHeader.flatMap(_ => oneOffValue),
-                        maybeCookie.flatMap(_ => r._1),
-                        maybeHeader.flatMap(_ => r._1)
-                      ),
-                      r._2
-                    )
-                  )
+
+    def setRefreshToken(): Either[Unit, (Option[String], Option[String], SessionResult[T])] = {
+      refreshToken match {
+        case Some(value) =>
+          refreshable.refreshTokenManager
+            .sessionFromValue(value)
+            .complete() match {
+            case Success(value) =>
+              value match {
+                case s @ SessionResult.CreatedFromToken(session) =>
+                  val newSession = Some(manager.clientSessionManager.encode(session))
+                  val newToken = rotateToken(session, refreshToken)
+                  Right((newSession, newToken, s))
+                case s =>
+                  if (touch) {
+                    val newSession = s.toOption.map(manager.clientSessionManager.encode(_))
+                    val newToken = s.toOption.flatMap(rotateToken(_, refreshToken))
+                    Right((newSession, newToken, s))
+                  } else {
+                    Right((None, None, s))
+                  }
               }
-            case _ =>
-              st match {
-                case CookieST | HeaderST =>
-                  Right((oneOffInputs :+ r._1, r._2))
-                case CookieOrHeaderST =>
-                  Right(
-                    (
-                      oneOffInputs :+
-                      maybeCookie.flatMap(_ => r._1) :+
-                      maybeHeader.flatMap(_ => r._1),
-                      r._2
-                    )
-                  )
+            case Failure(_) =>
+              if (required.getOrElse(false))
+                Left(())
+              else {
+                val newSession = None
+                val newToken = None
+                Right((newSession, newToken, SessionResult.NoSession))
               }
           }
+        case _ =>
+          if (required.getOrElse(false))
+            Left(())
+          else {
+            val newSession = None
+            val newToken = None
+            Right((newSession, newToken, SessionResult.NoSession))
+          }
       }
-    oneOffSession match {
+    }
+
+    (oneOffSession match {
       case Some(result) =>
         result match {
-          case SessionResult.NoSession | SessionResult.Expired => refresh()
+          case SessionResult.NoSession | SessionResult.Expired => setRefreshToken()
           case s =>
-            st match {
-              case CookieST | HeaderST =>
-                Right((oneOffInputs :+ refreshToken, s))
-              case CookieOrHeaderST =>
-                Right(
-                  (
-                    oneOffInputs :+
-                    maybeCookie.flatMap(_ => refreshToken) :+
-                    maybeHeader.flatMap(_ => refreshToken),
-                    s
-                  )
-                )
+            if (touch) {
+              val newSession = s.toOption.map(manager.clientSessionManager.encode(_))
+              val newToken =
+                refreshToken match {
+                  case Some(value) =>
+                    refreshable.refreshTokenManager
+                      .sessionFromValue(value)
+                      .complete() match {
+                      case Success(value) =>
+                        value match {
+                          case _ @SessionResult.CreatedFromToken(_) => None
+                          case _ => s.toOption.flatMap(rotateToken(_, refreshToken))
+                        }
+                      case _ => None
+                    }
+                  case _ => None
+                }
+              Right((newSession, newToken, s))
+            } else {
+              val newSession = None
+              val newToken = None
+              Right((newSession, newToken, s))
             }
         }
-      case _ => refresh()
+      case _ => setRefreshToken()
+    }) match {
+      case Left(l) => Left(l)
+      case Right((newSession, newToken, s)) =>
+        st match {
+          case CookieST | HeaderST =>
+            Right((Seq(newSession, newToken), s))
+          case CookieOrHeaderST =>
+            Right(
+              (
+                Seq(
+                  maybeCookie.flatMap(_ => newSession),
+                  maybeHeader.flatMap(_ => newSession),
+                  maybeCookie.flatMap(_ => newToken),
+                  maybeHeader.flatMap(_ => newToken)
+                ),
+                SessionResult.NoSession
+              )
+            )
+        }
     }
   }
 
@@ -288,7 +293,6 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
           case Right(r) =>
             refreshableSessionLogic(
               Some(r._2),
-              oneOffInputs,
               refreshToken,
               None,
               CookieST,
@@ -319,7 +323,6 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
           case Right(r) =>
             refreshableSessionLogic(
               Some(r._2),
-              oneOffInputs,
               None,
               refreshToken,
               HeaderST,
@@ -361,7 +364,6 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
           case Right(r) =>
             refreshableSessionLogic(
               Some(r._2),
-              oneOffInputs,
               maybeCookie,
               maybeHeader,
               CookieOrHeaderST,
@@ -385,20 +387,20 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
     val principal = result._2
     cookie match {
       case Some(c) =>
-        refreshable.refreshTokenManager.removeToken(c) complete () match {
+        refreshable.refreshTokenManager.removeToken(c).complete() match {
           case _ =>
             header match {
-              case Some(_) => Right(result._1 :+ Some("deleted") :+ Some(""), principal)
-              case _       => Right(result._1 :+ Some("deleted") :+ None, principal)
+              case Some(_) => Right((result._1 :+ Some("deleted") :+ Some(""), principal))
+              case _       => Right((result._1 :+ Some("deleted") :+ None, principal))
             }
         }
       case _ =>
         header match {
           case Some(h) =>
-            refreshable.refreshTokenManager.removeToken(h) complete () match {
-              case _ => Right(result._1 :+ None :+ Some(""), principal)
+            refreshable.refreshTokenManager.removeToken(h).complete() match {
+              case _ => Right((result._1 :+ None :+ Some(""), principal))
             }
-          case _ => Right(result._1 :+ None :+ None, principal)
+          case _ => Right((result._1 :+ None :+ None, principal))
         }
     }
   }
@@ -406,7 +408,7 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
   def invalidateRefreshableSession[
     SECURITY_INPUT,
     PRINCIPAL
-  ](
+  ](st: GetSessionTransport)(
     partial: PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
@@ -427,7 +429,7 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
     Any,
     Future
   ] = {
-    val partialOneOffSession = invalidateOneOffSession(partial)
+    val partialOneOffSession = invalidateOneOffSession(st)(partial)
     partialOneOffSession.endpoint
       .securityIn(getRefreshTokenFromClientAsCookie)
       .securityIn(getRefreshTokenFromClientAsHeader)
@@ -480,32 +482,31 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
               case CookieST =>
                 refreshableSessionLogic(
                   Some(session),
-                  Seq(inputs.head),
                   inputs.last,
                   None,
                   CookieST,
-                  Some(false)
+                  Some(false),
+                  touch = true
                 )
               case HeaderST =>
                 refreshableSessionLogic(
                   Some(session),
-                  Seq(inputs.head),
                   None,
                   inputs.last,
                   HeaderST,
-                  Some(false)
+                  Some(false),
+                  touch = true
                 )
               case CookieOrHeaderST =>
-                val oneOffInputs: Seq[Option[String]] = inputs.take(2)
                 val maybeCookie = inputs.takeRight(2).head
                 val maybeHeader = inputs.last
                 refreshableSessionLogic(
                   Some(session),
-                  oneOffInputs,
                   maybeCookie,
                   maybeHeader,
                   CookieOrHeaderST,
-                  Some(false)
+                  Some(false),
+                  touch = true
                 )
             }
         }

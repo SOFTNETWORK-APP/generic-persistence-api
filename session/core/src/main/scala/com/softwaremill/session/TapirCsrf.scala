@@ -1,15 +1,15 @@
 package com.softwaremill.session
 
 import sttp.model.Method._
-import sttp.model.headers.{CookieValueWithMeta, CookieWithMeta}
+import sttp.model.headers.CookieValueWithMeta
 import sttp.model.{Method, StatusCode}
 import sttp.monad.FutureMonad
-import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 import sttp.tapir._
+import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 
 import scala.concurrent.{ExecutionContext, Future}
 
-private[session] trait TapirCsrf[T] extends CsrfCheck {
+private[session] trait TapirCsrf[T] { _: CsrfCheck =>
 
   import com.softwaremill.session.TapirImplicits._
 
@@ -23,12 +23,36 @@ private[session] trait TapirCsrf[T] extends CsrfCheck {
   def submittedCsrfCookie: EndpointInput.Cookie[Option[String]] =
     cookie(manager.config.csrfCookieConfig.name)
 
-  def submittedCsrfHeader: EndpointIO.Header[Option[String]] = header[Option[String]](
-    manager.config.csrfSubmittedName
-  ).description("read csrf token as header")
+  def submittedCsrfHeader: EndpointIO.Header[Option[String]] =
+    header[Option[String]](
+      manager.config.csrfSubmittedName
+    ).description("read csrf token as header")
 
-  def setNewCsrfToken(): CookieWithMeta = manager.csrfManager.createCookie()
+  def setNewCsrfToken(): PartialServerEndpointWithSecurityOutput[Unit, Unit, Unit, Unit, Option[
+    CookieValueWithMeta
+  ], Unit, Any, Future] =
+    endpoint
+      .out(csrfCookie)
+      .serverSecurityLogicSuccessWithOutput[Unit, Future](_ =>
+        Future.successful((Some(manager.csrfManager.createCookie().valueWithMeta), ()))
+      )
 
+  /** Protects against CSRF attacks using a double-submit cookie. The cookie will be set on any
+    * `GET` request which doesn't have the token set in the header. For all other requests, the
+    * value of the token from the CSRF cookie must match the value in the custom header (or request
+    * body, if `checkFormBody` is `true`).
+    *
+    * The cookie value is the concatenation of a timestamp and its HMAC hash following the OWASP
+    * recommendation for CSRF prevention:
+    * @see
+    *   <a
+    *   href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#hmac-based-token-pattern">OWASP</a>
+    *
+    * Note that this scheme can be broken when not all subdomains are protected or not using HTTPS
+    * and secure cookies, and the token is placed in the request body (not in the header).
+    *
+    * See the documentation for more details.
+    */
   def hmacTokenCsrfProtectionLogic(
     method: Method,
     csrfTokenFromCookie: Option[String],
@@ -36,18 +60,26 @@ private[session] trait TapirCsrf[T] extends CsrfCheck {
   ): Either[Unit, (Option[CookieValueWithMeta], Unit)] = {
     csrfTokenFromCookie match {
       case Some(cookie) =>
-        val token = cookie
-        submittedCsrfToken match {
-          case Some(submitted) =>
-            if (submitted == token && token.nonEmpty && manager.csrfManager.validateToken(token)) {
-              Right((None, ()))
-            } else {
+        // if a cookie is already set, we let through all get requests (without setting a new token), or validate
+        // that the token matches.
+        if (method.is(GET)) {
+          Right((None, ()))
+        } else {
+          val token = cookie
+          submittedCsrfToken match {
+            case Some(submitted) =>
+              if (
+                submitted == token && token.nonEmpty && manager.csrfManager.validateToken(token)
+              ) {
+                Right((None, ()))
+              } else {
+                Left(())
+              }
+            case _ =>
               Left(())
-            }
-          case _ =>
-            Left(())
+          }
         }
-      // if a cookie is not set, generating a new one for **get** requests, rejecting other
+      // if a cookie is not set, generating a new one for get requests, rejecting other
       case _ =>
         if (method.is(GET)) {
           Right((Some(manager.csrfManager.createCookie().valueWithMeta), ()))

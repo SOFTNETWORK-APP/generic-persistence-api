@@ -45,3 +45,5 @@ trait TapirEndpoints extends SessionEndpoints with CsrfEndpoints {
     }
 
 }
+
+object TapirEndpoints extends TapirEndpoints
