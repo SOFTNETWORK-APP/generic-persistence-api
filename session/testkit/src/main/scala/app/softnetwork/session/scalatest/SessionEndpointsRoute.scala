@@ -7,15 +7,14 @@ import app.softnetwork.session.service._
 import com.softwaremill.session.{SessionEndpoints => _, _}
 import org.softnetwork.session.model.Session
 import sttp.model.StatusCode
-import sttp.model.headers.CookieValueWithMeta
 import sttp.tapir._
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.json4s.jsonBody
-import sttp.tapir.server.{PartialServerEndpointWithSecurityOutput, ServerEndpoint}
+import sttp.tapir.server.ServerEndpoint
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
+trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint with RouteConcatenation {
 
   import Session._
 
@@ -49,29 +48,15 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
   def checkMode: TapirCsrfCheckMode[Session] = sessionEndpoints.checkMode
 
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
-    import TapirImplicits._
-    sessionEndpoints
-      .setSession(sc, st) {
-        endpoint.securityIn(jsonBody[CreateSession]).description("the session to create")
-      }
-      .post
+    setNewCsrfTokenWithSession(sc, st, checkMode) {
+      endpoint.securityIn(jsonBody[CreateSession].description("the session to create"))
+    }.post
       .in("session")
-      .out(
-        setCookieOpt(sessionEndpoints.manager.config.csrfCookieConfig.name)
-          .description("set csrf token as cookie")
-      )
-      .serverLogic(_ =>
-        _ =>
-          Future.successful(
-            Right(Some(sessionEndpoints.manager.csrfManager.createCookie().valueWithMeta))
-          )
-      )
+      .serverLogicSuccess(_ => _ => Future.successful(()))
   }
 
   val retrieveSessionEndpoint: ServerEndpoint[Any, Future] =
-    sessionEndpoints
-      .antiCsrfWithRequiredSession(sc, st, checkMode)
-      .get
+    antiCsrfWithRequiredSession(sc, st, checkMode).get
       .in("session")
       .out(
         oneOf[BusinessError](
@@ -84,11 +69,9 @@ trait SessionEndpointsRoute extends ApiEndpoint with RouteConcatenation {
       .serverLogic(_ => _ => Future.successful(Right(NotFound))) // simulate an error
 
   val invalidateSessionEndpoint: ServerEndpoint[Any, Future] =
-    sessionEndpoints
-      .invalidateSession(sc, gt)(
-        sessionEndpoints.antiCsrfWithRequiredSession(sc, st, checkMode)
-      )
-      .delete
+    invalidateSession(sc, gt)(
+      antiCsrfWithRequiredSession(sc, st, checkMode)
+    ).delete
       .in("session")
       .serverLogic(_ => _ => Future.successful(Right()))
 
