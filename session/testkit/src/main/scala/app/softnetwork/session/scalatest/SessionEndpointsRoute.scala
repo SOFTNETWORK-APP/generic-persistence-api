@@ -49,7 +49,9 @@ trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint with RouteCo
 
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
     setNewCsrfTokenWithSession(sc, st, checkMode) {
-      endpoint.securityIn(jsonBody[CreateSession].description("the session to create"))
+      setSessionEndpoint {
+        endpoint.securityIn(jsonBody[CreateSession].description("the session to create"))
+      }
     }.post
       .in("session")
       .serverLogicSuccess(_ => _ => Future.successful(()))

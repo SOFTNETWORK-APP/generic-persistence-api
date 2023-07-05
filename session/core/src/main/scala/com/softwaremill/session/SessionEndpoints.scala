@@ -7,31 +7,56 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait SessionEndpoints {
 
+  def setSessionEndpoint[T, SECURITY_INPUT](
+    endpoint: => Endpoint[SECURITY_INPUT, Unit, Unit, Unit, Any]
+  )(implicit
+    f: SECURITY_INPUT => Option[T]
+  ): PartialServerEndpointWithSecurityOutput[SECURITY_INPUT, Option[
+    T
+  ], Unit, Unit, Unit, Unit, Any, Future] =
+    endpoint.serverSecurityLogicSuccessWithOutput(si => Future.successful(((), f(si))))
+
   /** Set the session cookie with the session content. The content is signed, optionally encrypted
     * and with an optional expiry date.
     *
     * If refreshable, generates a new token (removing old ones) and stores it in the refresh token
     * cookie.
     */
-  def setSession[T, INPUT](
+  def setSession[T, SECURITY_INPUT, SECURITY_OUTPUT](
     sc: TapirSessionContinuity[T],
     st: SetSessionTransport
-  )(endpoint: => Endpoint[INPUT, Unit, Unit, Unit, Any])(implicit
-    f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
+  )(
+    body: => PartialServerEndpointWithSecurityOutput[SECURITY_INPUT, Option[
+      T
+    ], Unit, Unit, SECURITY_OUTPUT, Unit, Any, Future]
+  ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] =
-    sc.setSession(st)(endpoint)
+  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
+    sc.setSession(st)(body)
 
   def setSessionWithAuth[T, A](sc: TapirSessionContinuity[T], st: SetSessionTransport)(
     auth: EndpointInput.Auth[A, EndpointInput.AuthType.Http]
   )(implicit
     f: A => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[(A, Seq[Option[String]]), Option[T], Unit, Unit, Seq[
-    Option[String]
-  ], Unit, Any, Future] =
-    setSession(sc, st) {
-      endpoint.securityIn(auth)
+  ): PartialServerEndpointWithSecurityOutput[
+    (A, Seq[Option[String]]),
+    Option[T],
+    Unit,
+    Unit,
+    (
+      Unit,
+      Seq[
+        Option[String]
+      ]
+    ),
+    Unit,
+    Any,
+    Future
+  ] =
+    setSession[T, A, Unit](sc, st) {
+      setSessionEndpoint{
+        endpoint.securityIn(auth)
+      }
     }
 
   /** Read a session from the session cookie, wrapped in [[SessionResult]] describing the possible

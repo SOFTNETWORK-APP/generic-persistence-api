@@ -1,7 +1,6 @@
 package com.softwaremill.session
 
 import sttp.monad.FutureMonad
-import sttp.tapir._
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,11 +16,20 @@ sealed trait TapirSessionContinuity[T] {
 
   def extractSession(maybeValue: Option[String]): Option[T]
 
-  def setSession[INPUT](st: SetSessionTransport)(endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any])(
-    implicit f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
+  def setSession[SECURITY_INPUT, SECURITY_OUTPUT](st: SetSessionTransport)(
+    body: => PartialServerEndpointWithSecurityOutput[
+      SECURITY_INPUT,
+      Option[T],
+      Unit,
+      Unit,
+      SECURITY_OUTPUT,
+      Unit,
+      Any,
+      Future
+    ]
+  ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future]
+  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future]
 
   def session(
     st: GetSessionTransport,
@@ -135,14 +143,14 @@ trait OneOffTapirSessionContinuity[T] extends TapirSessionContinuity[T] {
     maybeValue
   )
 
-  override def setSession[INPUT](
-    st: SetSessionTransport
-  )(endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any])(implicit
-    f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
+  override def setSession[SECURITY_INPUT, SECURITY_OUTPUT](st: SetSessionTransport)(
+    body: => PartialServerEndpointWithSecurityOutput[SECURITY_INPUT, Option[
+      T
+    ], Unit, Unit, SECURITY_OUTPUT, Unit, Any, Future]
+  ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] =
-    setOneOffSession(st)(endpoint)
+  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
+    setOneOffSession(st)(body)
 
   override def session(
     st: GetSessionTransport,
@@ -193,14 +201,14 @@ trait RefreshableTapirSessionContinuity[T] extends TapirSessionContinuity[T] wit
   def removeToken(value: String): Try[Unit] =
     refreshable.refreshTokenManager.removeToken(value).complete()
 
-  override def setSession[INPUT](
-    st: SetSessionTransport
-  )(endpoint: Endpoint[INPUT, Unit, Unit, Unit, Any])(implicit
-    f: INPUT => Option[T]
-  ): PartialServerEndpointWithSecurityOutput[(INPUT, Seq[Option[String]]), Option[
+  override def setSession[SECURITY_INPUT, SECURITY_OUTPUT](st: SetSessionTransport)(
+    body: => PartialServerEndpointWithSecurityOutput[SECURITY_INPUT, Option[
+      T
+    ], Unit, Unit, SECURITY_OUTPUT, Unit, Any, Future]
+  ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, Seq[Option[String]], Unit, Any, Future] =
-    setRefreshableSession(st)(endpoint)
+  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
+    setRefreshableSession(st)(body)
 
   override def session(
     st: GetSessionTransport,
