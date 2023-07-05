@@ -68,8 +68,8 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
   }
 
   def setRefreshableSessionLogic(
-                                  option: Option[T],
-                                  existing: Option[String]
+    option: Option[T],
+    existing: Option[String]
   ): Either[Unit, Option[String]] =
     option match {
       case Some(v) => Right(rotateToken(v, existing))
@@ -77,16 +77,16 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
     }
 
   def setRefreshableCookieSession[SECURITY_INPUT, SECURITY_OUTPUT](
-                                          body: => PartialServerEndpointWithSecurityOutput[
-                                            SECURITY_INPUT,
-                                            Option[T],
-                                            Unit,
-                                            Unit,
-                                            SECURITY_OUTPUT,
-                                            Unit,
-                                            Any,
-                                            Future
-                                          ]
+    body: => PartialServerEndpointWithSecurityOutput[
+      SECURITY_INPUT,
+      Option[T],
+      Unit,
+      Unit,
+      SECURITY_OUTPUT,
+      Unit,
+      Any,
+      Future
+    ]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
   ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] = {
@@ -126,16 +126,16 @@ private[session] trait RefreshableTapirSession[T] extends Completion {
   }
 
   def setRefreshableHeaderSession[SECURITY_INPUT, SECURITY_OUTPUT](
-                                          body: => PartialServerEndpointWithSecurityOutput[
-                                            SECURITY_INPUT,
-                                            Option[T],
-                                            Unit,
-                                            Unit,
-                                            SECURITY_OUTPUT,
-                                            Unit,
-                                            Any,
-                                            Future
-                                          ]
+    body: => PartialServerEndpointWithSecurityOutput[
+      SECURITY_INPUT,
+      Option[T],
+      Unit,
+      Unit,
+      SECURITY_OUTPUT,
+      Unit,
+      Any,
+      Future
+    ]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
   ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] = {

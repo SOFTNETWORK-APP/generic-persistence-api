@@ -52,8 +52,8 @@ private[session] trait OneOffTapirSession[T] {
     }
 
   private[this] def setOneOffSessionLogic(
-                                           option: Option[T],
-                                           existing: Option[String]
+    option: Option[T],
+    existing: Option[String]
   ): Either[Unit, Option[String]] =
     existing match {
       case Some(value) =>
@@ -68,21 +68,20 @@ private[session] trait OneOffTapirSession[T] {
     }
 
   def setOneOffCookieSession[SECURITY_INPUT, SECURITY_OUTPUT](
-                                     body: => PartialServerEndpointWithSecurityOutput[
-                                       SECURITY_INPUT,
-                                       Option[T],
-                                       Unit,
-                                       Unit,
-                                       SECURITY_OUTPUT,
-                                       Unit,
-                                       Any,
-                                       Future
-                                     ]
+    body: => PartialServerEndpointWithSecurityOutput[
+      SECURITY_INPUT,
+      Option[T],
+      Unit,
+      Unit,
+      SECURITY_OUTPUT,
+      Unit,
+      Any,
+      Future
+    ]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
   ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
-    body
-      .endpoint
+    body.endpoint
       .securityIn(getSessionFromClientAsCookie.map(Seq(_))(_.head))
       .out(body.securityOutput)
       .out(
@@ -104,21 +103,20 @@ private[session] trait OneOffTapirSession[T] {
       }
 
   def setOneOffHeaderSession[SECURITY_INPUT, SECURITY_OUTPUT](
-                                     body: => PartialServerEndpointWithSecurityOutput[
-                                       SECURITY_INPUT,
-                                       Option[T],
-                                       Unit,
-                                       Unit,
-                                       SECURITY_OUTPUT,
-                                       Unit,
-                                       Any,
-                                       Future
-                                     ]
+    body: => PartialServerEndpointWithSecurityOutput[
+      SECURITY_INPUT,
+      Option[T],
+      Unit,
+      Unit,
+      SECURITY_OUTPUT,
+      Unit,
+      Any,
+      Future
+    ]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
   ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
-    body
-      .endpoint
+    body.endpoint
       .securityIn(getSessionFromClientAsHeader.map(Seq(_))(_.head))
       .out(body.securityOutput)
       .out(sendSessionToClientAsHeader.map(Seq(_))(_.head))

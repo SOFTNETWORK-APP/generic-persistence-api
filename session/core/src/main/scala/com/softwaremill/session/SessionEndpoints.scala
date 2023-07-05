@@ -54,7 +54,7 @@ trait SessionEndpoints {
     Future
   ] =
     setSession[T, A, Unit](sc, st) {
-      setSessionEndpoint{
+      setSessionEndpoint {
         endpoint.securityIn(auth)
       }
     }
