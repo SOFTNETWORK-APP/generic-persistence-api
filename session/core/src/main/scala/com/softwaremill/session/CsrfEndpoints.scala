@@ -9,14 +9,14 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait CsrfEndpoints {
 
-  def hmacTokenCsrfProtection[T, SECURITY_INPUT, PRINCIPAL, SECURITY_OUTPUT](
+  def hmacTokenCsrfProtection[T, SECURITY_INPUT, PRINCIPAL, ERROR_OUTPUT, SECURITY_OUTPUT](
     checkMode: TapirCsrfCheckMode[T]
   )(
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -36,7 +36,14 @@ trait CsrfEndpoints {
       body
     }
 
-  def hmacTokenCsrfProtectionWithFormOrMultipart[T, SECURITY_INPUT, PRINCIPAL, SECURITY_OUTPUT, F](
+  def hmacTokenCsrfProtectionWithFormOrMultipart[
+    T,
+    SECURITY_INPUT,
+    PRINCIPAL,
+    ERROR_OUTPUT,
+    SECURITY_OUTPUT,
+    F
+  ](
     checkMode: TapirCsrfCheckMode[T],
     form: Either[EndpointIO.Body[String, F], EndpointIO.Body[Seq[RawPart], F]]
   )(
@@ -44,7 +51,7 @@ trait CsrfEndpoints {
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -64,14 +71,14 @@ trait CsrfEndpoints {
       body
     }
 
-  def setNewCsrfToken[T, SECURITY_INPUT, PRINCIPAL, SECURITY_OUTPUT](
+  def setNewCsrfToken[T, SECURITY_INPUT, PRINCIPAL, ERROR_OUTPUT, SECURITY_OUTPUT](
     checkMode: TapirCsrfCheckMode[T]
   )(
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -81,7 +88,7 @@ trait CsrfEndpoints {
     SECURITY_INPUT,
     PRINCIPAL,
     Unit,
-    Unit,
+    ERROR_OUTPUT,
     (SECURITY_OUTPUT, Option[CookieValueWithMeta]),
     Unit,
     Any,

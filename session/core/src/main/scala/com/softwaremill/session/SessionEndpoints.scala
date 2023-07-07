@@ -7,14 +7,15 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait SessionEndpoints {
 
-  def setSessionEndpoint[T, SECURITY_INPUT](
-    endpoint: => Endpoint[SECURITY_INPUT, Unit, Unit, Unit, Any]
+  def setSessionEndpoint[T, SECURITY_INPUT, ERROR_OUTPUT](
+    endpoint: => Endpoint[SECURITY_INPUT, Unit, ERROR_OUTPUT, Unit, Any]
   )(implicit
     f: SECURITY_INPUT => Option[T]
   ): PartialServerEndpointWithSecurityOutput[SECURITY_INPUT, Option[
     T
-  ], Unit, Unit, Unit, Unit, Any, Future] =
-    endpoint.serverSecurityLogicSuccessWithOutput(si => Future.successful(((), f(si))))
+  ], Unit, ERROR_OUTPUT, Unit, Unit, Any, Future] =
+    endpoint
+      .serverSecurityLogicSuccessWithOutput(si => Future.successful(((), f(si))))
 
   /** Set the session cookie with the session content. The content is signed, optionally encrypted
     * and with an optional expiry date.
@@ -22,16 +23,16 @@ trait SessionEndpoints {
     * If refreshable, generates a new token (removing old ones) and stores it in the refresh token
     * cookie.
     */
-  def setSession[T, SECURITY_INPUT, SECURITY_OUTPUT](
+  def setSession[T, SECURITY_INPUT, SECURITY_OUTPUT, ERROR_OUTPUT](
     sc: TapirSessionContinuity[T],
     st: SetSessionTransport
   )(
     body: => PartialServerEndpointWithSecurityOutput[SECURITY_INPUT, Option[
       T
-    ], Unit, Unit, SECURITY_OUTPUT, Unit, Any, Future]
+    ], Unit, ERROR_OUTPUT, SECURITY_OUTPUT, Unit, Any, Future]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
+  ], Unit, ERROR_OUTPUT, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
     sc.setSession(st)(body)
 
   def setSessionWithAuth[T, A](sc: TapirSessionContinuity[T], st: SetSessionTransport)(
@@ -53,7 +54,7 @@ trait SessionEndpoints {
     Any,
     Future
   ] =
-    setSession[T, A, Unit](sc, st) {
+    setSession[T, A, Unit, Unit](sc, st) {
       setSessionEndpoint {
         endpoint.securityIn(auth)
       }
@@ -81,7 +82,7 @@ trait SessionEndpoints {
     * Note that you should use `refreshable` if you use refreshable systems even only for some
     * users.
     */
-  def invalidateSession[T, SECURITY_INPUT, PRINCIPAL](
+  def invalidateSession[T, SECURITY_INPUT, PRINCIPAL, ERROR_OUTPUT](
     sc: TapirSessionContinuity[T],
     st: GetSessionTransport
   )(
@@ -89,7 +90,7 @@ trait SessionEndpoints {
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       _,
       Unit,
       Any,
@@ -99,7 +100,7 @@ trait SessionEndpoints {
     (SECURITY_INPUT, Seq[Option[String]]),
     PRINCIPAL,
     Unit,
-    Unit,
+    ERROR_OUTPUT,
     Seq[Option[String]],
     Unit,
     Any,

@@ -28,12 +28,12 @@ private[session] trait TapirCsrf[T] { _: CsrfCheck =>
       manager.config.csrfSubmittedName
     ).description("read csrf token as header")
 
-  def setNewCsrfToken[SECURITY_INPUT, PRINCIPAL, SECURITY_OUTPUT](
+  def setNewCsrfToken[SECURITY_INPUT, PRINCIPAL, ERROR_OUTPUT, SECURITY_OUTPUT](
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -43,7 +43,7 @@ private[session] trait TapirCsrf[T] { _: CsrfCheck =>
     SECURITY_INPUT,
     PRINCIPAL,
     Unit,
-    Unit,
+    ERROR_OUTPUT,
     (SECURITY_OUTPUT, Option[CookieValueWithMeta]),
     Unit,
     Any,
@@ -115,13 +115,14 @@ private[session] trait TapirCsrf[T] { _: CsrfCheck =>
   def hmacTokenCsrfProtection[
     SECURITY_INPUT,
     PRINCIPAL,
+    ERROR_OUTPUT,
     SECURITY_OUTPUT
   ](
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -162,8 +163,8 @@ private[session] trait TapirCsrf[T] { _: CsrfCheck =>
         }
     partial.endpoint
       .prependSecurityIn(body.securityInput)
-      .out(body.securityOutput)
-      .out(partial.securityOutput)
+//FIXME      .errorOut(body.errorOutput)
+      .out(body.securityOutput.and(partial.securityOutput))
       .serverSecurityLogicWithOutput {
         case (
               securityInput,
@@ -197,6 +198,7 @@ private[session] trait TapirCsrf[T] { _: CsrfCheck =>
   def hmacTokenCsrfProtectionWithFormOrMultipart[
     SECURITY_INPUT,
     PRINCIPAL,
+    ERROR_OUTPUT,
     SECURITY_OUTPUT,
     F
   ](form: Either[EndpointIO.Body[String, F], EndpointIO.Body[Seq[RawPart], F]])(
@@ -204,7 +206,7 @@ private[session] trait TapirCsrf[T] { _: CsrfCheck =>
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -253,8 +255,7 @@ private[session] trait TapirCsrf[T] { _: CsrfCheck =>
         }
     partial.endpoint
       .prependSecurityIn(body.securityInput)
-      .out(body.securityOutput)
-      .out(partial.securityOutput)
+      .out(body.securityOutput.and(partial.securityOutput))
       .serverSecurityLogicWithOutput {
         case (
               securityInput,

@@ -32,12 +32,12 @@ private[session] trait OneOffTapirSession[T] {
     header[Option[String]](manager.config.sessionHeaderConfig.sendToClientHeaderName)
   }
 
-  def setOneOffSession[SECURITY_INPUT, SECURITY_OUTPUT](st: SetSessionTransport)(
+  def setOneOffSession[SECURITY_INPUT, ERROR_OUTPUT, SECURITY_OUTPUT](st: SetSessionTransport)(
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       Option[T],
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -45,34 +45,31 @@ private[session] trait OneOffTapirSession[T] {
     ]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
+  ], Unit, ERROR_OUTPUT, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
     st match {
       case CookieST => setOneOffCookieSession(body)
       case HeaderST => setOneOffHeaderSession(body)
     }
 
-  private[this] def setOneOffSessionLogic(
+  private[this] def setOneOffSessionLogic[ERROR_OUTPUT](
     option: Option[T],
     existing: Option[String]
-  ): Either[Unit, Option[String]] =
+  ): Either[ERROR_OUTPUT, Option[String]] =
     existing match {
-      case Some(value) =>
-        Right(
-          Some(value)
-        )
-      case _ =>
+      case None =>
         option match {
           case Some(v) => Right(Some(manager.clientSessionManager.encode(v)))
-          case _       => Left(())
+          case _       => Right(None)
         }
+      case some => Right(some)
     }
 
-  def setOneOffCookieSession[SECURITY_INPUT, SECURITY_OUTPUT](
+  def setOneOffCookieSession[SECURITY_INPUT, ERROR_OUTPUT, SECURITY_OUTPUT](
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       Option[T],
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -80,7 +77,7 @@ private[session] trait OneOffTapirSession[T] {
     ]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
+  ], Unit, ERROR_OUTPUT, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
     body.endpoint
       .securityIn(getSessionFromClientAsCookie.map(Seq(_))(_.head))
       .out(body.securityOutput)
@@ -102,12 +99,12 @@ private[session] trait OneOffTapirSession[T] {
         }
       }
 
-  def setOneOffHeaderSession[SECURITY_INPUT, SECURITY_OUTPUT](
+  def setOneOffHeaderSession[SECURITY_INPUT, ERROR_OUTPUT, SECURITY_OUTPUT](
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       Option[T],
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       SECURITY_OUTPUT,
       Unit,
       Any,
@@ -115,7 +112,7 @@ private[session] trait OneOffTapirSession[T] {
     ]
   ): PartialServerEndpointWithSecurityOutput[(SECURITY_INPUT, Seq[Option[String]]), Option[
     T
-  ], Unit, Unit, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
+  ], Unit, ERROR_OUTPUT, (SECURITY_OUTPUT, Seq[Option[String]]), Unit, Any, Future] =
     body.endpoint
       .securityIn(getSessionFromClientAsHeader.map(Seq(_))(_.head))
       .out(body.securityOutput)
@@ -263,11 +260,11 @@ private[session] trait OneOffTapirSession[T] {
         )
       }
 
-  private[this] def invalidateOneOffSessionLogic[SECURITY_OUTPUT, PRINCIPAL](
+  private[this] def invalidateOneOffSessionLogic[SECURITY_OUTPUT, PRINCIPAL, ERROR_OUTPUT](
     result: (SECURITY_OUTPUT, PRINCIPAL),
     maybeCookie: Option[String],
     maybeHeader: Option[String]
-  ): Either[Unit, (Seq[Option[String]], PRINCIPAL)] = {
+  ): Either[ERROR_OUTPUT, (Seq[Option[String]], PRINCIPAL)] = {
     val principal = result._2
     maybeCookie match {
       case Some(_) =>
@@ -303,13 +300,14 @@ private[session] trait OneOffTapirSession[T] {
 
   def invalidateOneOffSession[
     SECURITY_INPUT,
-    PRINCIPAL
+    PRINCIPAL,
+    ERROR_OUTPUT
   ](st: GetSessionTransport)(
     body: => PartialServerEndpointWithSecurityOutput[
       SECURITY_INPUT,
       PRINCIPAL,
       Unit,
-      Unit,
+      ERROR_OUTPUT,
       _,
       Unit,
       Any,
@@ -319,7 +317,7 @@ private[session] trait OneOffTapirSession[T] {
     (SECURITY_INPUT, Seq[Option[String]]),
     PRINCIPAL,
     Unit,
-    Unit,
+    ERROR_OUTPUT,
     Seq[Option[String]],
     Unit,
     Any,
