@@ -14,6 +14,7 @@ import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import sttp.tapir.generic.auto._
 import sttp.tapir.json.json4s.jsonBody
 import sttp.tapir._
+import sttp.tapir.swagger.SwaggerUIOptions
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
@@ -22,14 +23,10 @@ trait ApiEndpoint {
 
   import ApiEndpoint._
 
-  val applicationName: String = ServerSettings.ApplicationName
-
-  val applicationVersion: String = ServerSettings.ApplicationVersion
-
   def endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
 
   def swaggerEndpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]] =
-    endpointsToSwaggerEndpoints(endpoints, applicationName, applicationVersion)
+    endpointsToSwaggerEndpoints(endpoints, swaggerUIOptions)
 
   def swaggerRoute(implicit ec: ExecutionContext): Route = swaggerEndpoints
 
@@ -80,12 +77,20 @@ trait ApiEndpoint {
 
 object ApiEndpoint {
 
+  val applicationName: String = ServerSettings.ApplicationName
+
+  val applicationVersion: String = ServerSettings.ApplicationVersion
+
+  val swaggerUIOptions: SwaggerUIOptions =
+    SwaggerUIOptions
+      .default
+      .pathPrefix(config.ServerSettings.SwaggerPathPrefix)
+
   def endpointsToSwaggerEndpoints(
     endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]],
-    applicationName: String,
-    applicationVersion: String
+    swaggerUIOptions: SwaggerUIOptions
   ): List[ServerEndpoint[AkkaStreams with WebSockets, Future]] =
-    SwaggerInterpreter().fromEndpoints[Future](
+    SwaggerInterpreter(swaggerUIOptions = swaggerUIOptions).fromEndpoints[Future](
       endpoints.map(_.endpoint.prependIn(config.ServerSettings.RootPath)),
       applicationName,
       applicationVersion

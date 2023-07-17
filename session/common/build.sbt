@@ -10,7 +10,7 @@ val akkaHttpSession: Seq[ModuleID] = Seq(
 )
 
 libraryDependencies ++= Seq(
-  "app.softnetwork.protobuf" %% "scalapb-extensions" % "0.1.6"
+  "app.softnetwork.protobuf" %% "scalapb-extensions" % "0.1.7"
 ) ++ akkaHttpSession
 
 Compile / unmanagedResourceDirectories += baseDirectory.value / "src/main/protobuf"
