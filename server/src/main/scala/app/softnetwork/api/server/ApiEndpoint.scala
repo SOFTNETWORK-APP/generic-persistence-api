@@ -82,8 +82,7 @@ object ApiEndpoint {
   val applicationVersion: String = ServerSettings.ApplicationVersion
 
   val swaggerUIOptions: SwaggerUIOptions =
-    SwaggerUIOptions
-      .default
+    SwaggerUIOptions.default
       .pathPrefix(config.ServerSettings.SwaggerPathPrefix)
 
   def endpointsToSwaggerEndpoints(
