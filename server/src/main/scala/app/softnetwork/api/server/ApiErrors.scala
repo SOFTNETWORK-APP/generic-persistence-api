@@ -13,6 +13,7 @@ import sttp.tapir.generic.auto.SchemaDerivation
 import sttp.tapir.json.json4s.TapirJson4s
 
 import scala.concurrent.Future
+import scala.language.implicitConversions
 
 object ApiErrors extends SchemaDerivation with TapirJson4s {
 
