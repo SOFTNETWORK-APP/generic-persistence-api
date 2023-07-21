@@ -2,22 +2,16 @@ package app.softnetwork.api.server
 
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.server.Route
-import sttp.capabilities.WebSockets
-import sttp.capabilities.akka.AkkaStreams
-import sttp.tapir.server.ServerEndpoint
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 trait ApiEndpoints extends ApiRoutes {
 
-  import ApiEndpoint._
-
-  def endpoints: ActorSystem[_] => List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
+  def endpoints: ActorSystem[_] => List[ApiEndpoint]
 
   override def apiRoutes(system: ActorSystem[_]): Route = {
     implicit def ec: ExecutionContext = system.executionContext
-    val eps = endpoints(system)
-    eps ++ endpointsToSwaggerEndpoints(eps, swaggerUIOptions)
+    concat(endpoints(system).map(api => api.apiRoute ~ api.swaggerRoute): _*)
   }
 
 }

@@ -1,15 +1,10 @@
 package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.api.server.ApiEndpoints
+import app.softnetwork.api.server.{ApiEndpoint, ApiEndpoints}
 import app.softnetwork.session.service.SessionEndpoints
 import com.softwaremill.session.CsrfCheck
 import org.scalatest.Suite
-import sttp.capabilities
-import sttp.capabilities.akka.AkkaStreams
-import sttp.tapir.server.ServerEndpoint
-
-import scala.concurrent.Future
 
 trait SessionEndpointsRoutes extends ApiEndpoints { _: CsrfCheck =>
   def sessionEndpoints: ActorSystem[_] => SessionEndpoints
@@ -17,9 +12,8 @@ trait SessionEndpointsRoutes extends ApiEndpoints { _: CsrfCheck =>
   def sessionServiceEndpoints: ActorSystem[_] => SessionEndpointsRoute = system =>
     SessionEndpointsRoute(system, sessionEndpoints(system))
 
-  override def endpoints
-    : ActorSystem[_] => List[ServerEndpoint[AkkaStreams with capabilities.WebSockets, Future]] =
-    system => sessionServiceEndpoints(system).endpoints
+  override def endpoints: ActorSystem[_] => List[ApiEndpoint] = system =>
+    List(sessionServiceEndpoints(system))
 
 }
 
