@@ -98,7 +98,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
         .example(ApiErrors.ErrorMessage("Test error message"))
     )
 
-  protected lazy val oneOfApiErrors
+  val oneOfApiErrors
     : EndpointOutput.OneOf[ApiErrors.ErrorInfo, ApiErrors.ErrorInfo] =
     oneOf[ApiErrors.ErrorInfo](
       // returns required http code for different types of ErrorInfo.
