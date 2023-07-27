@@ -9,7 +9,7 @@ import org.json4s.Formats
   * actual checking of the service's internal state, verifying needed actors are still alive, and so
   * on.
   */
-object HealthCheckService extends Directives with DefaultComplete {
+object HealthCheckService extends Directives with DefaultComplete with ApiRoute {
 
   implicit def formats: Formats = commonFormats
 

@@ -1,8 +1,7 @@
 package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.server.Route
-import app.softnetwork.api.server.ApiRoutes
+import app.softnetwork.api.server.{ApiRoute, ApiRoutes}
 import app.softnetwork.session.service.SessionService
 import org.scalatest.Suite
 
@@ -12,7 +11,11 @@ trait SessionServiceRoutes extends ApiRoutes {
   final def sessionServiceRoute: ActorSystem[_] => SessionServiceRoute = system =>
     SessionServiceRoute(sessionService(system))
 
-  override def apiRoutes(system: ActorSystem[_]): Route = sessionServiceRoute(system).route
+  override def apiRoutes: ActorSystem[_] => List[ApiRoute] =
+    system =>
+      List(
+        sessionServiceRoute(system)
+      )
 }
 
 trait OneOffCookieSessionServiceTestKit

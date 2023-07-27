@@ -5,7 +5,7 @@ import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.PersistenceScalatestRouteTest
-import app.softnetwork.api.server.ApiRoutes
+import app.softnetwork.api.server.{ApiRoute, ApiRoutes}
 import app.softnetwork.api.server.config.ServerSettings.RootPath
 import app.softnetwork.persistence.launch.{PersistenceGuardian, PersistentEntity}
 import app.softnetwork.persistence.person.message._
@@ -46,7 +46,11 @@ trait PersonServerTestKit
       person2ExternalProcessorStream(sys)
     )
 
-  override def apiRoutes(system: ActorSystem[_]): Route = PersonService(system).route
+  override def apiRoutes: ActorSystem[_] => List[ApiRoute] =
+    system =>
+      List(
+        PersonService(system)
+      )
 
   val birthday = "26/12/1972"
 

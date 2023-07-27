@@ -1,7 +1,6 @@
 package app.softnetwork.persistence.person
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.server.Route
 import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.persistence.generateUUID
 import app.softnetwork.persistence.person.message._
@@ -91,7 +90,6 @@ trait PersonService
     deletePersonEndpoint
   )
 
-  lazy val route: Route = apiRoute
 }
 
 object PersonService {

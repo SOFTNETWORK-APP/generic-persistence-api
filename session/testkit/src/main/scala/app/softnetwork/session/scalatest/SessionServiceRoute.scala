@@ -3,7 +3,7 @@ package app.softnetwork.session.scalatest
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
-import app.softnetwork.api.server.DefaultComplete
+import app.softnetwork.api.server.{ApiRoute, DefaultComplete}
 import app.softnetwork.session.service.SessionService
 import com.softwaremill.session.CsrfDirectives.{hmacTokenCsrfProtection, setNewCsrfToken}
 import com.softwaremill.session.CsrfOptions.checkHeader
@@ -11,7 +11,7 @@ import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.json4s.Formats
 import org.softnetwork.session.model.Session
 
-trait SessionServiceRoute extends Directives with DefaultComplete with Json4sSupport {
+trait SessionServiceRoute extends Directives with DefaultComplete with Json4sSupport with ApiRoute {
 
   import Session._
   import app.softnetwork.serialization._

@@ -30,7 +30,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.3.4.1"
+ThisBuild / version := "0.3.5"
 
 ThisBuild / scalaVersion := "2.12.11"
 
@@ -143,6 +143,13 @@ lazy val jdbcTestkit = project.in(file("jdbc/testkit"))
     coreTestkit % "compile->compile;test->test;it->it"
   )
 
+lazy val cassandra = project.in(file("cassandra"))
+  .configs(IntegrationTest)
+  .settings(Defaults.itSettings)
+  .dependsOn(
+    core % "compile->compile;test->test;it->it"
+  )
+
 lazy val counter = project.in(file("counter"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings/*, pbSettings*/)
@@ -198,6 +205,7 @@ lazy val root = project.in(file("."))
     coreTestkit,
     jdbc,
     jdbcTestkit,
+//    cassandra,
     counter,
     elastic,
     elasticTestkit,

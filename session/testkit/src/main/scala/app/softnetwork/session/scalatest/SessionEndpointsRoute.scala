@@ -1,7 +1,6 @@
 package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.server.{Route, RouteConcatenation}
 import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.session.service._
 import com.softwaremill.session.{SessionEndpoints => _, _}
@@ -14,7 +13,7 @@ import sttp.tapir.server.ServerEndpoint
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint with RouteConcatenation {
+trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint {
 
   import Session._
 
@@ -80,7 +79,6 @@ trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint with RouteCo
   override def endpoints: List[ServerEndpoint[Any, Future]] =
     List(retrieveSessionEndpoint, invalidateSessionEndpoint, createSessionEndpoint)
 
-  lazy val route: Route = apiRoute ~ swaggerRoute
 }
 
 object SessionEndpointsRoute {

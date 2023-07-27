@@ -39,7 +39,7 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
         pathPrefix(config.ServerSettings.RootPath) {
           Try(
             respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
-              HealthCheckService.route ~ apiRoutes(system)
+              concat((HealthCheckService :: apiRoutes(system)).map(_.route): _*)
             }
           ) match {
             case Success(s) => s
@@ -57,5 +57,6 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
     } ~ grpcRoutes(system)
   }
 
-  def apiRoutes(system: ActorSystem[_]): Route
+  def apiRoutes: ActorSystem[_] => List[ApiRoute]
+
 }

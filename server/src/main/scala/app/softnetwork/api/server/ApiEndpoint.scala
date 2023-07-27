@@ -11,18 +11,22 @@ import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
-trait ApiEndpoint extends SwaggerApiEndpoint {
+trait ApiEndpoint extends ApiRoute with SwaggerApiEndpoint {
 
   import ApiEndpoint._
+
+  implicit def ec: ExecutionContext
 
   def endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
 
   def swaggerEndpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]] =
     endpointsToSwaggerEndpoints(endpoints)
 
-  def swaggerRoute(implicit ec: ExecutionContext): Route = swaggerEndpoints
+  def swaggerRoute: Route = swaggerEndpoints
 
-  def apiRoute(implicit ec: ExecutionContext): Route = endpoints
+  def apiRoute: Route = endpoints
+
+  override def route: Route = apiRoute ~ swaggerRoute
 
   implicit def formats: Formats = commonFormats
 
