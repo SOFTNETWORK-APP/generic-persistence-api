@@ -63,59 +63,88 @@ object ImageTools extends StrictLogging {
   }
 
   def generateImages(
-    originalImage: Path,
-    replace: Boolean = false,
+    originalPath: Path,
     imageSizes: Seq[ImageSize] = Seq(Icon, Small)
   ): Boolean = {
-    val mimeType = detectMimeType(originalImage)
-    if (isAnImage(mimeType)) {
-      mimeType match {
-        case Some(mimeType) =>
-          val originalPath = originalImage.toAbsolutePath
-          val format = toFormat(Some(mimeType)).getOrElse("jpeg")
-          val src: BufferedImage = ImageIO.read(Files.newInputStream(originalImage))
-          val originalWidth = src.getWidth
-          val originalHeight = src.getHeight
-          for (imageSize <- imageSizes) {
-            resizeImage(
-              src,
-              originalWidth,
-              originalHeight,
-              originalPath,
-              format,
-              imageSize,
-              replace
-            )
+    detectMimeType(originalPath) match {
+      case Some(mimeType) if isAnImage(Option(mimeType)) =>
+        val format = toFormat(Some(mimeType)).getOrElse("jpeg")
+        val sizes = imageSizes.filter(size => {
+          val out = size.resizedPath(originalPath, Option(format))
+          !Files.exists(out) || originalPath.toFile.lastModified() > out.toFile.lastModified()
+        })
+        if (sizes.nonEmpty) {
+          logger.info(
+            s"""Trying to resize image $originalPath to
+               |${sizes.map(s => s"{s.width}x${s.height}").mkString(",")}""".stripMargin
+          )
+          Try(ImageIO.read(Files.newInputStream(originalPath))) match {
+            case Success(src) =>
+              val originalWidth = src.getWidth
+              val originalHeight = src.getHeight
+              for (size <- sizes) {
+                resizeImage(
+                  src,
+                  originalWidth,
+                  originalHeight,
+                  originalPath,
+                  format,
+                  size
+                )
+              }
+              true
+            case Failure(f) =>
+              logger.error(
+                s"""an error occurred while trying to resize image $originalPath to
+                   |${sizes.map(s => s"{s.width}x${s.height}").mkString(",")} :
+                   |${f.getMessage}""".stripMargin
+              )
+              false
           }
+        } else {
           true
-        case _ => false
-      }
-    } else {
-      false
+        }
+      case _ =>
+        logger.error(
+          s"""an error occurred while trying to resize $originalPath to
+             |${imageSizes.map(s => s"{s.width}x${s.height}").mkString(",")}""".stripMargin
+        )
+        false
     }
   }
 
   def getImage(
     originalPath: Path,
-    size: Option[ImageSize] = None,
-    replace: Boolean = false
+    size: Option[ImageSize] = None
   ): Path = {
     size match {
       case Some(s) =>
-        val format = toFormat(originalPath).getOrElse("jpeg")
-        val out = s.resizedPath(originalPath, Option(format))
-        if (!Files.exists(out)) {
-          Try(ImageIO.read(Files.newInputStream(originalPath))) match {
-            case Success(src) =>
-              resizeImage(src, src.getWidth, src.getHeight, originalPath, format, s, replace)
-            case Failure(f) =>
-              s"""an error occurred while trying to resize image $originalPath to
-                 |${s.width}x${s.height} :
-                 |${f.getMessage}""".stripMargin
-              originalPath
-          }
-        } else {
-          out
+        detectMimeType(originalPath) match {
+          case Some(mimeType) if isAnImage(Option(mimeType)) =>
+            val format = toFormat(originalPath).getOrElse("jpeg")
+            val out = s.resizedPath(originalPath, Option(format))
+            if (
+              !Files.exists(out) || originalPath.toFile.lastModified() > out.toFile.lastModified()
+            ) {
+              Try(ImageIO.read(Files.newInputStream(originalPath))) match {
+                case Success(src) =>
+                  resizeImage(src, src.getWidth, src.getHeight, originalPath, format, s)
+                case Failure(f) =>
+                  logger.error(
+                    s"""an error occurred while trying to resize image $originalPath to
+                       |${s.width}x${s.height} :
+                       |${f.getMessage}""".stripMargin
+                  )
+                  originalPath
+              }
+            } else {
+              out
+            }
+          case _ =>
+            logger.error(
+              s"an error occurred while trying to resize $originalPath to ${s.width}x${s.height}"
+            )
+            originalPath
         }
       case _ => originalPath
     }
@@ -127,41 +156,38 @@ object ImageTools extends StrictLogging {
     originalHeight: Int,
     originalPath: Path,
     format: String,
-    imageSize: ImageSize,
-    replace: Boolean
+    imageSize: ImageSize
   ): Path = {
     import imageSize._
     var out = imageSize.resizedPath(originalPath, Option(format))
-    if (!Files.exists(out) || replace) {
-      if (width == originalWidth && height == originalHeight) {
-        Files.copy(originalPath, out, REPLACE_EXISTING)
+    if (width == originalWidth && height == originalHeight) {
+      Files.copy(originalPath, out, REPLACE_EXISTING)
+    } else {
+      var imgWidth = width
+      var imgHeight = height
+      var topMargin = 0
+      var leftMargin = 0
+      if (originalWidth > originalHeight) {
+        imgHeight = originalHeight * width / originalWidth
+        topMargin = Math.abs(imgWidth - imgHeight) / 2
       } else {
-        var imgWidth = width
-        var imgHeight = height
-        var topMargin = 0
-        var leftMargin = 0
-        if (originalWidth > originalHeight) {
-          imgHeight = originalHeight * width / originalWidth
-          topMargin = Math.abs(imgWidth - imgHeight) / 2
-        } else {
-          imgWidth = originalWidth * height / originalHeight
-          leftMargin = Math.abs(imgHeight - imgWidth) / 2
-        }
+        imgWidth = originalWidth * height / originalHeight
+        leftMargin = Math.abs(imgHeight - imgWidth) / 2
+      }
 
-        val dest = Scalr.resize(src, Scalr.Method.ULTRA_QUALITY, imgWidth, imgHeight)
-        val dest2 = Scalr.move(dest, leftMargin, topMargin, width, height, Color.WHITE)
-        Try(ImageIO.write(dest2, format, Files.newOutputStream(out))) match {
-          case Success(_) =>
-          case Failure(f) =>
-            logger.error(
-              s"""an error occurred while trying to resize image $originalPath to
+      val dest = Scalr.resize(src, Scalr.Method.ULTRA_QUALITY, imgWidth, imgHeight)
+      val dest2 = Scalr.move(dest, leftMargin, topMargin, width, height, Color.WHITE)
+      Try(ImageIO.write(dest2, format, Files.newOutputStream(out))) match {
+        case Success(_) =>
+        case Failure(f) =>
+          logger.error(
+            s"""an error occurred while trying to resize image $originalPath to
                  |${imageSize.width}x${imageSize.height} :
                  |${f.getMessage}""".stripMargin
-            )
-            if (!Files.exists(out)) {
-              out = originalPath
-            }
-        }
+          )
+          if (!Files.exists(out)) {
+            out = originalPath
+          }
       }
     }
     out

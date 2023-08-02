@@ -11,17 +11,23 @@ class ImageToolsSpec extends AnyWordSpecLike {
   val path: Path =
     Paths.get(Thread.currentThread().getContextClassLoader.getResource("mars.jpeg").getPath)
 
+  val format: String = toFormat(path).getOrElse("jpeg")
+
   "ImageTools" should {
     "check if it is an image" in {
       assert(ImageTools.isAnImage(path))
     }
     "resize an image" in {
-      val sizes = Seq(Icon, Small)
-      assert(ImageTools.generateImages(path, replace = false, sizes))
-      val format = toFormat(path).getOrElse("jpeg")
+      val sizes = Seq(Icon)
+      assert(ImageTools.generateImages(path, sizes))
       for (size <- sizes) {
         assert(Files.exists(size.resizedPath(path, Option(format))))
       }
+    }
+    "get an image with the desired size" in {
+      val out = Small.resizedPath(path, Option(format))
+      assert(ImageTools.getImage(path, Some(Small)) == out)
+      assert(Files.exists(out))
     }
   }
 }
