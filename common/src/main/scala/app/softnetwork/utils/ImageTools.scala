@@ -1,5 +1,7 @@
 package app.softnetwork.utils
 
+import com.typesafe.scalalogging.StrictLogging
+
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -13,7 +15,7 @@ import scala.util.{Failure, Success, Try}
 
 /** Created by smanciot on 06/07/2018.
   */
-object ImageTools {
+object ImageTools extends StrictLogging {
 
   import MimeTypeTools._
 
@@ -62,7 +64,7 @@ object ImageTools {
 
   def generateImages(
     originalImage: Path,
-    replace: Boolean = true,
+    replace: Boolean = false,
     imageSizes: Seq[ImageSize] = Seq(Icon, Small)
   ): Boolean = {
     val mimeType = detectMimeType(originalImage)
@@ -96,17 +98,22 @@ object ImageTools {
   def getImage(
     originalPath: Path,
     size: Option[ImageSize] = None,
-    replace: Boolean = true
+    replace: Boolean = false
   ): Path = {
     size match {
       case Some(s) =>
         val format = toFormat(originalPath).getOrElse("jpeg")
         val out = s.resizedPath(originalPath, Option(format))
         if (!Files.exists(out)) {
-          val src: BufferedImage = ImageIO.read(Files.newInputStream(originalPath))
-          val originalWidth = src.getWidth
-          val originalHeight = src.getHeight
-          resizeImage(src, originalWidth, originalHeight, originalPath, format, s, replace)
+          Try(ImageIO.read(Files.newInputStream(originalPath))) match {
+            case Success(src) =>
+              resizeImage(src, src.getWidth, src.getHeight, originalPath, format, s, replace)
+            case Failure(f) =>
+              s"""an error occurred while trying to resize image $originalPath to
+                 |${s.width}x${s.height} :
+                 |${f.getMessage}""".stripMargin
+              originalPath
+          }
         } else {
           out
         }
@@ -124,7 +131,7 @@ object ImageTools {
     replace: Boolean
   ): Path = {
     import imageSize._
-    val out = imageSize.resizedPath(originalPath, Option(format))
+    var out = imageSize.resizedPath(originalPath, Option(format))
     if (!Files.exists(out) || replace) {
       if (width == originalWidth && height == originalHeight) {
         Files.copy(originalPath, out, REPLACE_EXISTING)
@@ -135,15 +142,26 @@ object ImageTools {
         var leftMargin = 0
         if (originalWidth > originalHeight) {
           imgHeight = originalHeight * width / originalWidth
-          topMargin = (imgWidth - imgHeight) / 2
+          topMargin = Math.abs(imgWidth - imgHeight) / 2
         } else {
           imgWidth = originalWidth * height / originalHeight
-          leftMargin = (imgHeight - imgWidth) / 2
+          leftMargin = Math.abs(imgHeight - imgWidth) / 2
         }
 
         val dest = Scalr.resize(src, Scalr.Method.ULTRA_QUALITY, imgWidth, imgHeight)
         val dest2 = Scalr.move(dest, leftMargin, topMargin, width, height, Color.WHITE)
-        ImageIO.write(dest2, format, Files.newOutputStream(out))
+        Try(ImageIO.write(dest2, format, Files.newOutputStream(out))) match {
+          case Success(_) =>
+          case Failure(f) =>
+            logger.error(
+              s"""an error occurred while trying to resize image $originalPath to
+                 |${imageSize.width}x${imageSize.height} :
+                 |${f.getMessage}""".stripMargin
+            )
+            if (!Files.exists(out)) {
+              out = originalPath
+            }
+        }
       }
     }
     out
