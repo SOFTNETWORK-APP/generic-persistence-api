@@ -76,7 +76,7 @@ object ImageTools extends StrictLogging {
         if (sizes.nonEmpty) {
           logger.info(
             s"""Trying to resize image $originalPath to
-               |${sizes.map(s => s"{s.width}x${s.height}").mkString(",")}""".stripMargin
+               |${sizes.map(s => s"${s.width}x${s.height}").mkString(",")}""".stripMargin
           )
           Try(ImageIO.read(Files.newInputStream(originalPath))) match {
             case Success(src) =>
@@ -96,7 +96,7 @@ object ImageTools extends StrictLogging {
             case Failure(f) =>
               logger.error(
                 s"""an error occurred while trying to resize image $originalPath to
-                   |${sizes.map(s => s"{s.width}x${s.height}").mkString(",")} :
+                   |${sizes.map(s => s"${s.width}x${s.height}").mkString(",")} :
                    |${f.getMessage}""".stripMargin
               )
               false
@@ -107,7 +107,7 @@ object ImageTools extends StrictLogging {
       case _ =>
         logger.error(
           s"""an error occurred while trying to resize $originalPath to
-             |${imageSizes.map(s => s"{s.width}x${s.height}").mkString(",")}""".stripMargin
+             |${imageSizes.map(s => s"${s.width}x${s.height}").mkString(",")}""".stripMargin
         )
         false
     }
