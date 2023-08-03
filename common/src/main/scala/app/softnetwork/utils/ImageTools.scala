@@ -78,21 +78,34 @@ object ImageTools extends StrictLogging {
             s"""Trying to resize image $originalPath to
                |${sizes.map(s => s"${s.width}x${s.height}").mkString(",")}""".stripMargin
           )
-          Try(ImageIO.read(Files.newInputStream(originalPath))) match {
-            case Success(src) =>
-              val originalWidth = src.getWidth
-              val originalHeight = src.getHeight
-              for (size <- sizes) {
-                resizeImage(
-                  src,
-                  originalWidth,
-                  originalHeight,
-                  originalPath,
-                  format,
-                  size
-                )
+          Try(
+            Option(
+              ImageIO.read(Files.newInputStream(originalPath))
+            )
+          ) match {
+            case Success(value) =>
+              value match {
+                case Some(src) =>
+                  val originalWidth = src.getWidth
+                  val originalHeight = src.getHeight
+                  for (size <- sizes) {
+                    resizeImage(
+                      src,
+                      originalWidth,
+                      originalHeight,
+                      originalPath,
+                      format,
+                      size
+                    )
+                  }
+                  true
+                case _ =>
+                  logger.error(
+                    s"""Unable to read image $originalPath while trying to resize it to
+                       |${sizes.map(s => s"${s.width}x${s.height}").mkString(",")}""".stripMargin
+                  )
+                  false
               }
-              true
             case Failure(f) =>
               logger.error(
                 s"""an error occurred while trying to resize image $originalPath to
@@ -126,9 +139,22 @@ object ImageTools extends StrictLogging {
             if (
               !Files.exists(out) || originalPath.toFile.lastModified() > out.toFile.lastModified()
             ) {
-              Try(ImageIO.read(Files.newInputStream(originalPath))) match {
-                case Success(src) =>
-                  resizeImage(src, src.getWidth, src.getHeight, originalPath, format, s)
+              Try(
+                Option(
+                  ImageIO.read(Files.newInputStream(originalPath))
+                )
+              ) match {
+                case Success(value) =>
+                  value match {
+                    case Some(src) =>
+                      resizeImage(src, src.getWidth, src.getHeight, originalPath, format, s)
+                    case _ =>
+                      logger.error(
+                        s"""Unable to read image $originalPath while trying to resize it to
+                           |s"${s.width}x${s.height}""".stripMargin
+                      )
+                      originalPath
+                  }
                 case Failure(f) =>
                   logger.error(
                     s"""an error occurred while trying to resize image $originalPath to
