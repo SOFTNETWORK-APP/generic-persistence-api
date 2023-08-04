@@ -1,5 +1,6 @@
 package app.softnetwork.utils
 
+import app.softnetwork.io.withResources
 import com.typesafe.scalalogging.StrictLogging
 
 import java.awt.Color
@@ -43,19 +44,18 @@ object ImageTools extends StrictLogging {
   def encodeImageBase64(path: Path, encodeAsURI: Boolean = false): Option[String] = {
     if (Option(path).isDefined) {
       import Base64Tools._
-      val bos = new ByteArrayOutputStream()
       Try {
         val mimeType = detectMimeType(path)
         val format = toFormat(mimeType)
-        ImageIO.write(ImageIO.read(Files.newInputStream(path)), format.getOrElse("jpeg"), bos)
-        val encoded = encodeBase64(bos.toByteArray, if (encodeAsURI) mimeType else None)
-        bos.close()
-        encoded
+        withResources(new ByteArrayOutputStream()) { bos =>
+          withResources(Files.newInputStream(path)) { inputStream =>
+            ImageIO.write(ImageIO.read(inputStream), format.getOrElse("jpeg"), bos)
+            encodeBase64(bos.toByteArray, if (encodeAsURI) mimeType else None)
+          }
+        }
       } match {
         case Success(s) => Some(s)
-        case Failure(_) =>
-          bos.close()
-          None
+        case Failure(_) => None
       }
     } else {
       None
@@ -79,9 +79,11 @@ object ImageTools extends StrictLogging {
                |${sizes.map(s => s"${s.width}x${s.height}").mkString(",")}""".stripMargin
           )
           Try(
-            Option(
-              ImageIO.read(Files.newInputStream(originalPath))
-            )
+            withResources(Files.newInputStream(originalPath)) { inputStream =>
+              Option(
+                ImageIO.read(inputStream)
+              )
+            }
           ) match {
             case Success(value) =>
               value match {
@@ -140,9 +142,11 @@ object ImageTools extends StrictLogging {
               !Files.exists(out) || originalPath.toFile.lastModified() > out.toFile.lastModified()
             ) {
               Try(
-                Option(
-                  ImageIO.read(Files.newInputStream(originalPath))
-                )
+                withResources(Files.newInputStream(originalPath)) { inputStream =>
+                  Option(
+                    ImageIO.read(inputStream)
+                  )
+                }
               ) match {
                 case Success(value) =>
                   value match {
@@ -203,7 +207,11 @@ object ImageTools extends StrictLogging {
 
       val dest = Scalr.resize(src, Scalr.Method.ULTRA_QUALITY, imgWidth, imgHeight)
       val dest2 = Scalr.move(dest, leftMargin, topMargin, width, height, Color.WHITE)
-      Try(ImageIO.write(dest2, format, Files.newOutputStream(out))) match {
+      Try(
+        withResources(Files.newOutputStream(out)) { outputStream =>
+          ImageIO.write(dest2, format, outputStream)
+        }
+      ) match {
         case Success(_) =>
         case Failure(f) =>
           logger.error(

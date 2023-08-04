@@ -17,6 +17,11 @@ class ImageToolsSpec extends AnyWordSpecLike {
     "check if it is an image" in {
       assert(ImageTools.isAnImage(path))
     }
+    "encode an image as Base64" in {
+      val encoded = ImageTools.encodeImageBase64(path, encodeAsURI = true)
+      assert(encoded.nonEmpty)
+      assert(encoded.exists(_.startsWith("data:image/jpeg;base64,/")))
+    }
     "resize an image" in {
       val sizes = Seq(Icon)
       assert(ImageTools.generateImages(path, sizes))

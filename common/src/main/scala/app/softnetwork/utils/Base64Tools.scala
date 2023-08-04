@@ -13,8 +13,8 @@ object Base64Tools {
   def encodeBase64(bytes: Array[Byte], mimeType: Option[String] = None): String = {
     val encoded = Base64.encodeBase64String(bytes)
     mimeType match {
-      case Some(_) => s"data:$mimeType;base64,$encoded"
-      case _       => encoded
+      case Some(value) => s"data:$value;base64,$encoded"
+      case _           => encoded
     }
   }
 
