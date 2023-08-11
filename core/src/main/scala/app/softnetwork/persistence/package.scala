@@ -1,7 +1,6 @@
 package app.softnetwork
 
 import java.util.{Date, UUID}
-import app.softnetwork.build.info.persistence.core.BuildInfo
 import app.softnetwork.security._
 import app.softnetwork.persistence.model.Timestamped
 
@@ -32,16 +31,16 @@ package object persistence {
   /** Used for akka and elastic persistence ids, one per targeted environment (development,
     * production, ...)
     */
+  val version: String = sys.env.getOrElse("VERSION", PersistenceCoreBuildInfo.version)
+
   val environment: String = sys.env.getOrElse(
     "TARGETED_ENV",
-    if (BuildInfo.version.endsWith("FINAL")) {
+    if (version.endsWith("FINAL")) {
       "prod"
     } else {
       "dev"
     }
   )
 
-  val version: String = sys.env.getOrElse("VERSION", BuildInfo.version)
-
-  val appName: String = sys.env.getOrElse("APP", BuildInfo.name)
+  val appName: String = sys.env.getOrElse("APP", PersistenceCoreBuildInfo.name)
 }

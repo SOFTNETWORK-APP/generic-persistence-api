@@ -1,5 +1,3 @@
-package app.softnetwork.sbt.build
-
 object Versions {
 
   val akka = "2.6.20"

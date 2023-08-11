@@ -1,38 +1,17 @@
 import sbt.Resolver
-import Common._
-import app.softnetwork.sbt.build._
+import app.softnetwork.*
 
 /////////////////////////////////
 // Defaults
 /////////////////////////////////
 
-app.softnetwork.sbt.build.Publication.settings
-
-/////////////////////////////////
-// Useful aliases
-/////////////////////////////////
-
-addCommandAlias("cd", "project") // navigate the projects
-
-addCommandAlias("cc", ";clean;compile") // clean and compile
-
-addCommandAlias("pl", ";clean;publishLocal") // clean and publish locally
-
-addCommandAlias("pr", ";clean;publish") // clean and publish globally
-
-addCommandAlias("pld", ";clean;local:publishLocal;dockerComposeUp") // clean and publish/launch the docker environment
-
-addCommandAlias("dct", ";dockerComposeTest") // navigate the projects
-
-ThisBuild / shellPrompt := prompt
-
 ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.3.5.2"
+ThisBuild / version := "0.3.6"
 
-ThisBuild / scalaVersion := "2.12.11"
+ThisBuild / scalaVersion := "2.12.18"
 
 ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature", "-target:jvm-1.8", "-Ypartial-unification")
 
@@ -49,12 +28,13 @@ ThisBuild / libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.1"
 )
 
+ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
+
 Test / parallelExecution := false
 
 lazy val common = project.in(file("common"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings/*, pbSettings*/)
-  .enablePlugins(AkkaGrpcPlugin)
+  .settings(Defaults.itSettings)
 
 lazy val commonTestkit = project.in(file("common/testkit"))
   .configs(IntegrationTest)
@@ -65,8 +45,8 @@ lazy val commonTestkit = project.in(file("common/testkit"))
 
 lazy val core = project.in(file("core"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings)
   .enablePlugins(BuildInfoPlugin)
+  .settings(Defaults.itSettings, app.softnetwork.Info.infoSettings)
   .dependsOn(
     common % "compile->compile;test->test;it->it"
   )
@@ -83,8 +63,8 @@ lazy val coreTestkit = project.in(file("core/testkit"))
 
 lazy val server = project.in(file("server"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings)
-  .enablePlugins(BuildInfoPlugin)
+  .settings(Defaults.itSettings)
+  .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -109,8 +89,7 @@ lazy val sessionCommon = project.in(file("session/common"))
 
 lazy val sessionCore = project.in(file("session/core"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings, BuildInfoSettings.settings)
-  .enablePlugins(BuildInfoPlugin)
+  .settings(Defaults.itSettings)
   .dependsOn(
     sessionCommon % "compile->compile;test->test;it->it"
   )
@@ -118,7 +97,6 @@ lazy val sessionCore = project.in(file("session/core"))
 lazy val sessionTestkit = project.in(file("session/testkit"))
   .configs(IntegrationTest)
   .settings(Defaults.itSettings)
-  .enablePlugins(BuildInfoPlugin)
   .dependsOn(
     sessionCore % "compile->compile;test->test;it->it"
   )
@@ -152,8 +130,7 @@ lazy val cassandra = project.in(file("cassandra"))
 
 lazy val counter = project.in(file("counter"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings/*, pbSettings*/)
-  .enablePlugins(AkkaGrpcPlugin)
+  .settings(Defaults.itSettings)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
@@ -163,16 +140,14 @@ lazy val counter = project.in(file("counter"))
 
 lazy val elastic = project.in(file("elastic"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings/*, pbSettings*/)
-  .enablePlugins(AkkaGrpcPlugin)
+  .settings(Defaults.itSettings)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
   )
 
 lazy val elasticTestkit = project.in(file("elastic/testkit"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings/*, pbSettings*/)
-  .enablePlugins(AkkaGrpcPlugin)
+  .settings(Defaults.itSettings)
   .dependsOn(
     elastic % "compile->compile;test->test;it->it"
   )
@@ -188,7 +163,7 @@ lazy val elasticTestkit = project.in(file("elastic/testkit"))
 
 lazy val kv = project.in(file("kv"))
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings/*, pbSettings*/)
+  .settings(Defaults.itSettings)
   .enablePlugins(AkkaGrpcPlugin)
   .dependsOn(
     core % "compile->compile;test->test;it->it"
@@ -217,7 +192,7 @@ lazy val root = project.in(file("."))
     sessionTestkit
   )
   .configs(IntegrationTest)
-  .settings(Defaults.itSettings)
+  .settings(Defaults.itSettings, Publish.noPublishSettings)
 
 Test / envVars := Map(
   "POSTGRES_USER" -> "admin",
