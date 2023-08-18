@@ -2,8 +2,9 @@ package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.ApiEndpoint
+import app.softnetwork.session.{SessionEndpoints => _, _}
 import app.softnetwork.session.service._
-import com.softwaremill.session.{SessionEndpoints => _, _}
+import com.softwaremill.session._
 import org.softnetwork.session.model.Session
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -47,10 +48,10 @@ trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint {
   def checkMode: TapirCsrfCheckMode[Session] = sessionEndpoints.checkMode
 
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
-    setNewCsrfTokenWithSession(sc, st, checkMode) {
-      setSessionEndpoint {
+    setNewCsrfTokenAndSession(sc, st, checkMode) {
+      endpointToPartialServerEndpointWithSecurityOutput(
         endpoint.securityIn(jsonBody[CreateSession].description("the session to create"))
-      }
+      )
     }.post
       .in("session")
       .serverLogicSuccess(_ => _ => Future.successful(()))

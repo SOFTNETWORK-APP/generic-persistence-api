@@ -1,6 +1,7 @@
 package app.softnetwork.session.service
 
 import akka.actor.typed.ActorSystem
+import app.softnetwork.session.{TapirCsrfCheckMode, TapirEndpoints, TapirSessionContinuity}
 import app.softnetwork.session.config.Settings.Session.CookieSecret
 import app.softnetwork.session.handlers.SessionRefreshTokenDao
 import com.softwaremill.session._
@@ -22,13 +23,13 @@ trait SessionEndpoints extends TapirEndpoints {
     system
   )
 
-  import TapirSessionOptions._
+  import app.softnetwork.session.TapirSessionOptions._
 
   lazy val oneOffSession: TapirSessionContinuity[Session] = oneOff
 
   lazy val refreshableSession: TapirSessionContinuity[Session] = refreshable
 
-  import TapirCsrfOptions._
+  import app.softnetwork.session.TapirCsrfOptions._
 
   lazy val checkHeaderMode: TapirCsrfCheckMode[Session] = checkHeader
 

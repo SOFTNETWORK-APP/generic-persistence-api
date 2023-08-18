@@ -2,8 +2,8 @@ package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.{ApiEndpoint, ApiEndpoints}
+import app.softnetwork.session.CsrfCheck
 import app.softnetwork.session.service.SessionEndpoints
-import com.softwaremill.session.CsrfCheck
 import org.scalatest.Suite
 
 trait SessionEndpointsRoutes extends ApiEndpoints { _: CsrfCheck =>

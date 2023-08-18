@@ -3,13 +3,8 @@ package app.softnetwork.session.service
 import app.softnetwork.api.server.ServiceEndpoints
 import app.softnetwork.persistence.message.{Command, CommandResult}
 import app.softnetwork.persistence.typed.scaladsl.EntityPattern
-import com.softwaremill.session.{
-  GetSessionTransport,
-  SetSessionTransport,
-  TapirCsrfCheckMode,
-  TapirEndpoints,
-  TapirSessionContinuity
-}
+import app.softnetwork.session.{TapirCsrfCheckMode, TapirEndpoints, TapirSessionContinuity}
+import com.softwaremill.session.{GetSessionTransport, SetSessionTransport}
 import org.softnetwork.session.model.Session
 
 trait ServiceWithSessionEndpoints[C <: Command, R <: CommandResult]

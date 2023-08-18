@@ -6,9 +6,11 @@ object Versions {
 
   val akkaHttpJson4s = "1.39.2" //1.37.0 -> 1.39.2
 
-  val akkaHttpSession = "0.7.0" // 0.5.11 -> 0.7.0
+  val akkaHttpSession = "0.7.0"
 
-  val tapir = "1.3.0"
+  val tapir = "1.7.0"
+
+  val tapirHttpSession = "0.1.0"
 
   val akkaPersistenceJdbc = "5.0.4"
 
