@@ -76,15 +76,29 @@ case class RefreshableHeaderSessionService(system: ActorSystem[_]) extends Sessi
 }
 
 object SessionService {
-  def oneOffCookie(system: ActorSystem[_]): SessionService = OneOffCookieSessionService(system)
+  def apply(system: ActorSystem[_], sessionType: Session.SessionType): SessionService =
+    sessionType match {
+      case Session.SessionType.OneOffCookie      => oneOffCookie(system)
+      case Session.SessionType.OneOffHeader      => oneOffHeader(system)
+      case Session.SessionType.RefreshableCookie => refreshableCookie(system)
+      case Session.SessionType.RefreshableHeader => refreshableHeader(system)
+    }
 
-  def oneOffHeader(system: ActorSystem[_]): SessionService = OneOffHeaderSessionService(system)
-
-  def refreshableCookie(system: ActorSystem[_]): SessionService = RefreshableCookieSessionService(
+  private def oneOffCookie(system: ActorSystem[_]): SessionService = OneOffCookieSessionService(
     system
   )
 
-  def refreshableHeader(system: ActorSystem[_]): SessionService = RefreshableHeaderSessionService(
+  private def oneOffHeader(system: ActorSystem[_]): SessionService = OneOffHeaderSessionService(
     system
   )
+
+  private def refreshableCookie(system: ActorSystem[_]): SessionService =
+    RefreshableCookieSessionService(
+      system
+    )
+
+  private def refreshableHeader(system: ActorSystem[_]): SessionService =
+    RefreshableHeaderSessionService(
+      system
+    )
 }

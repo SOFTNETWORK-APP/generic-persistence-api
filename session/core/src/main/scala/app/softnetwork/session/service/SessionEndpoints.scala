@@ -80,22 +80,34 @@ case class RefreshableHeaderSessionEndpoints(system: ActorSystem[_], checkHeader
 }
 
 object SessionEndpoints {
-  def oneOffCookie(
+  def apply(
+    system: ActorSystem[_],
+    sessionType: Session.SessionType,
+    checkHeaderAndForm: Boolean = false
+  ): SessionEndpoints =
+    sessionType match {
+      case Session.SessionType.OneOffCookie      => oneOffCookie(system, checkHeaderAndForm)
+      case Session.SessionType.OneOffHeader      => oneOffHeader(system, checkHeaderAndForm)
+      case Session.SessionType.RefreshableCookie => refreshableCookie(system, checkHeaderAndForm)
+      case Session.SessionType.RefreshableHeader => refreshableHeader(system, checkHeaderAndForm)
+    }
+
+  private def oneOffCookie(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = OneOffCookieSessionEndpoints(system, checkHeaderAndForm)
 
-  def oneOffHeader(
+  private def oneOffHeader(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = OneOffHeaderSessionEndpoints(system, checkHeaderAndForm)
 
-  def refreshableCookie(
+  private def refreshableCookie(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = RefreshableCookieSessionEndpoints(system, checkHeaderAndForm)
 
-  def refreshableHeader(
+  private def refreshableHeader(
     system: ActorSystem[_],
     checkHeaderAndForm: Boolean = false
   ): SessionEndpoints = RefreshableHeaderSessionEndpoints(system, checkHeaderAndForm)

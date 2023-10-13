@@ -1,6 +1,5 @@
 package app.softnetwork.session.scalatest
 
-import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.{Directives, Route}
 import app.softnetwork.api.server.{ApiRoute, DefaultComplete}
@@ -75,17 +74,4 @@ object SessionServiceRoute {
       override def sessionService: SessionService = _sessionService
     }
   }
-
-  def oneOffCookie(system: ActorSystem[_]): SessionServiceRoute =
-    SessionServiceRoute(SessionService.oneOffCookie(system))
-
-  def oneOffHeader(system: ActorSystem[_]): SessionServiceRoute =
-    SessionServiceRoute(SessionService.oneOffHeader(system))
-
-  def refreshableCookie(system: ActorSystem[_]): SessionServiceRoute =
-    SessionServiceRoute(SessionService.refreshableCookie(system))
-
-  def refreshableHeader(system: ActorSystem[_]): SessionServiceRoute =
-    SessionServiceRoute(SessionService.refreshableHeader(system))
-
 }

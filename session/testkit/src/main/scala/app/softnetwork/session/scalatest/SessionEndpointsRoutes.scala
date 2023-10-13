@@ -3,12 +3,11 @@ package app.softnetwork.session.scalatest
 import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.{ApiEndpoint, ApiEndpoints}
 import app.softnetwork.session.CsrfCheck
-import app.softnetwork.session.service.SessionEndpoints
+import app.softnetwork.session.launch.SessionServiceAndEndpoints
 import org.scalatest.Suite
+import org.softnetwork.session.model.Session
 
-trait SessionEndpointsRoutes extends ApiEndpoints { _: CsrfCheck =>
-  def sessionEndpoints: ActorSystem[_] => SessionEndpoints
-
+trait SessionEndpointsRoutes extends ApiEndpoints with SessionServiceAndEndpoints { _: CsrfCheck =>
   def sessionServiceEndpoints: ActorSystem[_] => SessionEndpointsRoute = system =>
     SessionEndpointsRoute(system, sessionEndpoints(system))
 
@@ -21,8 +20,7 @@ trait OneOffCookieSessionEndpointsTestKit
     extends OneOffCookieSessionTestKit
     with SessionEndpointsRoutes { _: Suite with CsrfCheck =>
 
-  override def sessionEndpoints: ActorSystem[_] => SessionEndpoints = system =>
-    SessionEndpoints.oneOffCookie(system, checkHeaderAndForm)
+  override def sessionType: Session.SessionType = Session.SessionType.OneOffCookie
 
 }
 
@@ -30,8 +28,7 @@ trait OneOffHeaderSessionEndpointsTestKit
     extends OneOffHeaderSessionTestKit
     with SessionEndpointsRoutes { _: Suite with CsrfCheck =>
 
-  override def sessionEndpoints: ActorSystem[_] => SessionEndpoints = system =>
-    SessionEndpoints.oneOffHeader(system, checkHeaderAndForm)
+  override def sessionType: Session.SessionType = Session.SessionType.OneOffHeader
 
 }
 
@@ -39,8 +36,7 @@ trait RefreshableCookieSessionEndpointsTestKit
     extends RefreshableCookieSessionTestKit
     with SessionEndpointsRoutes { _: Suite with CsrfCheck =>
 
-  override def sessionEndpoints: ActorSystem[_] => SessionEndpoints = system =>
-    SessionEndpoints.refreshableCookie(system, checkHeaderAndForm)
+  override def sessionType: Session.SessionType = Session.SessionType.RefreshableCookie
 
 }
 
@@ -48,7 +44,6 @@ trait RefreshableHeaderSessionEndpointsTestKit
     extends RefreshableHeaderSessionTestKit
     with SessionEndpointsRoutes { _: Suite with CsrfCheck =>
 
-  override def sessionEndpoints: ActorSystem[_] => SessionEndpoints = system =>
-    SessionEndpoints.refreshableHeader(system, checkHeaderAndForm)
+  override def sessionType: Session.SessionType = Session.SessionType.RefreshableHeader
 
 }

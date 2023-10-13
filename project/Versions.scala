@@ -18,7 +18,7 @@ object Versions {
 
   val postgresql = "42.2.18"
 
-  val scalatest = "3.1.1"
+  val scalatest = "3.2.16"
 
   val typesafeConfig = "1.4.2"
 

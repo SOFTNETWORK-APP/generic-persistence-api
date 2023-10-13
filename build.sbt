@@ -1,4 +1,3 @@
-import sbt.Resolver
 import app.softnetwork.*
 
 /////////////////////////////////
@@ -9,7 +8,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.4.0"
+ThisBuild / version := "0.4.1"
 
 ThisBuild / scalaVersion := "2.12.18"
 

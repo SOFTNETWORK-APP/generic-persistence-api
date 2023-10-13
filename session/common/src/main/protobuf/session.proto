@@ -14,6 +14,12 @@ option (scalapb.options) = {
 };
 
 message Session {
+    enum SessionType {
+        OneOffHeader = 0;
+        OneOffCookie = 1;
+        RefreshableHeader = 2;
+        RefreshableCookie = 3;
+    }
     option (scalapb.message).extends = "SessionData";
     option (scalapb.message).extends = "SessionDecorator";
     option (scalapb.message).companion_extends = "SessionCompanion";
