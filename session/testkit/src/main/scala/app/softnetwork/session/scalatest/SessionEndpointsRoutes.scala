@@ -1,7 +1,7 @@
 package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.api.server.{ApiEndpoint, ApiEndpoints}
+import app.softnetwork.api.server.{ApiEndpoints, Endpoint}
 import app.softnetwork.session.CsrfCheck
 import app.softnetwork.session.launch.SessionServiceAndEndpoints
 import org.scalatest.Suite
@@ -11,7 +11,7 @@ trait SessionEndpointsRoutes extends ApiEndpoints with SessionServiceAndEndpoint
   def sessionServiceEndpoints: ActorSystem[_] => SessionEndpointsRoute = system =>
     SessionEndpointsRoute(system, sessionEndpoints(system))
 
-  override def endpoints: ActorSystem[_] => List[ApiEndpoint] = system =>
+  override def endpoints: ActorSystem[_] => List[Endpoint] = system =>
     List(sessionServiceEndpoints(system))
 
 }
