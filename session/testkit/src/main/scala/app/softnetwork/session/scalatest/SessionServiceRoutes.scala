@@ -2,12 +2,11 @@ package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.{ApiRoute, ApiRoutes}
-import app.softnetwork.session.CsrfCheckHeader
-import app.softnetwork.session.launch.SessionServiceAndEndpoints
+import app.softnetwork.session.launch.SessionGuardian
 import org.scalatest.Suite
 import org.softnetwork.session.model.Session
 
-trait SessionServiceRoutes extends ApiRoutes with SessionServiceAndEndpoints with CsrfCheckHeader {
+trait SessionServiceRoutes extends ApiRoutes { _: SessionGuardian =>
   final def sessionServiceRoute: ActorSystem[_] => SessionServiceRoute = system =>
     SessionServiceRoute(sessionService(system))
 

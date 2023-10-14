@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.{HttpHeader, HttpMessage, StatusCodes}
 import akka.http.scaladsl.testkit.InMemoryPersistenceScalatestRouteTest
 import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings.RootPath
+import app.softnetwork.session.CsrfCheckHeader
 import app.softnetwork.session.launch.SessionGuardian
 import app.softnetwork.session.model.SessionCompanion
 import org.scalatest.Suite
@@ -13,6 +14,7 @@ import org.softnetwork.session.model.Session
 trait SessionTestKit
     extends InMemoryPersistenceScalatestRouteTest
     with SessionGuardian
+    with CsrfCheckHeader
     with SessionCompanion { _: Suite with ApiRoutes =>
 
   import app.softnetwork.serialization._
