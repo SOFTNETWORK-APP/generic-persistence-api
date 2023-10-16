@@ -4,7 +4,16 @@ import java.util.concurrent.TimeoutException
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.http.scaladsl.server.{Directives, ExceptionHandler, Route}
+import akka.http.scaladsl.server.{
+  AuthorizationFailedRejection,
+  Directives,
+  ExceptionHandler,
+  MethodRejection,
+  MissingCookieRejection,
+  RejectionHandler,
+  Route,
+  ValidationRejection
+}
 import app.softnetwork.api.server.config.ServerSettings
 import org.json4s.Formats
 import app.softnetwork.serialization._
@@ -22,6 +31,32 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
 
   def log: Logger
 
+  val rejectionHandler: RejectionHandler =
+    RejectionHandler
+      .newBuilder()
+      .handle { case MissingCookieRejection(cookieName) =>
+        complete(HttpResponse(StatusCodes.BadRequest, entity = s"$cookieName cookie required"))
+      }
+      .handle { case AuthorizationFailedRejection =>
+        complete(StatusCodes.Forbidden)
+      }
+      .handle { case ValidationRejection(msg, _) =>
+        complete(HttpResponse(StatusCodes.InternalServerError, entity = msg))
+      }
+      .handleAll[MethodRejection] { methodRejections =>
+        val names = methodRejections.map(_.supported.name)
+        complete(
+          HttpResponse(
+            StatusCodes.MethodNotAllowed,
+            entity = s"Supported methods: ${names mkString " or "}!"
+          )
+        )
+      }
+      .handleNotFound {
+        complete(HttpResponse(StatusCodes.NotFound, entity = "Not found"))
+      }
+      .result()
+
   val timeoutExceptionHandler: ExceptionHandler =
     ExceptionHandler { case e: TimeoutException =>
       extractUri { uri =>
@@ -35,23 +70,25 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
 
   final def mainRoutes: ActorSystem[_] => Route = system => {
     val routes = concat((HealthCheckService :: apiRoutes(system)).map(_.route): _*)
-    handleExceptions(timeoutExceptionHandler) {
-      logRequestResult("RestAll") {
-        pathPrefix(config.ServerSettings.RootPath) {
-          Try(
-            respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
-              routes
-            }
-          ) match {
-            case Success(s) => s
-            case Failure(f) =>
-              log.error(f.getMessage, f.getCause)
-              complete(
-                HttpResponse(
-                  StatusCodes.InternalServerError,
-                  entity = f.getMessage
+    handleRejections(rejectionHandler) {
+      handleExceptions(timeoutExceptionHandler) {
+        logRequestResult("RestAll") {
+          pathPrefix(config.ServerSettings.RootPath) {
+            Try(
+              respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
+                routes
+              }
+            ) match {
+              case Success(s) => s
+              case Failure(f) =>
+                log.error(f.getMessage, f.getCause)
+                complete(
+                  HttpResponse(
+                    StatusCodes.InternalServerError,
+                    entity = f.getMessage
+                  )
                 )
-              )
+            }
           }
         }
       }
