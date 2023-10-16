@@ -57,7 +57,7 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
       }
       .result()
 
-  val timeoutExceptionHandler: ExceptionHandler =
+  val exceptionHandler: ExceptionHandler =
     ExceptionHandler { case e: TimeoutException =>
       extractUri { uri =>
         log.error(
@@ -71,7 +71,7 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
   final def mainRoutes: ActorSystem[_] => Route = system => {
     val routes = concat((HealthCheckService :: apiRoutes(system)).map(_.route): _*)
     handleRejections(rejectionHandler) {
-      handleExceptions(timeoutExceptionHandler) {
+      handleExceptions(exceptionHandler) {
         logRequestResult("RestAll") {
           pathPrefix(config.ServerSettings.RootPath) {
             Try(
@@ -89,10 +89,10 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
                   )
                 )
             }
-          }
+          } ~ grpcRoutes(system)
         }
       }
-    } ~ grpcRoutes(system)
+    }
   }
 
   def apiRoutes: ActorSystem[_] => List[ApiRoute]
