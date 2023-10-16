@@ -34,12 +34,13 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
     }
 
   final def mainRoutes: ActorSystem[_] => Route = system => {
+    val routes = concat((HealthCheckService :: apiRoutes(system)).map(_.route): _*)
     handleExceptions(timeoutExceptionHandler) {
       logRequestResult("RestAll") {
         pathPrefix(config.ServerSettings.RootPath) {
           Try(
             respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
-              concat((HealthCheckService :: apiRoutes(system)).map(_.route): _*)
+              routes
             }
           ) match {
             case Success(s) => s
