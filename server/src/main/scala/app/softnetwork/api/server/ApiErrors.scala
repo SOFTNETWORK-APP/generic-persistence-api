@@ -1,11 +1,11 @@
 package app.softnetwork.api.server
 
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.http.scaladsl.server.Directives.complete
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import app.softnetwork.serialization.commonFormats
 import org.json4s.Formats
-import sttp.model.StatusCode
+import sttp.model.{HeaderNames, StatusCode, Uri}
 import sttp.tapir.EndpointOutput.OneOf
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
 import sttp.tapir._
@@ -20,6 +20,8 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
   sealed trait ErrorInfo {
     val message: String
   }
+
+  trait ExtendedErrorInfo extends ErrorInfo
 
   /** Represents http 404. */
   case class NotFound(message: String) extends ErrorInfo
@@ -42,6 +44,32 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
   /** Represents http 500. */
   case class InternalServerError(message: String) extends ErrorInfo
 
+  /** Represents http 302. */
+  case class Found(uri: Uri) extends ErrorInfo {
+    override val message: String = s"Found $uri"
+    override def toString: String = uri.toString()
+  }
+
+  object Found {
+    def apply(uri: String): Option[Found] = Uri.parse(uri).toOption.map(Found(_))
+  }
+
+  implicit val foundCodec: Codec[String, Found, CodecFormat.TextPlain] =
+    Codec.string.mapDecode(s =>
+      Uri.parse(s) match {
+        case Right(r) => DecodeResult.Value(Found(r))
+        case Left(l)  => DecodeResult.Error(s, new IllegalArgumentException(l))
+      }
+    )(_.toString())
+
+  implicit def leftFoundCodec[T]: Codec[String, Left[Found, T], CodecFormat.TextPlain] =
+    Codec.string.mapDecode(s =>
+      Uri.parse(s) match {
+        case Right(r) => DecodeResult.Value(Left[Found, T](Found(r)))
+        case Left(l)  => DecodeResult.Error(s, new IllegalArgumentException(l))
+      }
+    )(_.left.get.toString())
+
   implicit def apiError2Route(apiError: ErrorInfo)(implicit formats: Formats): Route =
     apiError match {
       case r: BadRequest => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
@@ -51,6 +79,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
         complete(HttpResponse(StatusCodes.InternalServerError, entity = r))
       case r: NotFound     => complete(HttpResponse(StatusCodes.NotFound, entity = r))
       case r: Unauthorized => complete(HttpResponse(StatusCodes.Unauthorized, entity = r))
+      case r: Found        => redirect(r.toString, StatusCodes.Found)
       case r: ErrorMessage => complete(HttpResponse(StatusCodes.OK, entity = r))
     }
 
@@ -80,6 +109,12 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
         .and(jsonBody[ApiErrors.NotFound].description("When something not found"))
     )
 
+  val foundVariant: EndpointOutput.OneOfVariant[ApiErrors.Found] =
+    oneOfVariant(
+      statusCode(StatusCode.Found)
+        .and(header[ApiErrors.Found](HeaderNames.Location).description("Redirect address"))
+    )
+
   val badRequestVariant: EndpointOutput.OneOfVariant[ApiErrors.BadRequest] =
     oneOfVariant(
       statusCode(StatusCode.BadRequest)
@@ -107,6 +142,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
       forbiddenVariant,
       unauthorizedVariant,
       notFoundVariant,
+      foundVariant,
       badRequestVariant,
       internalServerErrorVariant,
       // default case below.
@@ -137,6 +173,12 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
         StatusCode.NotFound,
         jsonBody[Left[ApiErrors.NotFound, T]].description("When something not found")
       ) { case Left(ApiErrors.NotFound(_)) =>
+        true
+      },
+      oneOfVariantValueMatcher(
+        StatusCode.Found,
+        header[Left[ApiErrors.Found, T]]("Location").description("Redirect address")
+      ) { case Left(ApiErrors.Found(_)) =>
         true
       },
       oneOfVariantValueMatcher(
@@ -185,6 +227,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
       forbiddenVariant,
       unauthorizedVariant,
       notFoundVariant,
+      foundVariant,
       badRequestVariant,
       internalServerErrorVariant,
       defaultErrorVariant
