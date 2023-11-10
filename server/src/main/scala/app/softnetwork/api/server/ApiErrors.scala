@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import app.softnetwork.serialization.commonFormats
 import org.json4s.Formats
+import sttp.model.headers.WWWAuthenticateChallenge
 import sttp.model.{HeaderNames, StatusCode, Uri}
 import sttp.tapir.EndpointOutput.OneOf
 import sttp.tapir.server.PartialServerEndpointWithSecurityOutput
@@ -70,6 +71,23 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
       }
     )(_.left.get.toString())
 
+  case class UnauthorizedWithChallenge(scheme: String, realm: String) extends ErrorInfo {
+    override val message: String = "Unauthorized"
+    override def toString: String = WWWAuthenticateChallenge(scheme).realm(realm).toString()
+  }
+
+  implicit val unauthorizedWithChallengeCodec
+    : Codec[String, UnauthorizedWithChallenge, CodecFormat.TextPlain] =
+    Codec.string.mapDecode(s =>
+      WWWAuthenticateChallenge.parseSingle(s) match {
+        case Right(challenge) =>
+          DecodeResult.Value(
+            UnauthorizedWithChallenge(challenge.scheme, challenge.realm.getOrElse(""))
+          )
+        case Left(_) => DecodeResult.Error(s, new Exception("Cannot parse WWW-Authenticate header"))
+      }
+    )(_.toString())
+
   implicit def apiError2Route(apiError: ErrorInfo)(implicit formats: Formats): Route =
     apiError match {
       case r: BadRequest => complete(HttpResponse(StatusCodes.BadRequest, entity = r))
@@ -134,6 +152,12 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
         .example(ApiErrors.ErrorMessage("Test error message"))
     )
 
+  val unauthorizedWithChallengeVariant: EndpointOutput.OneOfVariant[UnauthorizedWithChallenge] =
+    oneOfVariant(
+      statusCode(StatusCode.Unauthorized)
+        .and(header[UnauthorizedWithChallenge](HeaderNames.WwwAuthenticate))
+    )
+
   val oneOfApiErrors: EndpointOutput.OneOf[ApiErrors.ErrorInfo, ApiErrors.ErrorInfo] =
     oneOf[ApiErrors.ErrorInfo](
       // returns required http code for different types of ErrorInfo.
@@ -141,6 +165,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
       // all cases before defining security logic
       forbiddenVariant,
       unauthorizedVariant,
+      unauthorizedWithChallengeVariant,
       notFoundVariant,
       foundVariant,
       badRequestVariant,
@@ -226,6 +251,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
     body.errorOutVariants(
       forbiddenVariant,
       unauthorizedVariant,
+      unauthorizedWithChallengeVariant,
       notFoundVariant,
       foundVariant,
       badRequestVariant,

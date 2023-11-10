@@ -14,6 +14,7 @@ import akka.http.scaladsl.server.{
   Route,
   ValidationRejection
 }
+import akka.http.scaladsl.settings.RoutingSettings
 import app.softnetwork.api.server.config.ServerSettings
 import org.json4s.Formats
 import app.softnetwork.serialization._
@@ -31,33 +32,9 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
 
   def log: Logger
 
-  val rejectionHandler: RejectionHandler =
-    RejectionHandler
-      .newBuilder()
-      .handle { case MissingCookieRejection(cookieName) =>
-        complete(HttpResponse(StatusCodes.BadRequest, entity = s"$cookieName cookie required"))
-      }
-      .handle { case AuthorizationFailedRejection =>
-        complete(StatusCodes.Forbidden)
-      }
-      .handle { case ValidationRejection(msg, _) =>
-        complete(HttpResponse(StatusCodes.InternalServerError, entity = msg))
-      }
-      .handleAll[MethodRejection] { methodRejections =>
-        val names = methodRejections.map(_.supported.name)
-        complete(
-          HttpResponse(
-            StatusCodes.MethodNotAllowed,
-            entity = s"Supported methods: ${names mkString " or "}!"
-          )
-        )
-      }
-      .handleNotFound {
-        complete(HttpResponse(StatusCodes.NotFound, entity = "Not found"))
-      }
-      .result()
+  val rejectionHandler: RejectionHandler = RejectionHandler.default
 
-  val exceptionHandler: ExceptionHandler =
+  lazy val exceptionHandler: ExceptionHandler =
     ExceptionHandler { case e: TimeoutException =>
       extractUri { uri =>
         log.error(
@@ -67,6 +44,13 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
         complete(HttpResponse(StatusCodes.InternalServerError, entity = "Timeout"))
       }
     }
+      .withFallback(
+        ExceptionHandler.default(
+          RoutingSettings(
+            ServerSettings.config
+          )
+        )
+      )
 
   final def mainRoutes: ActorSystem[_] => Route = system => {
     val routes = concat((HealthCheckService :: apiRoutes(system)).map(_.route): _*)
