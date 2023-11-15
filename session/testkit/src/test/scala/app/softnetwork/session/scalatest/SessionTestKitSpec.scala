@@ -1,17 +1,14 @@
 package app.softnetwork.session.scalatest
 
 import app.softnetwork.api.server.ApiRoutes
-import app.softnetwork.session.config.Settings
+import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.slf4j.{Logger, LoggerFactory}
 
-trait SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit { _: ApiRoutes =>
+trait SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
+  _: ApiRoutes with SessionMaterials =>
 
   override lazy val log: Logger = LoggerFactory getLogger getClass.getName
-
-  override val refreshableSession: Boolean = false
-
-  override def sessionHeaderName: String = Settings.Session.CookieName
 
   val id: String = "id"
 

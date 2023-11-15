@@ -3,7 +3,7 @@ package app.softnetwork.api.server
 import app.softnetwork.concurrent.Completion
 import app.softnetwork.persistence.message.{Command, CommandResult, ErrorMessage}
 import app.softnetwork.persistence.service.Service
-import app.softnetwork.persistence.typed.scaladsl.EntityPattern
+import app.softnetwork.persistence.typed.scaladsl.Patterns
 import sttp.tapir.generic.auto.SchemaDerivation
 import sttp.tapir.Tapir
 
@@ -14,7 +14,7 @@ trait ServiceEndpoints[C <: Command, R <: CommandResult]
     with Tapir
     with SchemaDerivation
     with Service[C, R]
-    with Completion { _: EntityPattern[C, R] =>
+    with Completion { _: Patterns[C, R] =>
 
   implicit def resultToApiError(result: R): ApiErrors.ErrorInfo =
     result match {

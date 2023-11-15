@@ -1,10 +1,9 @@
 package app.softnetwork.session.scalatest
 
-import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.ApiEndpoint
 import app.softnetwork.session.{SessionEndpoints => _, _}
 import app.softnetwork.session.service._
-import com.softwaremill.session._
+import com.softwaremill.session.SessionConfig
 import org.softnetwork.session.model.Session
 import sttp.model.StatusCode
 import sttp.tapir._
@@ -12,22 +11,18 @@ import sttp.tapir.generic.auto._
 import sttp.tapir.json.json4s.jsonBody
 import sttp.tapir.server.ServerEndpoint
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint {
+trait SessionEndpointsRoute extends SessionEndpoints with ApiEndpoint { _: SessionMaterials =>
 
   import Session._
 
   import app.softnetwork.serialization._
 
-  implicit def system: ActorSystem[_]
-
-  implicit def ec: ExecutionContext = system.executionContext
-
-  def sessionEndpoints: SessionEndpoints
+  implicit def sessionConfig: SessionConfig
 
   implicit def f: CreateSession => Option[Session] = session => {
-    val s = Session(session.id)
+    var s = Session(session.id)
     session.profile match {
       case Some(p) => s += (profileKey, p)
       case _       =>
@@ -39,26 +34,22 @@ trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint {
     Some(s)
   }
 
-  def sc: TapirSessionContinuity[Session] = sessionEndpoints.sc
-
-  def st: SetSessionTransport = sessionEndpoints.st
-
-  def gt: GetSessionTransport = sessionEndpoints.gt
-
-  def checkMode: TapirCsrfCheckMode[Session] = sessionEndpoints.checkMode
-
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {
-    setNewCsrfTokenAndSession(sc, st, checkMode) {
-      endpointToPartialServerEndpointWithSecurityOutput(
-        endpoint.securityIn(jsonBody[CreateSession].description("the session to create"))
-      )
+    setNewCsrfToken(checkMode) {
+      setSession(sc, st) {
+        endpointToPartialServerEndpointWithSecurityOutput(
+          endpoint.securityIn(jsonBody[CreateSession].description("the session to create"))
+        )
+      }
     }.post
       .in("session")
       .serverLogicSuccess(_ => _ => Future.successful(()))
   }
 
-  val retrieveSessionEndpoint: ServerEndpoint[Any, Future] =
-    antiCsrfWithRequiredSession(sc, st, checkMode).get
+  val retrieveSessionEndpoint: ServerEndpoint[Any, Future] = {
+    hmacTokenCsrfProtection(checkMode) {
+      requiredSession(sc, st)
+    }.get
       .in("session")
       .out(
         oneOf[BusinessError](
@@ -69,25 +60,19 @@ trait SessionEndpointsRoute extends TapirEndpoints with ApiEndpoint {
         )
       )
       .serverLogic(_ => _ => Future.successful(Right(NotFound))) // simulate an error
+  }
 
-  val invalidateSessionEndpoint: ServerEndpoint[Any, Future] =
+  val invalidateSessionEndpoint: ServerEndpoint[Any, Future] = {
     invalidateSession(sc, gt)(
-      antiCsrfWithRequiredSession(sc, st, checkMode)
+      hmacTokenCsrfProtection(checkMode) {
+        requiredSession(sc, st)
+      }
     ).delete
       .in("session")
-      .serverLogic(_ => _ => Future.successful(Right()))
+      .serverLogic(_ => _ => Future.successful(Right(())))
+  }
 
   override def endpoints: List[ServerEndpoint[Any, Future]] =
     List(retrieveSessionEndpoint, invalidateSessionEndpoint, createSessionEndpoint)
-
-}
-
-object SessionEndpointsRoute {
-
-  def apply(_system: ActorSystem[_], _sessionEndpoints: SessionEndpoints): SessionEndpointsRoute =
-    new SessionEndpointsRoute {
-      override implicit def system: ActorSystem[_] = _system
-      override def sessionEndpoints: SessionEndpoints = _sessionEndpoints
-    }
 
 }

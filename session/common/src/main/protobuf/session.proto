@@ -23,6 +23,6 @@ message Session {
     option (scalapb.message).extends = "SessionData";
     option (scalapb.message).extends = "SessionDecorator";
     option (scalapb.message).companion_extends = "SessionCompanion";
-    map<string, string> data = 1 [(scalapb.field).map_type="collection.mutable.Map"];
+    map<string, string> data = 1 [(scalapb.field).map_type="collection.immutable.Map", (scalapb.field).scala_name = "kvs"];
     bool refreshable = 2;
 }
