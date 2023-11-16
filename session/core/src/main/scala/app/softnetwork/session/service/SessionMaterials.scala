@@ -21,7 +21,7 @@ trait SessionMaterials {
 
   implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
 
-  protected def sessionType: Session.SessionType = Settings.Session.SessionContinuityAndTransport
+  protected def sessionType: Session.SessionType
 
   def headerAndForm: Boolean = false
 
