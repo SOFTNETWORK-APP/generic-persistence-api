@@ -10,7 +10,7 @@ object Versions {
 
   val tapir = "1.7.0"
 
-  val tapirHttpSession = "0.1.0"
+  val tapirHttpSession = "0.2.0"
 
   val akkaPersistenceJdbc = "5.0.4"
 
