@@ -1,5 +1,6 @@
 package app.softnetwork.session.service
 
+import app.softnetwork.session.model.SessionData
 import com.softwaremill.session.{
   CsrfCheckMode,
   CsrfOptions,
@@ -13,11 +14,11 @@ import org.softnetwork.session.model.Session
 
 /** Created by smanciot on 05/07/2018.
   */
-trait SessionService extends SessionDirectives { _: SessionMaterials =>
+trait SessionService[T <: SessionData] extends SessionDirectives { _: SessionMaterials[T] =>
 
   import com.softwaremill.session.SessionOptions._
 
-  def sc(implicit manager: SessionManager[Session]): SessionContinuity[Session] =
+  def sc(implicit manager: SessionManager[T]): SessionContinuity[T] =
     sessionType match {
       case Session.SessionType.OneOffCookie | Session.SessionType.OneOffHeader => oneOff
       case _                                                                   => refreshable
@@ -31,7 +32,7 @@ trait SessionService extends SessionDirectives { _: SessionMaterials =>
 
   lazy val gt: GetSessionTransport = st
 
-  def checkMode(implicit manager: SessionManager[Session]): CsrfCheckMode[Session] =
+  def checkMode(implicit manager: SessionManager[T]): CsrfCheckMode[T] =
     if (headerAndForm) {
       CsrfOptions.checkHeaderAndForm
     } else {

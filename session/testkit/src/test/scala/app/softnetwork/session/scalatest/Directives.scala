@@ -3,57 +3,97 @@ package app.softnetwork.session.scalatest
 import app.softnetwork.session.service.{BasicSessionMaterials, JwtSessionMaterials}
 
 package Directives {
+
+  import app.softnetwork.session.model.SessionDataCompanion
+  import app.softnetwork.session.handlers.SessionRefreshTokenDao
+  import com.softwaremill.session.RefreshTokenStorage
+  import org.softnetwork.session.model.Session
+
   package OneOff {
     package Cookie {
       class OneOffCookieBasicSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with OneOffCookieSessionServiceTestKit
-          with BasicSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with OneOffCookieSessionServiceTestKit[Session]
+          with BasicSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+
+      }
 
       class OneOffCookieJwtSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with OneOffCookieSessionServiceTestKit
-          with JwtSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with OneOffCookieSessionServiceTestKit[Session]
+          with JwtSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+      }
     }
 
     package Header {
 
       class OneOffHeaderBasicSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with OneOffHeaderSessionServiceTestKit
-          with BasicSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with OneOffHeaderSessionServiceTestKit[Session]
+          with BasicSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+      }
 
       class OneOffHeaderJwtSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with OneOffHeaderSessionServiceTestKit
-          with JwtSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with OneOffHeaderSessionServiceTestKit[Session]
+          with JwtSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+      }
     }
   }
 
   package Refreshable {
     package Cookie {
       class RefreshableCookieBasicSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with RefreshableCookieSessionServiceTestKit
-          with BasicSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with RefreshableCookieSessionServiceTestKit[Session]
+          with BasicSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+      }
 
       class RefreshableCookieJwtSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with RefreshableCookieSessionServiceTestKit
-          with JwtSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with RefreshableCookieSessionServiceTestKit[Session]
+          with JwtSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+      }
     }
 
     package Header {
 
       class RefreshableHeaderBasicSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with RefreshableHeaderSessionServiceTestKit
-          with BasicSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with RefreshableHeaderSessionServiceTestKit[Session]
+          with BasicSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+
+      }
 
       class RefreshableHeaderJwtSessionServiceTestKitSpec
-          extends SessionTestKitSpec
-          with RefreshableHeaderSessionServiceTestKit
-          with JwtSessionMaterials
+          extends SessionTestKitSpec[Session]
+          with RefreshableHeaderSessionServiceTestKit[Session]
+          with JwtSessionMaterials[Session] {
+        implicit def companion: SessionDataCompanion[Session] = Session
+
+        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+
+      }
     }
 
   }

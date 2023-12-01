@@ -1,12 +1,15 @@
 package app.softnetwork.session.scalatest
 
 import app.softnetwork.api.server.ApiRoutes
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.slf4j.{Logger, LoggerFactory}
 
-trait SessionTestKitSpec extends AnyWordSpecLike with SessionTestKit {
-  _: ApiRoutes with SessionMaterials =>
+trait SessionTestKitSpec[T <: SessionData with SessionDataDecorator[T]]
+    extends AnyWordSpecLike
+    with SessionTestKit[T] {
+  _: ApiRoutes with SessionMaterials[T] =>
 
   override lazy val log: Logger = LoggerFactory getLogger getClass.getName
 

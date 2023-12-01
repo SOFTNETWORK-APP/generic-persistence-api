@@ -1,25 +1,25 @@
 package app.softnetwork.session.service
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.session.config.Settings
-import app.softnetwork.session.handlers.SessionRefreshTokenDao
-import app.softnetwork.session.model.SessionManagers
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionManagers}
 import com.softwaremill.session.{RefreshTokenStorage, SessionConfig, SessionManager}
-import org.json4s.Formats
 import org.softnetwork.session.model.Session
 
 import scala.concurrent.ExecutionContext
 import scala.language.reflectiveCalls
 
-trait SessionMaterials {
+trait SessionMaterials[T <: SessionData] {
 
-  implicit def manager(implicit sessionConfig: SessionConfig): SessionManager[Session]
+  implicit def manager(implicit
+    sessionConfig: SessionConfig,
+    companion: SessionDataCompanion[T]
+  ): SessionManager[T]
 
   implicit def ts: ActorSystem[_]
 
   implicit def ec: ExecutionContext = ts.executionContext
 
-  implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
+  implicit def refreshTokenStorage: RefreshTokenStorage[T]
 
   protected def sessionType: Session.SessionType
 
@@ -27,15 +27,21 @@ trait SessionMaterials {
 
 }
 
-trait BasicSessionMaterials extends SessionMaterials {
+trait BasicSessionMaterials[T <: SessionData] extends SessionMaterials[T] {
 
-  override implicit def manager(implicit sessionConfig: SessionConfig): SessionManager[Session] =
+  override implicit def manager(implicit
+    sessionConfig: SessionConfig,
+    companion: SessionDataCompanion[T]
+  ): SessionManager[T] =
     SessionManagers.basic
 }
 
-trait JwtSessionMaterials extends SessionMaterials { _: { def formats: Formats } =>
+trait JwtSessionMaterials[T <: SessionData] extends SessionMaterials[T] {
 
-  override implicit def manager(implicit sessionConfig: SessionConfig): SessionManager[Session] =
-    SessionManagers.jwt(sessionConfig, formats)
+  override implicit def manager(implicit
+    sessionConfig: SessionConfig,
+    companion: SessionDataCompanion[T]
+  ): SessionManager[T] =
+    SessionManagers.jwt
 
 }

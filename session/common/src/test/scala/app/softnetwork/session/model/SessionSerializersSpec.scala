@@ -1,23 +1,14 @@
 package app.softnetwork.session.model
 
-import app.softnetwork.serialization.commonFormats
 import app.softnetwork.session.config.Settings.Session.DefaultSessionConfig
-import org.json4s.{Formats, JValue}
+import org.json4s.JValue
 import org.scalatest.Assertion
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.softnetwork.session.model.Session
 
 class SessionSerializersSpec extends AnyWordSpecLike {
 
-  implicit def formats: Formats = commonFormats
-
-  val session: Session = Session.defaultInstance.withKvs(
-    Map(
-      "_sessiondata" -> "id",
-      "profile"      -> "profile",
-      "admin"        -> "true"
-    )
-  )
+  val session: Session = Session.newSession.withId("id").withProfile("profile").withAdmin(true)
 
   var result: String = _
 
@@ -25,21 +16,25 @@ class SessionSerializersSpec extends AnyWordSpecLike {
 
   "basic session serializer" must {
     "serialize" in {
-      result = SessionSerializers.basic(DefaultSessionConfig.serverSecret).serialize(session)
+      result =
+        SessionSerializers.basic[Session](DefaultSessionConfig.serverSecret).serialize(session)
     }
     "deserialize" in {
       check(
-        SessionSerializers.basic(DefaultSessionConfig.serverSecret).deserialize(result).toOption
+        SessionSerializers
+          .basic[Session](DefaultSessionConfig.serverSecret)
+          .deserialize(result)
+          .toOption
       )
     }
   }
 
   "jwt session serializer" must {
     "serialize" in {
-      jresult = SessionSerializers.jwt.serialize(session)
+      jresult = SessionSerializers.jwt[Session].serialize(session)
     }
     "deserialize" in {
-      check(SessionSerializers.jwt.deserialize(jresult).toOption)
+      check(SessionSerializers.jwt[Session].deserialize(jresult).toOption)
     }
   }
 

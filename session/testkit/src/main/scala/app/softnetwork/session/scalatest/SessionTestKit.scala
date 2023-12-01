@@ -8,23 +8,23 @@ import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings.RootPath
 import app.softnetwork.session.CsrfCheckHeader
 import app.softnetwork.session.launch.SessionGuardian
-import app.softnetwork.session.model.SessionCompanion
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion}
 import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.SessionConfig
 import org.scalatest.Suite
-import org.softnetwork.session.model.Session
 
-trait SessionTestKit
+trait SessionTestKit[T <: SessionData]
     extends InMemoryPersistenceScalatestRouteTest
     with SessionGuardian
-    with CsrfCheckHeader
-    with SessionCompanion { self: Suite with ApiRoutes with SessionMaterials =>
+    with CsrfCheckHeader { self: Suite with ApiRoutes with SessionMaterials[T] =>
 
   import app.softnetwork.serialization._
 
   var httpHeaders: Seq[HttpHeader] = Seq.empty
 
   implicit def sessionConfig: SessionConfig = SessionConfig.fromConfig(config)
+
+  implicit def companion: SessionDataCompanion[T]
 
   override implicit lazy val ts: ActorSystem[_] = typedSystem()
 
@@ -67,7 +67,7 @@ trait SessionTestKit
 
   def refreshableSession: Boolean
 
-  final def extractSession(checkStatus: Boolean = true): Option[Session] = {
+  final def extractSession(checkStatus: Boolean = true): Option[T] = {
     withHeaders(Get(s"/$RootPath/session")) ~> routes ~> check {
       if (checkStatus) {
         status shouldEqual StatusCodes.NotFound
@@ -90,7 +90,7 @@ trait SessionTestKit
     httpHeaders
   }
 
-  def extractSession(value: Option[String]): Option[Session] =
+  def extractSession(value: Option[String]): Option[T] =
     value match {
       case Some(value) => manager.clientSessionManager.decode(value).toOption
       case _           => None

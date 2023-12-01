@@ -1,6 +1,5 @@
 package app.softnetwork.session.model
 
-import app.softnetwork.serialization.commonFormats
 import app.softnetwork.session.config.Settings.Session.DefaultSessionConfig
 import com.softwaremill.session.{
   JwtSessionEncoder,
@@ -8,7 +7,7 @@ import com.softwaremill.session.{
   SessionEncoder,
   SessionSerializer
 }
-import org.json4s.{Formats, JValue}
+import org.json4s.JValue
 import org.scalatest.Assertion
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.softnetwork.session.model.Session
@@ -17,15 +16,7 @@ class SessionEncodersSpec extends AnyWordSpecLike {
 
   implicit def sessionConfig: SessionConfig = DefaultSessionConfig
 
-  implicit def formats: Formats = commonFormats
-
-  val session: Session = Session.defaultInstance.withKvs(
-    Map(
-      "_sessiondata" -> "id",
-      "profile"      -> "profile",
-      "admin"        -> "true"
-    )
-  )
+  val session: Session = Session.newSession.withId("id").withProfile("profile").withAdmin(true)
 
   val now: Long = System.currentTimeMillis()
 
@@ -49,11 +40,11 @@ class SessionEncodersSpec extends AnyWordSpecLike {
 
   "jwt session encoder" must {
     "encode" in {
-      implicit val serializer: SessionSerializer[Session, JValue] = SessionSerializers.jwt(formats)
+      implicit val serializer: SessionSerializer[Session, JValue] = SessionSerializers.jwt
       result = new JwtSessionEncoder[Session].encode(session, now, sessionConfig)
     }
     "decode" in {
-      implicit val serializer: SessionSerializer[Session, JValue] = SessionSerializers.jwt(formats)
+      implicit val serializer: SessionSerializer[Session, JValue] = SessionSerializers.jwt
       new JwtSessionEncoder[Session].decode(result, sessionConfig).toOption match {
         case Some(r) => check(Some(r.t))
         case _       => fail("unable to decode session")

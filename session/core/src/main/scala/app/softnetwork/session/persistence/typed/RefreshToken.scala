@@ -2,19 +2,13 @@ package app.softnetwork.session.persistence.typed
 
 import akka.actor.typed.scaladsl.{ActorContext, TimerScheduler}
 import akka.actor.typed.ActorRef
-
 import akka.persistence.typed.scaladsl.Effect
-
 import com.softwaremill.session.{RefreshTokenData, RefreshTokenLookupResult}
-
 import app.softnetwork.persistence.model.State
-
 import app.softnetwork.persistence.typed._
 import app.softnetwork.session.model.SessionData
-
 import app.softnetwork.session.message._
-
-import org.softnetwork.session.model.Session
+import org.softnetwork.session.model.{JwtClaims, Session}
 
 import scala.language.implicitConversions
 import scala.language.postfixOps
@@ -111,3 +105,9 @@ trait SessionRefreshTokenBehavior extends RefreshTokenBehavior[Session] {
 }
 
 object SessionRefreshTokenBehavior extends SessionRefreshTokenBehavior
+
+trait JwtClaimsRefreshTokenBehavior extends RefreshTokenBehavior[JwtClaims] {
+  override val persistenceId = "JwtClaims"
+}
+
+object JwtClaimsRefreshTokenBehavior extends JwtClaimsRefreshTokenBehavior

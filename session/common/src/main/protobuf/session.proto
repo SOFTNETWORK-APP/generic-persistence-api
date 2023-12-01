@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "scalapb/scalapb.proto";
+import "google/protobuf/wrappers.proto";
 
 package org.softnetwork.session.model;
 
@@ -25,4 +26,25 @@ message Session {
     option (scalapb.message).companion_extends = "SessionCompanion";
     map<string, string> data = 1 [(scalapb.field).map_type="collection.immutable.Map", (scalapb.field).scala_name = "kvs"];
     bool refreshable = 2;
+}
+
+message JwtClaims {
+    option (scalapb.message).extends = "SessionData";
+    option (scalapb.message).extends = "JwtClaimsDecorator";
+    option (scalapb.message).companion_extends = "JwtClaimsCompanion";
+    map<string, string> data = 1 [(scalapb.field).map_type="collection.immutable.Map", (scalapb.field).scala_name = "additionalClaims"];
+    bool refreshable = 2;
+    google.protobuf.StringValue iss = 3;
+    google.protobuf.StringValue sub = 4;
+    google.protobuf.StringValue aud = 5;
+    google.protobuf.Int64Value exp = 6;
+    google.protobuf.Int64Value nbf = 7;
+    google.protobuf.Int64Value iat = 8;
+    google.protobuf.StringValue jti = 9;
+}
+
+message ApiKey {
+    option (scalapb.message).extends = "ProtobufDomainObject";
+    string clientId = 1;
+    google.protobuf.StringValue clientSecret = 2;
 }

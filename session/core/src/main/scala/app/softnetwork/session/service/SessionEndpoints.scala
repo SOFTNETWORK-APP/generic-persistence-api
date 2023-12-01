@@ -1,5 +1,6 @@
 package app.softnetwork.session.service
 
+import app.softnetwork.session.model.SessionData
 import app.softnetwork.session.{
   TapirCsrfCheckMode,
   TapirCsrfOptions,
@@ -11,11 +12,11 @@ import org.softnetwork.session.model.Session
 
 import scala.language.implicitConversions
 
-trait SessionEndpoints extends TapirEndpoints { _: SessionMaterials =>
+trait SessionEndpoints[T <: SessionData] extends TapirEndpoints { _: SessionMaterials[T] =>
 
   import app.softnetwork.session.TapirSessionOptions._
 
-  def sc(implicit manager: SessionManager[Session]): TapirSessionContinuity[Session] =
+  def sc(implicit manager: SessionManager[T]): TapirSessionContinuity[T] =
     sessionType match {
       case Session.SessionType.OneOffCookie | Session.SessionType.OneOffHeader => oneOff
       case _                                                                   => refreshable
@@ -29,7 +30,7 @@ trait SessionEndpoints extends TapirEndpoints { _: SessionMaterials =>
 
   lazy val gt: GetSessionTransport = st
 
-  def checkMode(implicit manager: SessionManager[Session]): TapirCsrfCheckMode[Session] =
+  def checkMode(implicit manager: SessionManager[T]): TapirCsrfCheckMode[T] =
     if (headerAndForm) {
       TapirCsrfOptions.checkHeaderAndForm
     } else {

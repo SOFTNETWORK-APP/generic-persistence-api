@@ -3,20 +3,25 @@ package app.softnetwork.session.scalatest
 import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.{ApiEndpoints, Endpoint}
 import app.softnetwork.session.CsrfCheck
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion}
 import app.softnetwork.session.service.SessionMaterials
-import com.softwaremill.session.{SessionConfig, SessionManager}
+import com.softwaremill.session.{RefreshTokenStorage, SessionConfig, SessionManager}
 import org.scalatest.Suite
 import org.softnetwork.session.model.Session
 
-trait SessionEndpointsRoutes extends ApiEndpoints { self: SessionTestKit with SessionMaterials =>
-  def sessionServiceEndpoints: ActorSystem[_] => SessionEndpointsRoute = sys =>
-    new SessionEndpointsRoute with SessionMaterials {
+trait SessionEndpointsRoutes[T <: SessionData] extends ApiEndpoints {
+  self: SessionTestKit[T] with SessionMaterials[T] =>
+  def sessionServiceEndpoints: ActorSystem[_] => SessionEndpointsRoute[T] = sys =>
+    new SessionEndpointsRoute[T] with SessionMaterials[T] {
       override implicit def sessionConfig: SessionConfig = self.sessionConfig
       override implicit def manager(implicit
-        sessionConfig: SessionConfig
-      ): SessionManager[Session] = self.manager
+        sessionConfig: SessionConfig,
+        companion: SessionDataCompanion[T]
+      ): SessionManager[T] = self.manager
       override implicit def ts: ActorSystem[_] = sys
       override protected def sessionType: Session.SessionType = self.sessionType
+      override implicit def companion: SessionDataCompanion[T] = self.companion
+      override implicit def refreshTokenStorage: RefreshTokenStorage[T] = self.refreshTokenStorage
     }
 
   override def endpoints: ActorSystem[_] => List[Endpoint] = system =>
@@ -24,18 +29,18 @@ trait SessionEndpointsRoutes extends ApiEndpoints { self: SessionTestKit with Se
 
 }
 
-trait OneOffCookieSessionEndpointsTestKit
-    extends OneOffCookieSessionTestKit
-    with SessionEndpointsRoutes { _: Suite with CsrfCheck with SessionMaterials => }
+trait OneOffCookieSessionEndpointsTestKit[T <: SessionData]
+    extends OneOffCookieSessionTestKit[T]
+    with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }
 
-trait OneOffHeaderSessionEndpointsTestKit
-    extends OneOffHeaderSessionTestKit
-    with SessionEndpointsRoutes { _: Suite with CsrfCheck with SessionMaterials => }
+trait OneOffHeaderSessionEndpointsTestKit[T <: SessionData]
+    extends OneOffHeaderSessionTestKit[T]
+    with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }
 
-trait RefreshableCookieSessionEndpointsTestKit
-    extends RefreshableCookieSessionTestKit
-    with SessionEndpointsRoutes { _: Suite with CsrfCheck with SessionMaterials => }
+trait RefreshableCookieSessionEndpointsTestKit[T <: SessionData]
+    extends RefreshableCookieSessionTestKit[T]
+    with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }
 
-trait RefreshableHeaderSessionEndpointsTestKit
-    extends RefreshableHeaderSessionTestKit
-    with SessionEndpointsRoutes { _: Suite with CsrfCheck with SessionMaterials => }
+trait RefreshableHeaderSessionEndpointsTestKit[T <: SessionData]
+    extends RefreshableHeaderSessionTestKit[T]
+    with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }
