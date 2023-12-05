@@ -1,6 +1,6 @@
 package app.softnetwork.session.service
 
-import app.softnetwork.session.model.SessionData
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import com.softwaremill.session.{
   CsrfCheckMode,
   CsrfOptions,
@@ -14,7 +14,8 @@ import org.softnetwork.session.model.Session
 
 /** Created by smanciot on 05/07/2018.
   */
-trait SessionService[T <: SessionData] extends SessionDirectives { _: SessionMaterials[T] =>
+trait SessionService[T <: SessionData with SessionDataDecorator[T]] extends SessionDirectives {
+  _: SessionMaterials[T] =>
 
   import com.softwaremill.session.SessionOptions._
 

@@ -31,4 +31,8 @@ trait JwtClaimsDecorator extends SessionDataDecorator[JwtClaims] with JwtClaimsK
       SessionConfig.default(clientSecret)
     )
   }
+
+  lazy val issuer: Option[String] = iss.orElse(clientId)
+
+  lazy val subject: Option[String] = sub.orElse(get(idKey))
 }

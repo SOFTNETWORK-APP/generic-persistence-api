@@ -1,6 +1,6 @@
 package app.softnetwork.session.service
 
-import app.softnetwork.session.model.SessionData
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import app.softnetwork.session.{
   TapirCsrfCheckMode,
   TapirCsrfOptions,
@@ -12,7 +12,8 @@ import org.softnetwork.session.model.Session
 
 import scala.language.implicitConversions
 
-trait SessionEndpoints[T <: SessionData] extends TapirEndpoints { _: SessionMaterials[T] =>
+trait SessionEndpoints[T <: SessionData with SessionDataDecorator[T]] extends TapirEndpoints {
+  _: SessionMaterials[T] =>
 
   import app.softnetwork.session.TapirSessionOptions._
 

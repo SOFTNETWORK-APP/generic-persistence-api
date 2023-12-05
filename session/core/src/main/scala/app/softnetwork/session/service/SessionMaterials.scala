@@ -1,14 +1,19 @@
 package app.softnetwork.session.service
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionManagers}
+import app.softnetwork.session.model.{
+  SessionData,
+  SessionDataCompanion,
+  SessionDataDecorator,
+  SessionManagers
+}
 import com.softwaremill.session.{RefreshTokenStorage, SessionConfig, SessionManager}
 import org.softnetwork.session.model.Session
 
 import scala.concurrent.ExecutionContext
 import scala.language.reflectiveCalls
 
-trait SessionMaterials[T <: SessionData] {
+trait SessionMaterials[T <: SessionData with SessionDataDecorator[T]] {
 
   implicit def manager(implicit
     sessionConfig: SessionConfig,
@@ -27,7 +32,8 @@ trait SessionMaterials[T <: SessionData] {
 
 }
 
-trait BasicSessionMaterials[T <: SessionData] extends SessionMaterials[T] {
+trait BasicSessionMaterials[T <: SessionData with SessionDataDecorator[T]]
+    extends SessionMaterials[T] {
 
   override implicit def manager(implicit
     sessionConfig: SessionConfig,
@@ -36,7 +42,8 @@ trait BasicSessionMaterials[T <: SessionData] extends SessionMaterials[T] {
     SessionManagers.basic
 }
 
-trait JwtSessionMaterials[T <: SessionData] extends SessionMaterials[T] {
+trait JwtSessionMaterials[T <: SessionData with SessionDataDecorator[T]]
+    extends SessionMaterials[T] {
 
   override implicit def manager(implicit
     sessionConfig: SessionConfig,

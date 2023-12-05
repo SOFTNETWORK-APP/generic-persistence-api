@@ -19,23 +19,28 @@ trait JwtClaimsEncoder extends SessionEncoder[JwtClaims] with Completion {
   def sessionEncoder = new JwtSessionEncoder[JwtClaims]
 
   override def encode(t: JwtClaims, nowMillis: Long, config: SessionConfig): String = {
-    val jwt = config.jwt.copy(
-      issuer = t.iss.orElse(config.jwt.issuer),
-      subject = t.sub.orElse(config.jwt.subject),
-      audience = t.aud.orElse(config.jwt.audience)
+    val updatedJwtClaims = t.copy(
+      iss = t.issuer.orElse(config.jwt.issuer),
+      sub = t.subject.orElse(config.jwt.subject),
+      aud = t.aud.orElse(config.jwt.audience)
     )
-    (t.iss match {
+    val jwt = config.jwt.copy(
+      issuer = updatedJwtClaims.iss,
+      subject = updatedJwtClaims.sub,
+      audience = updatedJwtClaims.aud
+    )
+    (updatedJwtClaims.iss match {
       case Some(iss) =>
         (loadApiKey(iss) complete ()).toOption.flatten
       case _ => None
     }) match {
       case Some(apiKey) if apiKey.clientSecret.isDefined =>
         sessionEncoder.encode(
-          t,
+          updatedJwtClaims,
           nowMillis,
           config.copy(jwt = jwt, serverSecret = apiKey.clientSecret.get)
         )
-      case _ => sessionEncoder.encode(t, nowMillis, config.copy(jwt = jwt))
+      case _ => sessionEncoder.encode(updatedJwtClaims, nowMillis, config.copy(jwt = jwt))
     }
   }
 

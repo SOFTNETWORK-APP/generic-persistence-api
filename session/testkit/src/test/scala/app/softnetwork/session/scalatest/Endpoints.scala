@@ -1,14 +1,18 @@
 package app.softnetwork.session.scalatest
 
-import app.softnetwork.session.service.{BasicSessionMaterials, JwtSessionMaterials}
-import app.softnetwork.session.model.SessionDataCompanion
-import app.softnetwork.session.handlers.SessionRefreshTokenDao
-import com.softwaremill.session.RefreshTokenStorage
-import org.softnetwork.session.model.Session
-
 package Endpoints {
+
+  import app.softnetwork.session.service.BasicSessionMaterials
+  import app.softnetwork.session.model.SessionDataCompanion
+  import app.softnetwork.session.handlers.SessionRefreshTokenDao
+  import app.softnetwork.session.service.JwtClaimsSessionMaterials
+
+  import com.softwaremill.session.RefreshTokenStorage
+  import org.softnetwork.session.model.{JwtClaims, Session}
+
   package OneOff {
     package Cookie {
+
       class OneOffCookieBasicSessionEndpointsTestKitSpec
           extends SessionTestKitSpec[Session]
           with OneOffCookieSessionEndpointsTestKit[Session]
@@ -20,13 +24,11 @@ package Endpoints {
       }
 
       class OneOffCookieJwtSessionEndpointsTestKitSpec
-          extends SessionTestKitSpec[Session]
-          with OneOffCookieSessionEndpointsTestKit[Session]
-          with JwtSessionMaterials[Session] {
-        implicit def companion: SessionDataCompanion[Session] = Session
-
-        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
-
+          extends SessionTestKitSpec[JwtClaims]
+          with OneOffCookieSessionEndpointsTestKit[JwtClaims]
+          with JwtClaimsSessionMaterials
+          with ApiKeyLoader {
+        override implicit def companion: SessionDataCompanion[JwtClaims] = JwtClaims
       }
     }
 
@@ -43,13 +45,11 @@ package Endpoints {
       }
 
       class OneOffHeaderJwtSessionEndpointsTestKitSpec
-          extends SessionTestKitSpec[Session]
-          with OneOffHeaderSessionEndpointsTestKit[Session]
-          with JwtSessionMaterials[Session] {
-        implicit def companion: SessionDataCompanion[Session] = Session
-
-        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
-
+          extends SessionTestKitSpec[JwtClaims]
+          with OneOffHeaderSessionEndpointsTestKit[JwtClaims]
+          with JwtClaimsSessionMaterials
+          with ApiKeyLoader {
+        override implicit def companion: SessionDataCompanion[JwtClaims] = JwtClaims
       }
     }
 
@@ -68,13 +68,11 @@ package Endpoints {
       }
 
       class RefreshableCookieJwtSessionEndpointsTestKitSpec
-          extends SessionTestKitSpec[Session]
-          with RefreshableCookieSessionEndpointsTestKit[Session]
-          with JwtSessionMaterials[Session] {
-        implicit def companion: SessionDataCompanion[Session] = Session
-
-        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
-
+          extends SessionTestKitSpec[JwtClaims]
+          with RefreshableCookieSessionEndpointsTestKit[JwtClaims]
+          with JwtClaimsSessionMaterials
+          with ApiKeyLoader {
+        override implicit def companion: SessionDataCompanion[JwtClaims] = JwtClaims
       }
     }
 
@@ -91,13 +89,11 @@ package Endpoints {
       }
 
       class RefreshableHeaderJwtSessionEndpointsTestKitSpec
-          extends SessionTestKitSpec[Session]
-          with RefreshableHeaderSessionEndpointsTestKit[Session]
-          with JwtSessionMaterials[Session] {
-        implicit def companion: SessionDataCompanion[Session] = Session
-
-        implicit def refreshTokenStorage: RefreshTokenStorage[Session] = SessionRefreshTokenDao(ts)
-
+          extends SessionTestKitSpec[JwtClaims]
+          with RefreshableHeaderSessionEndpointsTestKit[JwtClaims]
+          with JwtClaimsSessionMaterials
+          with ApiKeyLoader {
+        override implicit def companion: SessionDataCompanion[JwtClaims] = JwtClaims
       }
     }
 

@@ -2,13 +2,13 @@ package app.softnetwork.session.scalatest
 
 import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.{ApiRoute, ApiRoutes}
-import app.softnetwork.session.model.{SessionData, SessionDataCompanion}
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.{RefreshTokenStorage, SessionConfig, SessionManager}
 import org.scalatest.Suite
 import org.softnetwork.session.model.Session
 
-trait SessionServiceRoutes[T <: SessionData] extends ApiRoutes {
+trait SessionServiceRoutes[T <: SessionData with SessionDataDecorator[T]] extends ApiRoutes {
   self: SessionTestKit[T] with SessionMaterials[T] =>
   final def sessionServiceRoute: ActorSystem[_] => SessionServiceRoute[T] = sys =>
     new SessionServiceRoute[T] with SessionMaterials[T] {
@@ -32,18 +32,18 @@ trait SessionServiceRoutes[T <: SessionData] extends ApiRoutes {
       )
 }
 
-trait OneOffCookieSessionServiceTestKit[T <: SessionData]
+trait OneOffCookieSessionServiceTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends OneOffCookieSessionTestKit[T]
     with SessionServiceRoutes[T] { _: Suite with SessionMaterials[T] => }
 
-trait OneOffHeaderSessionServiceTestKit[T <: SessionData]
+trait OneOffHeaderSessionServiceTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends OneOffHeaderSessionTestKit[T]
     with SessionServiceRoutes[T] { _: Suite with SessionMaterials[T] => }
 
-trait RefreshableCookieSessionServiceTestKit[T <: SessionData]
+trait RefreshableCookieSessionServiceTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends RefreshableCookieSessionTestKit[T]
     with SessionServiceRoutes[T] { _: Suite with SessionMaterials[T] => }
 
-trait RefreshableHeaderSessionServiceTestKit[T <: SessionData]
+trait RefreshableHeaderSessionServiceTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends RefreshableHeaderSessionTestKit[T]
     with SessionServiceRoutes[T] { _: Suite with SessionMaterials[T] => }

@@ -8,12 +8,12 @@ import app.softnetwork.api.server.ApiRoutes
 import app.softnetwork.api.server.config.ServerSettings.RootPath
 import app.softnetwork.session.CsrfCheckHeader
 import app.softnetwork.session.launch.SessionGuardian
-import app.softnetwork.session.model.{SessionData, SessionDataCompanion}
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.SessionConfig
 import org.scalatest.Suite
 
-trait SessionTestKit[T <: SessionData]
+trait SessionTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends InMemoryPersistenceScalatestRouteTest
     with SessionGuardian
     with CsrfCheckHeader { self: Suite with ApiRoutes with SessionMaterials[T] =>
@@ -54,10 +54,26 @@ trait SessionTestKit[T <: SessionData]
   def createSession(
     id: String,
     profile: Option[String] = None,
-    admin: Option[Boolean] = None
+    admin: Option[Boolean] = None,
+    clientId: Option[String] = None,
+    anonymous: Boolean = false
   ): Unit = {
+    var session = companion.newSession.withId(id).withAnonymous(anonymous)
+    if (profile.isDefined) {
+      session = session.withProfile(profile.get)
+    }
+    if (admin.isDefined) {
+      session = session.withAdmin(admin.get)
+    }
+    if (clientId.isDefined) {
+      session = session.withClientId(clientId.get)
+    }
+    createNewSession(session)
+  }
+
+  def createNewSession(session: T): Unit = {
     invalidateSession()
-    Post(s"/$RootPath/session", CreateSession(id, profile, admin)) ~> routes ~> check {
+    Post(s"/$RootPath/session", CreateSession(session.data)) ~> routes ~> check {
       status shouldEqual StatusCodes.OK
       httpHeaders = extractHeaders(headers)
     }

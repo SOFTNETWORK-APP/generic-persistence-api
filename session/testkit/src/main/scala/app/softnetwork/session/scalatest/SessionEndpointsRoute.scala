@@ -1,7 +1,12 @@
 package app.softnetwork.session.scalatest
 
 import app.softnetwork.api.server.ApiEndpoint
-import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataKeys}
+import app.softnetwork.session.model.{
+  SessionData,
+  SessionDataCompanion,
+  SessionDataDecorator,
+  SessionDataKeys
+}
 import app.softnetwork.session.{SessionEndpoints => _, _}
 import app.softnetwork.session.service._
 import com.softwaremill.session.SessionConfig
@@ -13,7 +18,7 @@ import sttp.tapir.server.ServerEndpoint
 
 import scala.concurrent.Future
 
-trait SessionEndpointsRoute[T <: SessionData]
+trait SessionEndpointsRoute[T <: SessionData with SessionDataDecorator[T]]
     extends SessionEndpoints[T]
     with ApiEndpoint
     with SessionDataKeys { _: SessionMaterials[T] =>
@@ -25,16 +30,7 @@ trait SessionEndpointsRoute[T <: SessionData]
   implicit def companion: SessionDataCompanion[T]
 
   implicit def f: CreateSession => Option[T] = session => {
-    var s = companion.newSession.withId(session.id)
-    session.profile match {
-      case Some(p) => s += (profileKey, p)
-      case _       =>
-    }
-    session.admin match {
-      case Some(a) => s += (adminKey, s"$a")
-      case _       =>
-    }
-    Some(s)
+    Some(companion.newSession.withData(session.data))
   }
 
   val createSessionEndpoint: ServerEndpoint[Any, Future] = {

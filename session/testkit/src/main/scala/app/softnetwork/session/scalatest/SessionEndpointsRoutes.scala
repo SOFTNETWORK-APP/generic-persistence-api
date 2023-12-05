@@ -3,13 +3,13 @@ package app.softnetwork.session.scalatest
 import akka.actor.typed.ActorSystem
 import app.softnetwork.api.server.{ApiEndpoints, Endpoint}
 import app.softnetwork.session.CsrfCheck
-import app.softnetwork.session.model.{SessionData, SessionDataCompanion}
+import app.softnetwork.session.model.{SessionData, SessionDataCompanion, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.{RefreshTokenStorage, SessionConfig, SessionManager}
 import org.scalatest.Suite
 import org.softnetwork.session.model.Session
 
-trait SessionEndpointsRoutes[T <: SessionData] extends ApiEndpoints {
+trait SessionEndpointsRoutes[T <: SessionData with SessionDataDecorator[T]] extends ApiEndpoints {
   self: SessionTestKit[T] with SessionMaterials[T] =>
   def sessionServiceEndpoints: ActorSystem[_] => SessionEndpointsRoute[T] = sys =>
     new SessionEndpointsRoute[T] with SessionMaterials[T] {
@@ -29,18 +29,18 @@ trait SessionEndpointsRoutes[T <: SessionData] extends ApiEndpoints {
 
 }
 
-trait OneOffCookieSessionEndpointsTestKit[T <: SessionData]
+trait OneOffCookieSessionEndpointsTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends OneOffCookieSessionTestKit[T]
     with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }
 
-trait OneOffHeaderSessionEndpointsTestKit[T <: SessionData]
+trait OneOffHeaderSessionEndpointsTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends OneOffHeaderSessionTestKit[T]
     with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }
 
-trait RefreshableCookieSessionEndpointsTestKit[T <: SessionData]
+trait RefreshableCookieSessionEndpointsTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends RefreshableCookieSessionTestKit[T]
     with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }
 
-trait RefreshableHeaderSessionEndpointsTestKit[T <: SessionData]
+trait RefreshableHeaderSessionEndpointsTestKit[T <: SessionData with SessionDataDecorator[T]]
     extends RefreshableHeaderSessionTestKit[T]
     with SessionEndpointsRoutes[T] { _: Suite with CsrfCheck with SessionMaterials[T] => }

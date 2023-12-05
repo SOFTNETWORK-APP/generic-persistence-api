@@ -1,7 +1,7 @@
 package app.softnetwork.session.scalatest
 
 import app.softnetwork.api.server.ApiRoutes
-import app.softnetwork.session.model.SessionData
+import app.softnetwork.session.model.{SessionData, SessionDataDecorator}
 import app.softnetwork.session.service.SessionMaterials
 import com.softwaremill.session.SessionOptions.refreshable
 import com.softwaremill.session.SessionResult
@@ -9,7 +9,8 @@ import org.scalatest.Suite
 
 import scala.util.{Failure, Success}
 
-trait RefreshableSessionTestKit[T <: SessionData] extends SessionTestKit[T] {
+trait RefreshableSessionTestKit[T <: SessionData with SessionDataDecorator[T]]
+    extends SessionTestKit[T] {
   _: Suite with ApiRoutes with SessionMaterials[T] =>
 
   override val refreshableSession: Boolean = true
