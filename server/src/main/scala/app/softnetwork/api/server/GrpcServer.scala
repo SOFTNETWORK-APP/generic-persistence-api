@@ -44,7 +44,7 @@ trait GrpcServer extends PersistenceGuardian with Server {
             }
         }
       case Failure(ex) =>
-        classicSystem.log.error("Failed to bind HTTP endpoint, terminating system", ex)
+        classicSystem.log.error(ex, "Failed to bind HTTP endpoint, terminating system")
         classicSystem.terminate()
     }
   }

@@ -1,23 +1,13 @@
 package app.softnetwork.api.server
 
 import akka.actor.typed.ActorSystem
-import akka.grpc.scaladsl.ServiceHandler
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
-import akka.http.scaladsl.server.Directives.handle
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Route, RouteConcatenation}
 
-import scala.concurrent.Future
+trait GrpcServices extends RouteConcatenation {
 
-trait GrpcServices {
-
-  def grpcServices: ActorSystem[_] => Seq[PartialFunction[HttpRequest, Future[HttpResponse]]] = _ =>
-    Seq.empty
+  def grpcServices: ActorSystem[_] => Seq[GrpcService] = _ => Seq.empty
 
   final def grpcRoutes: ActorSystem[_] => Route = system =>
-    handle(
-      ServiceHandler.concatOrNotFound(
-        grpcServices(system): _*
-      )
-    )
+    concat(grpcServices(system).map(_.route(system)): _*)
 
 }
