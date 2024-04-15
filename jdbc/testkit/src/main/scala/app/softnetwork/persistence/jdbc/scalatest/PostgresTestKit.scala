@@ -9,7 +9,7 @@ trait PostgresTestKit extends JdbcContainerTestKit { _: Suite =>
 
   override val schemaType: SchemaType = Postgres
 
-  def postgresVersion: String = "9.6"
+  def postgresVersion: String = "13"
 
   lazy val jdbcContainer = new PostgreSQLContainer(s"postgres:$postgresVersion")
 

@@ -9,7 +9,7 @@ trait MySQLTestKit extends JdbcContainerTestKit { _: Suite =>
 
   override val schemaType: SchemaType = MySQL
 
-  def mysqlVersion: String = "5.7"
+  def mysqlVersion: String = "8"
 
   lazy val jdbcContainer = new MySQLContainer(s"mysql:$mysqlVersion")
 
