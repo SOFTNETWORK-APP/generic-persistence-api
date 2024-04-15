@@ -51,6 +51,4 @@ object Versions {
   val akkaPersistenceCassandra = "1.0.6"
 
   val testContainers = "1.18.0"
-
-  val dukedb = "0.10.0"
 }
