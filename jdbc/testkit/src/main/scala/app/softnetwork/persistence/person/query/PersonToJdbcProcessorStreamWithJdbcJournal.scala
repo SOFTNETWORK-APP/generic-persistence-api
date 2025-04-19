@@ -11,8 +11,8 @@ import app.softnetwork.persistence.person.model.Person
 import slick.jdbc.JdbcProfile
 
 trait PersonToJdbcProcessorStreamWithJdbcJournal
-    extends PersonToExternalProcessorStream
-    with State2JdbcProcessorStream[Person, PersonEvent]
+    extends State2JdbcProcessorStream[Person, PersonEvent]
+    with PersonToExternalProcessorStream
     with JdbcJournalProvider
     with JdbcOffsetProvider
     with JdbcStateProvider[Person] { _: JdbcProfile => }
