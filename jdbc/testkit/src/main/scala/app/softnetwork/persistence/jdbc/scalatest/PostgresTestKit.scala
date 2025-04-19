@@ -13,7 +13,7 @@ trait PostgresTestKit extends JdbcContainerTestKit { _: Suite =>
 
   lazy val jdbcContainer = new PostgreSQLContainer(s"postgres:$postgresVersion")
 
-  val slickProfile: String = "slick.jdbc.PostgresProfile$"
+  override lazy val slickProfile: String = "slick.jdbc.PostgresProfile$"
 
   val jdbcDriver: String = "org.postgresql.Driver"
 

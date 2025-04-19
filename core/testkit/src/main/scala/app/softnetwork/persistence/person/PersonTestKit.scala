@@ -7,7 +7,7 @@ import app.softnetwork.persistence.launch.{PersistenceGuardian, PersistentEntity
 import app.softnetwork.persistence.person.message._
 import app.softnetwork.persistence.person.model.Person
 import app.softnetwork.persistence.person.query.{
-  InMemoryPersonPersistenceProvider,
+  JsonPersonProvider,
   PersonToExternalProcessorStream
 }
 import app.softnetwork.persistence.person.typed.PersonBehavior
@@ -24,7 +24,7 @@ trait PersonTestKit extends PersonHandler with AnyWordSpecLike with PersistenceT
   implicit def personSystem: ActorSystem[_] = typedSystem()
 
   def externalPersistenceProvider: ExternalPersistenceProvider[Person] =
-    InMemoryPersonPersistenceProvider
+    JsonPersonProvider
 
   def person2ExternalProcessorStream: ActorSystem[_] => PersonToExternalProcessorStream
 
@@ -126,6 +126,7 @@ trait PersonTestKit extends PersonHandler with AnyWordSpecLike with PersistenceT
           probe.receiveMessage() match {
             case _: PersonDeletedEvent =>
               implicit def formats: Formats = commonFormats
+              log.info(s"deleted person $uuid")
               assert(externalPersistenceProvider.loadDocument(uuid).isEmpty)
             case other => fail(other.toString)
           }

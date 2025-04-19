@@ -7,8 +7,12 @@ import app.softnetwork.persistence.person.query.{
   PersonToExternalProcessorStream
 }
 import com.typesafe.config.Config
+import slick.jdbc.JdbcProfile
 
-trait JdbcPersonToElasticTestKit extends PersonToElasticTestKit with JdbcPersonTestKit {
+trait JdbcPersonToElasticTestKit
+    extends PersonToElasticTestKit
+    with JdbcPersonTestKit
+    with JdbcProfile {
 
   override def person2ExternalProcessorStream: ActorSystem[_] => PersonToExternalProcessorStream =
     sys => {

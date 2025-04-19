@@ -54,7 +54,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
 
   // ExternalPersistenceProvider
 
-  /** Creates the unerlying document to the external system
+  /** Creates the underlying document to the external system
     *
     * @param document
     *   - the document to create
@@ -72,7 +72,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /** Updates the unerlying document to the external system
+  /** Updates the underlying document to the external system
     *
     * @param document
     *   - the document to update
@@ -93,7 +93,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /** Deletes the unerlying document referenced by its uuid to the external system
+  /** Deletes the underlying document referenced by its uuid to the external system
     *
     * @param uuid
     *   - the uuid of the document to delete
@@ -111,7 +111,7 @@ trait ElasticProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] w
     }
   }
 
-  /** Upserts the unerlying document referenced by its uuid to the external system
+  /** Upsert the underlying document referenced by its uuid to the external system
     *
     * @param uuid
     *   - the uuid of the document to upsert

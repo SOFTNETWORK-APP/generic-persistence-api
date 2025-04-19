@@ -20,10 +20,10 @@ trait SlickDatabase extends ClasspathResources {
 
   def config: Config
 
-  lazy val profile: String = config.getString("slick.profile")
+  lazy val slickProfile: String = config.getString("slick.profile")
 
   lazy val db: Database = {
-    log.info(profile)
+    log.info(slickProfile)
     val db = SlickExtension(classicSystem).database(config).database
     classicSystem.registerOnTermination(shutdown())
     db

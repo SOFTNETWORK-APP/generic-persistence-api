@@ -20,7 +20,7 @@ trait JdbcOffsetProvider extends OffsetProvider with SlickDatabase { _: EventStr
 
   private[this] implicit lazy val session: Session = withDatabase(_.createSession())
 
-  lazy val includeSchema: Boolean = profile.equals("slick.jdbc.PostgresProfile$")
+  lazy val includeSchema: Boolean = slickProfile.equals("slick.jdbc.PostgresProfile$")
 
   override protected def initOffset(): Unit = {
     val metaData = session.metaData

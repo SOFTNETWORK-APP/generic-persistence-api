@@ -21,7 +21,7 @@ trait InMemoryPersistenceProvider[T <: Timestamped] extends ExternalPersistenceP
 
   private[this] var objects: Map[String, T] = Map.empty
 
-  /** Creates the unerlying document to the external system
+  /** Creates the underlying document to the external system
     *
     * @param document
     *   - the document to create
@@ -35,7 +35,7 @@ trait InMemoryPersistenceProvider[T <: Timestamped] extends ExternalPersistenceP
     true
   }
 
-  /** Updates the unerlying document to the external system
+  /** Updates the underlying document to the external system
     *
     * @param document
     *   - the document to update
@@ -52,7 +52,7 @@ trait InMemoryPersistenceProvider[T <: Timestamped] extends ExternalPersistenceP
     true
   }
 
-  /** Upserts the unerlying document referenced by its uuid to the external system
+  /** Upsertsthe underlying document referenced by its uuid to the external system
     *
     * @param uuid
     *   - the uuid of the document to upsert
@@ -73,7 +73,7 @@ trait InMemoryPersistenceProvider[T <: Timestamped] extends ExternalPersistenceP
     }
   }
 
-  /** Deletes the unerlying document referenced by its uuid to the external system
+  /** Deletes the underlying document referenced by its uuid to the external system
     *
     * @param uuid
     *   - the uuid of the document to delete

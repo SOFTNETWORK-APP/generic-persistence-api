@@ -13,7 +13,7 @@ trait MySQLTestKit extends JdbcContainerTestKit { _: Suite =>
 
   lazy val jdbcContainer = new MySQLContainer(s"mysql:$mysqlVersion")
 
-  val slickProfile: String = "slick.jdbc.MySQLProfile$"
+  override lazy val slickProfile: String = "slick.jdbc.MySQLProfile$"
 
   val jdbcDriver: String = "com.mysql.cj.jdbc.Driver"
 

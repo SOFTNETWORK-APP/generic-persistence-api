@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
   */
 trait ExternalPersistenceProvider[T <: Timestamped] { _: ManifestWrapper[T] =>
 
-  /** Creates the unerlying document to the external system
+  /** Creates the underlying document to the external system
     *
     * @param document
     *   - the document to create
@@ -22,7 +22,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] { _: ManifestWrapper[T] =>
   def createDocument(document: T)(implicit t: ClassTag[T] = manifestWrapper.wrapped): Boolean =
     false
 
-  /** Updates the unerlying document to the external system
+  /** Updates the underlying document to the external system
     *
     * @param document
     *   - the document to update
@@ -38,7 +38,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] { _: ManifestWrapper[T] =>
     t: ClassTag[T] = manifestWrapper.wrapped
   ): Boolean = false
 
-  /** Upserts the unerlying document referenced by its uuid to the external system
+  /** Upsert the underlying document referenced by its uuid to the external system
     *
     * @param uuid
     *   - the uuid of the document to upsert
@@ -49,7 +49,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] { _: ManifestWrapper[T] =>
     */
   def upsertDocument(uuid: String, data: String): Boolean = false
 
-  /** Deletes the unerlying document referenced by its uuid to the external system
+  /** Deletes the underlying document referenced by its uuid to the external system
     *
     * @param uuid
     *   - the uuid of the document to delete
@@ -78,7 +78,7 @@ trait ExternalPersistenceProvider[T <: Timestamped] { _: ManifestWrapper[T] =>
     * @param m
     *   - implicit Manifest for T
     * @return
-    *   the documents founds or an empty list otherwise
+    *   the documents found or an empty list otherwise
     */
   def searchDocuments(
     query: String

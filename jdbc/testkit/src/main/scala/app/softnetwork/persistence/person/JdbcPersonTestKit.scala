@@ -1,23 +1,9 @@
 package app.softnetwork.persistence.person
 
-import akka.actor.typed.ActorSystem
-import app.softnetwork.persistence.jdbc.query.JdbcOffsetProvider
 import app.softnetwork.persistence.jdbc.scalatest.JdbcPersistenceTestKit
-import app.softnetwork.persistence.person.query.{
-  PersonToExternalProcessorStream,
-  PersonToInMemoryProcessorStreamWithJdbcJournal
-}
-import com.typesafe.config.Config
+import app.softnetwork.persistence.person.query.JdbcPersonProvider
+import slick.jdbc.JdbcProfile
 
-trait JdbcPersonTestKit extends PersonTestKit with JdbcPersistenceTestKit {
-
-  override def person2ExternalProcessorStream: ActorSystem[_] => PersonToExternalProcessorStream =
-    sys =>
-      new PersonToInMemoryProcessorStreamWithJdbcJournal with JdbcOffsetProvider {
-        override def config: Config = JdbcPersonTestKit.this.config
-
-        override val forTests: Boolean = true
-        override protected val manifestWrapper: ManifestW = ManifestW()
-        override implicit def system: ActorSystem[_] = sys
-      }
+trait JdbcPersonTestKit extends PersonTestKit with JdbcPersistenceTestKit with JdbcPersonProvider {
+  _: JdbcProfile =>
 }

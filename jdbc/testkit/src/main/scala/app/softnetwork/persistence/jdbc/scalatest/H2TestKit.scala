@@ -12,7 +12,7 @@ trait H2TestKit extends JdbcPersistenceTestKit { _: Suite =>
 
   val database: String = sys.env.getOrElse("H2_DATABASE", generateUUID())
 
-  val slickProfile: String = "slick.jdbc.H2Profile$"
+  override lazy val slickProfile: String = "slick.jdbc.H2Profile$"
 
   val jdbcUser: String = sys.env.getOrElse("H2_USER", "admin")
 
