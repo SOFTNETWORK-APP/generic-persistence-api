@@ -257,6 +257,7 @@ trait JdbcStateProvider[T <: Timestamped]
     state: String
   ): Boolean = {
     val action = states
+      .filter(_.uuid === uuid)
       .update(
         (uuid, lastUpdated, deleted, state)
       )
