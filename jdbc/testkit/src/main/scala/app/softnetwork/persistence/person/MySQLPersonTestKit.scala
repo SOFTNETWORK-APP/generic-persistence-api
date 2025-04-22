@@ -1,7 +1,6 @@
 package app.softnetwork.persistence.person
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.persistence.jdbc.query.JdbcOffsetProvider
 import app.softnetwork.persistence.jdbc.scalatest.MySQLTestKit
 import app.softnetwork.persistence.model.StateWrappertReader
 import app.softnetwork.persistence.person.model.Person
@@ -17,7 +16,7 @@ trait MySQLPersonTestKit extends JdbcPersonTestKit with MySQLTestKit with MySQLP
   override def externalPersistenceProvider: ExternalPersistenceProvider[Person] = this
   override def person2ExternalProcessorStream: ActorSystem[_] => PersonToExternalProcessorStream =
     sys =>
-      new PersonToJdbcProcessorStreamWithJdbcJournal with JdbcOffsetProvider with MySQLProfile {
+      new PersonToJdbcProcessorStreamWithJdbcJournal with MySQLProfile {
         override def config: Config = MySQLPersonTestKit.this.config
 
         override val forTests: Boolean = true

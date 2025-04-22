@@ -1,7 +1,6 @@
 package app.softnetwork.persistence.person
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.persistence.jdbc.query.JdbcOffsetProvider
 import app.softnetwork.persistence.jdbc.scalatest.PostgresTestKit
 import app.softnetwork.persistence.model.StateWrappertReader
 import app.softnetwork.persistence.person.model.Person
@@ -17,7 +16,7 @@ trait PostgresPersonTestKit extends JdbcPersonTestKit with PostgresTestKit with 
   override def externalPersistenceProvider: ExternalPersistenceProvider[Person] = this
   override def person2ExternalProcessorStream: ActorSystem[_] => PersonToExternalProcessorStream =
     sys =>
-      new PersonToJdbcProcessorStreamWithJdbcJournal with JdbcOffsetProvider with PostgresProfile {
+      new PersonToJdbcProcessorStreamWithJdbcJournal with PostgresProfile {
         override def config: Config = PostgresPersonTestKit.this.config
 
         override val forTests: Boolean = true

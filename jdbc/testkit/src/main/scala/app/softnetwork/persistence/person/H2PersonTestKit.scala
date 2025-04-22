@@ -1,7 +1,6 @@
 package app.softnetwork.persistence.person
 
 import akka.actor.typed.ActorSystem
-import app.softnetwork.persistence.jdbc.query.JdbcOffsetProvider
 import app.softnetwork.persistence.jdbc.scalatest.H2TestKit
 import app.softnetwork.persistence.model.StateWrappertReader
 import app.softnetwork.persistence.person.model.Person
@@ -17,7 +16,7 @@ trait H2PersonTestKit extends JdbcPersonTestKit with H2TestKit with H2Profile {
   override def externalPersistenceProvider: ExternalPersistenceProvider[Person] = this
   override def person2ExternalProcessorStream: ActorSystem[_] => PersonToExternalProcessorStream =
     sys =>
-      new PersonToJdbcProcessorStreamWithJdbcJournal with JdbcOffsetProvider with H2Profile {
+      new PersonToJdbcProcessorStreamWithJdbcJournal with H2Profile {
         override def config: Config = H2PersonTestKit.this.config
 
         override val forTests: Boolean = true

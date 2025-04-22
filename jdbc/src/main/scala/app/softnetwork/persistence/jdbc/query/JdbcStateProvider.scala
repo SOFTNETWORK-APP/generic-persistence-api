@@ -72,15 +72,25 @@ trait JdbcStateProvider[T <: Timestamped]
     */
   override final def updateDocument(document: T, upsert: Boolean = true)(implicit
     t: ClassTag[T]
-  ): Boolean = writeToDb(
-    StateWrapper[T](
-      document.uuid,
-      document.lastUpdated,
-      deleted = false,
-      Option(document)
-    ),
-    to_update = true
-  )
+  ): Boolean = {
+    var to_update: Boolean = false
+    if (upsert) {
+      loadDocument(document.uuid) match {
+        case Some(_) =>
+          to_update = true
+        case _ =>
+      }
+    }
+    writeToDb(
+      StateWrapper[T](
+        document.uuid,
+        document.lastUpdated,
+        deleted = false,
+        Option(document)
+      ),
+      to_update = to_update
+    )
+  }
 
   /** Upsert the underlying document referenced by its uuid to the database
     *
@@ -188,8 +198,8 @@ trait JdbcStateProvider[T <: Timestamped]
     (if (!to_update) {
        insert(document.uuid, document.lastUpdated, document.deleted, state)
      } else {
-         alogger.debug(s"Updating document ${document.uuid} with data $state")
-         update(document.uuid, document.lastUpdated, document.deleted, state)
+       alogger.debug(s"Updating document ${document.uuid} with data $state")
+       update(document.uuid, document.lastUpdated, document.deleted, state)
      }) && writeToFile(
       document,
       data
