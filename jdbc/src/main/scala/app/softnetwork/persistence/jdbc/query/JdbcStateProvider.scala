@@ -191,7 +191,7 @@ trait JdbcStateProvider[T <: Timestamped]
       case Some(d) => d
       case None =>
         document.state match {
-          case Some(s) => serialization.write(s)(formats)
+          case Some(s) => writeState(s)
           case _       => "{}"
         }
     }
@@ -316,7 +316,7 @@ trait JdbcStateProvider[T <: Timestamped]
                 None
               case (_, _, _, state) =>
                 alogger.debug(s"Load $tableFullName with $uuid -> $value")
-                Option(serialization.read[T](state)(formats, manifest))
+                Option(readState(state))
             }
           case _ =>
             alogger.debug(s"Load $tableFullName with $uuid -> None")
@@ -340,7 +340,6 @@ trait JdbcStateProvider[T <: Timestamped]
   def search(
     query: String
   )(implicit m: Manifest[T], formats: Formats): List[T] = {
-    implicit val manifest: Manifest[T] = manifestWrapper.wrapped
     val action: DBIOAction[List[String], NoStream, Effect] = {
       sql"""
         SELECT state FROM $tableFullName WHERE $query
@@ -349,7 +348,7 @@ trait JdbcStateProvider[T <: Timestamped]
     db.run(action) complete () match {
       case Success(value) =>
         alogger.debug(s"Search $tableFullName with $query -> $value")
-        value.map(serialization.read[T](_)(formats, manifest))
+        value.map(readState)
       case Failure(f) =>
         alogger.error(f.getMessage, f)
         Nil
@@ -366,6 +365,14 @@ trait JdbcStateProvider[T <: Timestamped]
   }
 
   lazy val states = TableQuery[States]
+
+  protected def writeState(state: T): String = {
+    serialization.write(state)(formats)
+  }
+
+  protected def readState(state: String)(implicit manifest: Manifest[T]): T = {
+    serialization.read(state)(formats, manifest)
+  }
 
   def initTable(): Unit = {
     alogger.info(
