@@ -17,6 +17,6 @@ trait JdbcPersonProvider extends JdbcStateProvider[Person] with ManifestWrapper[
     override protected val manifestWrapper: ManifestW = ManifestW()
   }
 
-  override implicit def executionContext: ExecutionContext = system.executionContext
+  override implicit def executionContext: ExecutionContext = classicSystem.dispatcher
 
 }

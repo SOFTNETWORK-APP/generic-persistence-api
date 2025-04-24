@@ -12,9 +12,7 @@ import org.scalatest.Suite
   */
 trait JdbcPersistenceTestKit extends PersistenceTestKit with JdbcSchema { _: Suite =>
 
-  implicit def system: ActorSystem[_] = typedSystem()
-
-  override implicit lazy val classicSystem: actor.ActorSystem = system
+  override implicit lazy val classicSystem: actor.ActorSystem = typedSystem()
 
   def slickProfile: String
 
