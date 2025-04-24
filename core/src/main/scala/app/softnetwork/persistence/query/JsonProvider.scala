@@ -3,6 +3,7 @@ package app.softnetwork.persistence.query
 import app.softnetwork.persistence.ManifestWrapper
 import app.softnetwork.persistence.model.{CamelCaseString, StateWrapper, StateWrappertReader, Timestamped}
 import app.softnetwork.serialization.{commonFormats, serialization, updateCaseClass}
+import com.typesafe.config.{Config, ConfigFactory}
 import org.json4s.Formats
 
 import java.nio.charset.StandardCharsets
@@ -25,9 +26,23 @@ trait JsonProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] {
 
   lazy val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern(FORMAT).withZone(zoneId)
 
-  def outputFolder: String = "/tmp"
+  def outputFolder: String = {
+    val config = ConfigFactory.load()
+    if (config.hasPath("json-external-processor.output-folder")) {
+      config.getString("json-external-processor.output-folder")
+    } else {
+      System.getProperty("java.io.tmpdir")
+    }
+  }
 
-  def fileExtension: String = "dat"
+  def fileExtension: String = {
+    val config = ConfigFactory.load()
+    if (config.hasPath("json-external-processor.file-extension")) {
+      config.getString("json-external-processor.file-extension")
+    } else {
+      "json"
+    }
+  }
 
   implicit lazy val ct: ClassTag[T] = manifestWrapper.wrapped
 
@@ -195,6 +210,9 @@ trait JsonProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] {
           )
           serialization.write(map)
         case _ => document.asJson
+      }
+      if (!Files.exists(Paths.get(outputFolder))) {
+        Files.createDirectories(Paths.get(outputFolder))
       }
       if (!Files.exists(Paths.get(filePath))) {
         Files.createFile(Paths.get(filePath))

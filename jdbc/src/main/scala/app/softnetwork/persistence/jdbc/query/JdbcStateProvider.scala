@@ -6,9 +6,7 @@ import app.softnetwork.persistence.jdbc.db.SlickDatabase
 import app.softnetwork.persistence.model.{StateWrapper, Timestamped}
 import app.softnetwork.persistence.query.JsonProvider
 import app.softnetwork.serialization.{serialization, updateCaseClass}
-import com.typesafe.scalalogging.Logger
 import org.json4s.Formats
-import org.slf4j.LoggerFactory
 import slick.jdbc.JdbcProfile
 
 import java.time.Instant
@@ -22,14 +20,22 @@ trait JdbcStateProvider[T <: Timestamped]
     with Completion {
   _: ManifestWrapper[T] with JdbcProfile =>
 
-  protected lazy val alogger: Logger =
-    Logger(LoggerFactory.getLogger(getClass.getName))
-
-  val dataset: Option[String] = None
+  def dataset: Option[String] = {
+    if (config.hasPath("jdbc-external-processor.dataset")) {
+      val d = config.getString("jdbc-external-processor.dataset")
+      if (d.nonEmpty) {
+        Some(d)
+      } else {
+        None
+      }
+    } else {
+      None
+    }
+  }
 
   lazy val table: String = getType[T](manifestWrapper.wrapped)
 
-  lazy val tableFullName: String = dataset match {
+  private[this] lazy val tableFullName: String = dataset match {
     case Some(s) => s"$s.$table"
     case _       => table
   }
@@ -198,7 +204,7 @@ trait JdbcStateProvider[T <: Timestamped]
     (if (!to_update) {
        insert(document.uuid, document.lastUpdated, document.deleted, state)
      } else {
-       alogger.debug(s"Updating document ${document.uuid} with data $state")
+       log.debug(s"Updating document ${document.uuid} with data $state")
        update(document.uuid, document.lastUpdated, document.deleted, state)
      }) && writeToFile(
       document,
@@ -229,10 +235,10 @@ trait JdbcStateProvider[T <: Timestamped]
       (states += (uuid, lastUpdated, deleted, state)).map(_ > 0)
     db.run(action) complete () match {
       case Success(value) =>
-        alogger.debug(s"Insert to $tableFullName with $uuid -> $value")
+        log.debug(s"Insert to $tableFullName with $uuid -> $value")
         value
       case Failure(f) =>
-        alogger.error(f.getMessage, f)
+        log.error(f.getMessage, f)
         false
     }
   }
@@ -265,13 +271,13 @@ trait JdbcStateProvider[T <: Timestamped]
     db.run(action) complete () match {
       case Success(value) =>
         if (deleted) {
-          alogger.debug(s"Delete from $tableFullName with $uuid -> $value")
+          log.debug(s"Delete from $tableFullName with $uuid -> $value")
         } else {
-          alogger.debug(s"Update to $tableFullName with $uuid -> $value")
+          log.debug(s"Update to $tableFullName with $uuid -> $value")
         }
         value
       case Failure(f) =>
-        alogger.error(f.getMessage, f)
+        log.error(f.getMessage, f)
         false
     }
   }
@@ -287,10 +293,10 @@ trait JdbcStateProvider[T <: Timestamped]
     val action = states.filter(_.uuid === uuid).delete.map(_ > 0)
     db.run(action) complete () match {
       case Success(value) =>
-        alogger.debug(s"Delete from $tableFullName with $uuid -> $value")
+        log.debug(s"Delete from $tableFullName with $uuid -> $value")
         value
       case Failure(f) =>
-        alogger.error(f.getMessage, f)
+        log.error(f.getMessage, f)
         false
     }
   }
@@ -312,18 +318,18 @@ trait JdbcStateProvider[T <: Timestamped]
             //logger.info(s"$document")
             document match {
               case (_, _, deleted, _) if deleted =>
-                alogger.debug(s"Load $tableFullName with $uuid -> None")
+                log.debug(s"Load $tableFullName with $uuid -> None")
                 None
               case (_, _, _, state) =>
-                alogger.debug(s"Load $tableFullName with $uuid -> $value")
-                Option(readState(state))
+                log.debug(s"Load $tableFullName with $uuid -> $value")
+                Option(readState(state)(manifest))
             }
           case _ =>
-            alogger.debug(s"Load $tableFullName with $uuid -> None")
+            log.debug(s"Load $tableFullName with $uuid -> None")
             None
         }
       case Failure(f) =>
-        alogger.error(f.getMessage, f)
+        log.error(f.getMessage, f)
         None
     }
   }
@@ -347,15 +353,15 @@ trait JdbcStateProvider[T <: Timestamped]
     }
     db.run(action) complete () match {
       case Success(value) =>
-        alogger.debug(s"Search $tableFullName with $query -> $value")
+        log.debug(s"Search $tableFullName with $query -> $value")
         value.map(readState)
       case Failure(f) =>
-        alogger.error(f.getMessage, f)
+        log.error(f.getMessage, f)
         Nil
     }
   }
 
-  class States(tag: Tag) extends Table[(String, Instant, Boolean, String)](tag, tableFullName) {
+  class States(tag: Tag) extends Table[(String, Instant, Boolean, String)](tag, dataset, table) {
     def uuid = column[String]("uuid", O.PrimaryKey)
     def lastUpdated = column[Instant]("last_updated")
     def deleted = column[Boolean]("deleted")
@@ -375,14 +381,36 @@ trait JdbcStateProvider[T <: Timestamped]
   }
 
   def initTable(): Unit = {
-    alogger.info(
+    initDataset()
+    log.info(
       s"Setting up table $tableFullName ${states.schema.createStatements.mkString(";\n")}"
     )
     db.run(DBIO.seq(states.schema.createIfNotExists)).complete() match {
       case Success(_) =>
-        alogger.debug(s"Setup table $tableFullName")
+        log.debug(s"Setup table $tableFullName")
       case Failure(f) =>
-        alogger.error(f.getMessage, f)
+        log.error(f.getMessage, f)
+    }
+  }
+
+  def initDataset(): Unit = {
+    dataset match {
+      case Some(d) =>
+        log.info(
+          s"Setting up dataset $d"
+        )
+        val ddl = s"CREATE SCHEMA IF NOT EXISTS $d"
+        withStatement { stmt =>
+          try {
+            stmt.executeUpdate(ddl)
+            log.debug(s"Setup dataset $d")
+          } catch {
+            case t: java.sql.SQLSyntaxErrorException
+                if t.getMessage contains "ORA-00942" => // suppress known error message in the test
+            case other: Throwable => log.error(other.getMessage)
+          }
+        }
+      case _ =>
     }
   }
 }
