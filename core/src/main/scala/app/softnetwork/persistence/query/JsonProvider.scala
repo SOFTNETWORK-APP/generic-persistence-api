@@ -50,7 +50,7 @@ trait JsonProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] {
     s"${ct.runtimeClass.getSimpleName $}_${formatter.format(Instant.now())}.$fileExtension"
   }
 
-  def filePath: String = s"$outputFolder/${fileName}"
+  def filePath: String = s"$outputFolder/$fileName"
 
   def reader: StateWrappertReader[T]
 
