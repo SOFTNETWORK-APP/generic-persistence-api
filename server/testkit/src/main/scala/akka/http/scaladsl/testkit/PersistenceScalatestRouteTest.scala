@@ -2,9 +2,10 @@ package akka.http.scaladsl.testkit
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.headers.{`Set-Cookie`, Cookie, HttpCookiePair, RawHeader}
+import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader, `Set-Cookie`}
 import akka.http.scaladsl.server.directives.RouteDirectives
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
+import akka.stream.{Materializer, SystemMaterializer}
 import app.softnetwork.api.server.scalatest.ServerTestKit
 import app.softnetwork.api.server.{ApiRoutes, ApiServer}
 import app.softnetwork.config.Settings
@@ -14,6 +15,8 @@ import app.softnetwork.persistence.typed._
 import de.heikoseeberger.akkahttpjson4s.Json4sSupport
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.Suite
+
+import scala.concurrent.ExecutionContextExecutor
 
 /** Created by smanciot on 24/04/2020.
   */
@@ -29,6 +32,12 @@ trait PersistenceScalatestRouteTest
   override protected def createActorSystem(): ActorSystem = {
     typedSystem()
   }
+
+  override implicit lazy val system: ActorSystem = createActorSystem()
+
+  override implicit lazy val executor: ExecutionContextExecutor = system.dispatcher
+
+  override implicit lazy val materializer: Materializer = SystemMaterializer(system).materializer
 
   implicit lazy val timeout: RouteTestTimeout = RouteTestTimeout(Settings.DefaultTimeout)
 
