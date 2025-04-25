@@ -12,7 +12,7 @@ trait RefreshableHeaderSessionTestKit[T <: SessionData with SessionDataDecorator
     with RefreshableSessionTestKit[T] {
   _: Suite with ApiRoutes with SessionMaterials[T] =>
 
-  override def headerConfig: HeaderConfig = manager.config.refreshTokenHeaderConfig
+  override lazy val headerConfig: HeaderConfig = manager.config.refreshTokenHeaderConfig
 
   override protected val sessionType: Session.SessionType = Session.SessionType.RefreshableHeader
 

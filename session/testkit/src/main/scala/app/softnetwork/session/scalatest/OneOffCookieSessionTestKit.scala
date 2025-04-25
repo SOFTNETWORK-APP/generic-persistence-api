@@ -12,7 +12,7 @@ trait OneOffCookieSessionTestKit[T <: SessionData with SessionDataDecorator[T]]
     with OneOffSessionTestKit[T] {
   _: Suite with ApiRoutes with SessionMaterials[T] =>
 
-  override def cookieConfig: CookieConfig = manager.config.sessionCookieConfig
+  override lazy val cookieConfig: CookieConfig = manager.config.sessionCookieConfig
 
   override protected val sessionType: Session.SessionType = Session.SessionType.OneOffCookie
 

@@ -13,7 +13,7 @@ trait SessionEndpointsRoutes[T <: SessionData with SessionDataDecorator[T]] exte
   self: SessionTestKit[T] with SessionMaterials[T] =>
   def sessionServiceEndpoints: ActorSystem[_] => SessionEndpointsRoute[T] = sys =>
     new SessionEndpointsRoute[T] with SessionMaterials[T] {
-      override implicit def sessionConfig: SessionConfig = self.sessionConfig
+      override implicit lazy val sessionConfig: SessionConfig = self.sessionConfig
       override implicit def manager(implicit
         sessionConfig: SessionConfig,
         companion: SessionDataCompanion[T]

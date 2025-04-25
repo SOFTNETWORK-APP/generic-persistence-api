@@ -12,7 +12,7 @@ trait RefreshableCookieSessionTestKit[T <: SessionData with SessionDataDecorator
     with RefreshableSessionTestKit[T] {
   _: Suite with ApiRoutes with SessionMaterials[T] =>
 
-  override def cookieConfig: CookieConfig = manager.config.refreshTokenCookieConfig
+  override lazy val cookieConfig: CookieConfig = manager.config.refreshTokenCookieConfig
 
   override protected val sessionType: Session.SessionType = Session.SessionType.RefreshableCookie
 

@@ -22,7 +22,7 @@ trait SessionTestKit[T <: SessionData with SessionDataDecorator[T]]
 
   var httpHeaders: Seq[HttpHeader] = Seq.empty
 
-  implicit def sessionConfig: SessionConfig = SessionConfig.fromConfig(config)
+  implicit lazy val sessionConfig: SessionConfig = SessionConfig.fromConfig(config)
 
   implicit def companion: SessionDataCompanion[T]
 

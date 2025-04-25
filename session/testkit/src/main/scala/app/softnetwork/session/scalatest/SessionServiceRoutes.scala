@@ -18,7 +18,7 @@ trait SessionServiceRoutes[T <: SessionData with SessionDataDecorator[T]] extend
       ): SessionManager[T] = self.manager
       override implicit def ts: ActorSystem[_] = sys
       override protected def sessionType: Session.SessionType = self.sessionType
-      override implicit def sessionConfig: SessionConfig = self.sessionConfig
+      override implicit lazy val sessionConfig: SessionConfig = self.sessionConfig
 
       override implicit def companion: SessionDataCompanion[T] = self.companion
 

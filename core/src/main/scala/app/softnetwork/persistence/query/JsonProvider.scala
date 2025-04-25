@@ -167,25 +167,46 @@ trait JsonProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] {
         } match {
           case Success(value) if value.uuid != uuid => // do nothing
           case Success(value) if value.uuid == uuid && value.state.isDefined || value.deleted =>
-            lastMatchingLine = value.state // return the state
+            if(value.deleted){
+              lastMatchingLine = None
+            }
+            else{
+              lastMatchingLine = value.state // return the state
+            }
           case _ =>
-            serialization.read[Map[String, Any]](line).get("state") match {
-              case Some(updated: Map[String, Any]) =>
-                lastMatchingLine match {
-                  case Some(l)
-                      if updated
-                        .get("lastUpdated")
-                        .map(lu => Instant.parse(lu.toString))
-                        .getOrElse(Instant.MIN)
-                        .isAfter(l.lastUpdated) => // update the state
-                    Try(updateCaseClass(l, updated)) match {
-                      case Success(updated: T) =>
-                        lastMatchingLine = Some(updated)
+            val parsed = serialization.read[Map[String, Any]](line)
+            val _uuid = parsed.get("uuid") match {
+              case Some(u: String) => u
+              case _               => ""
+            }
+            if (uuid == _uuid) {
+              val deleted = parsed.get("deleted") match {
+                case Some(d) => d.toString.toBoolean
+                case _       => false
+              }
+              if(deleted){
+                lastMatchingLine = None
+              }
+              else{
+                parsed.get("state") match {
+                  case Some(updated: Map[String, Any]) =>
+                    lastMatchingLine match {
+                      case Some(l)
+                        if updated
+                          .get("lastUpdated")
+                          .map(lu => Instant.parse(lu.toString))
+                          .getOrElse(Instant.MIN)
+                          .isAfter(l.lastUpdated) => // update the state
+                        Try(updateCaseClass(l, updated)) match {
+                          case Success(updated: T) =>
+                            lastMatchingLine = Some(updated)
+                          case _ =>
+                        }
                       case _ =>
                     }
                   case _ =>
                 }
-              case _ =>
+              }
             }
         }
       }

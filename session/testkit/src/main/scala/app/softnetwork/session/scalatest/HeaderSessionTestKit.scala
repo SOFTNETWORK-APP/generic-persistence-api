@@ -13,7 +13,7 @@ trait HeaderSessionTestKit[T <: SessionData with SessionDataDecorator[T]]
 
   def headerConfig: HeaderConfig
 
-  final override val sessionHeaderName: String = headerConfig.sendToClientHeaderName
+  final override lazy val sessionHeaderName: String = headerConfig.sendToClientHeaderName
 
   final override def mapRawHeader: RawHeader => Option[RawHeader] = raw =>
     if (raw.name == manager.config.sessionHeaderConfig.sendToClientHeaderName)

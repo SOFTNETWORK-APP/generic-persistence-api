@@ -12,7 +12,7 @@ trait OneOffHeaderSessionTestKit[T <: SessionData with SessionDataDecorator[T]]
     with OneOffSessionTestKit[T] {
   _: Suite with ApiRoutes with SessionMaterials[T] =>
 
-  override def headerConfig: HeaderConfig = manager.config.sessionHeaderConfig
+  override lazy val headerConfig: HeaderConfig = manager.config.sessionHeaderConfig
 
   override protected val sessionType: Session.SessionType = Session.SessionType.OneOffHeader
 

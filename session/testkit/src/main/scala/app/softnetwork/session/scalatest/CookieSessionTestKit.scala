@@ -12,6 +12,6 @@ trait CookieSessionTestKit[T <: SessionData with SessionDataDecorator[T]]
 
   def cookieConfig: CookieConfig
 
-  final override val sessionHeaderName: String = cookieConfig.name
+  final override lazy val sessionHeaderName: String = cookieConfig.name
 
 }
