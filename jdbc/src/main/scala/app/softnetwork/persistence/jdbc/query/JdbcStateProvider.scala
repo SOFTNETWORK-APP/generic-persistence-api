@@ -5,7 +5,7 @@ import app.softnetwork.persistence._
 import app.softnetwork.persistence.jdbc.db.SlickDatabase
 import app.softnetwork.persistence.model.{StateWrapper, Timestamped}
 import app.softnetwork.persistence.query.JsonProvider
-import app.softnetwork.serialization.{serialization, updateCaseClass}
+import app.softnetwork.serialization.serialization
 import org.json4s.Formats
 import slick.jdbc.JdbcProfile
 
@@ -39,6 +39,8 @@ trait JdbcStateProvider[T <: Timestamped]
     case Some(s) => s"$s.$table"
     case _       => table
   }
+
+  def excludedFields: Set[String] = Set("__serializedSizeMemoized")
 
   implicit def executionContext: ExecutionContext
 
@@ -107,11 +109,19 @@ trait JdbcStateProvider[T <: Timestamped]
     * @return
     *   whether the operation is successful or not
     */
-  override final def upsertDocument(uuid: String, data: String): Boolean = {
+  override def upsertDocument(uuid: String, data: String): Boolean = {
     (loadDocument(uuid) match {
       case Some(document: T) =>
         implicit val manifest: Manifest[T] = manifestWrapper.wrapped
-        Try(updateCaseClass(document, serialization.read[Map[String, Any]](data))) match {
+        var state = serialization.read[Map[String, Any]](serialization.write(document))
+        val updatedState = serialization.read[Map[String, Any]](data)
+        for ((key, value) <- updatedState) {
+          if (!excludedFields.contains(key)) {
+            state = state + (key -> value)
+          }
+        }
+        val updatedDocument = serialization.write(state)
+        Try(serialization.read[T](updatedDocument)(formats, manifest)) match {
           case Success(updatedState: T) =>
             Some(updatedState)
           case Failure(e) =>
