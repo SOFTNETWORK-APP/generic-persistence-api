@@ -10,14 +10,22 @@ val configDependencies = Seq(
 )
 
 val jackson = Seq(
-  "com.fasterxml.jackson.core"   % "jackson-databind"          % Versions.jackson,
-  "com.fasterxml.jackson.core"   % "jackson-core"              % Versions.jackson,
-  "com.fasterxml.jackson.core"   % "jackson-annotations"       % Versions.jackson,
-  "com.fasterxml.jackson.module" % "jackson-module-scala_2.12" % Versions.jackson
+  "com.fasterxml.jackson.core"       % "jackson-databind"               % Versions.jackson,
+  "com.fasterxml.jackson.core"       % "jackson-core"                   % Versions.jackson,
+  "com.fasterxml.jackson.core"       % "jackson-annotations"            % Versions.jackson,
+  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor"        % Versions.jackson,
+  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml"        % Versions.jackson,
+  "com.fasterxml.jackson.datatype"   % "jackson-datatype-jdk8"          % Versions.jackson,
+  "com.fasterxml.jackson.datatype"   % "jackson-datatype-jsr310"        % Versions.jackson,
+  "com.fasterxml.jackson.module"     % "jackson-module-parameter-names" % Versions.jackson,
+  "com.fasterxml.jackson.module"     %% "jackson-module-scala"          % Versions.jackson,
 )
 
 val jacksonExclusions = Seq(
   ExclusionRule(organization = "com.fasterxml.jackson.core"),
+  ExclusionRule(organization = "com.fasterxml.jackson.dataformat"),
+  ExclusionRule(organization = "com.fasterxml.jackson.datatype"),
+  ExclusionRule(organization = "com.fasterxml.jackson.module"),
   ExclusionRule(organization = "org.codehaus.jackson")
 )
 

@@ -2,14 +2,14 @@ package app.softnetwork.persistence.jdbc.query
 
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.StrictLogging
-import configs.Configs
+import configs.ConfigReader
 
 case class JdbcEventProcessorOffsets(schema: String, table: String)
 
 object JdbcEventProcessorOffsets extends StrictLogging {
   def apply(config: Config): JdbcEventProcessorOffsets = {
-    Configs[JdbcEventProcessorOffsets]
-      .get(
+    ConfigReader[JdbcEventProcessorOffsets]
+      .read(
         config.withFallback(ConfigFactory.load("softnetwork-jdbc-persistence.conf")),
         "jdbc-event-processor-offsets"
       )
