@@ -8,18 +8,19 @@ import java.time.Instant
 import scala.language.implicitConversions
 
 /** Created by smanciot on 13/04/2020.
-  */
+ */
 package object persistence {
 
   trait ManifestWrapper[T] {
     protected case class ManifestW()(implicit val wrapped: Manifest[T])
+
     protected val manifestWrapper: ManifestW
   }
 
   def generateUUID(key: Option[String] = None): String =
     key match {
       case Some(clearText) => sha256(clearText)
-      case _               => UUID.randomUUID().toString
+      case _ => UUID.randomUUID().toString
     }
 
   def now(): Date = Date.from(Instant.now())
@@ -29,8 +30,8 @@ package object persistence {
   }
 
   /** Used for akka and elastic persistence ids, one per targeted environment (development,
-    * production, ...)
-    */
+   * production, ...)
+   */
   val version: String = sys.env.getOrElse("VERSION", PersistenceCoreBuildInfo.version)
 
   val environment: String = sys.env.getOrElse(

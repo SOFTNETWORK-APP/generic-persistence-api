@@ -23,9 +23,9 @@ import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 /** Created by smanciot on 04/01/2020.
-  */
+ */
 trait PersistenceTestKit
-    extends PersistenceGuardian
+  extends PersistenceGuardian
     with BeforeAndAfterAll
     with Eventually
     with CompletionTestKit
@@ -61,91 +61,92 @@ trait PersistenceTestKit
   }
 
   /** @return
-    *   roles associated with this node
-    */
+   * roles associated with this node
+   */
   def roles: Seq[String] = Seq.empty
 
-  final lazy val akka: String = s"""
-                |akka {
-                |  stdout-loglevel = off // defaults to WARNING can be disabled with off. The stdout-loglevel is only in effect during system startup and shutdown
-                |  log-dead-letters-during-shutdown = on
-                |  loglevel = debug
-                |  log-dead-letters = on
-                |  log-config-on-start = off // Log the complete configuration at INFO level when the actor system is started
-                |  loggers = ["akka.event.slf4j.Slf4jLogger"]
-                |  logging-filter = "akka.event.slf4j.Slf4jLoggingFilter"
-                |}
-                |
-                |clustering.cluster.name = $systemName
-                |
-                |akka.cluster.roles = [${roles.mkString(",")}]
-                |
-                |akka.discovery {
-                |  config.services = {
-                |    $systemName = {
-                |      endpoints = [
-                |        {
-                |          host = "$hostname"
-                |          port = $managementPort
-                |        }
-                |      ]
-                |    }
-                |  }
-                |}
-                |
-                |akka.management {
-                |  http {
-                |    hostname = $hostname
-                |    port     = $managementPort
-                |  }
-                |  cluster.bootstrap {
-                |    contact-point-discovery {
-                |      service-name = $systemName
-                |    }
-                |  }
-                |}
-                |
-                |akka.remote.artery.canonical.hostname = $hostname
-                |akka.remote.artery.canonical.port = 0
-                |
-                |akka.coordinated-shutdown.exit-jvm = off
-                |
-                |akka.actor.testkit.typed {
-                |  # Factor by which to scale timeouts during tests, e.g. to account for shared
-                |  # build system load.
-                |  timefactor =  1.0
-                |
-                |  # Duration to wait in expectMsg and friends outside of within() block
-                |  # by default.
-                |  # Dilated by the timefactor.
-                |  single-expect-default = 10s
-                |
-                |  # Duration to wait in expectNoMessage by default.
-                |  # Dilated by the timefactor.
-                |  expect-no-message-default = 1000ms
-                |
-                |  # The timeout that is used as an implicit Timeout.
-                |  # Dilated by the timefactor.
-                |  default-timeout = 5s
-                |
-                |  # Default timeout for shutting down the actor system (used when no explicit timeout specified).
-                |  # Dilated by the timefactor.
-                |  system-shutdown-default=60s
-                |
-                |  # Throw an exception on shutdown if the timeout is hit, if false an error is printed to stdout instead.
-                |  throw-on-shutdown-timeout=false
-                |
-                |  # Duration to wait for all required logging events in LoggingTestKit.expect.
-                |  # Dilated by the timefactor.
-                |  filter-leeway = 3s
-                |
-                |}
-                |
-                |""".stripMargin + additionalConfig
+  final lazy val akka: String =
+    s"""
+       |akka {
+       |  stdout-loglevel = off // defaults to WARNING can be disabled with off. The stdout-loglevel is only in effect during system startup and shutdown
+       |  log-dead-letters-during-shutdown = on
+       |  loglevel = debug
+       |  log-dead-letters = on
+       |  log-config-on-start = off // Log the complete configuration at INFO level when the actor system is started
+       |  loggers = ["akka.event.slf4j.Slf4jLogger"]
+       |  logging-filter = "akka.event.slf4j.Slf4jLoggingFilter"
+       |}
+       |
+       |clustering.cluster.name = $systemName
+       |
+       |akka.cluster.roles = [${roles.mkString(",")}]
+       |
+       |akka.discovery {
+       |  config.services = {
+       |    $systemName = {
+       |      endpoints = [
+       |        {
+       |          host = "$hostname"
+       |          port = $managementPort
+       |        }
+       |      ]
+       |    }
+       |  }
+       |}
+       |
+       |akka.management {
+       |  http {
+       |    hostname = $hostname
+       |    port     = $managementPort
+       |  }
+       |  cluster.bootstrap {
+       |    contact-point-discovery {
+       |      service-name = $systemName
+       |    }
+       |  }
+       |}
+       |
+       |akka.remote.artery.canonical.hostname = $hostname
+       |akka.remote.artery.canonical.port = 0
+       |
+       |akka.coordinated-shutdown.exit-jvm = off
+       |
+       |akka.actor.testkit.typed {
+       |  # Factor by which to scale timeouts during tests, e.g. to account for shared
+       |  # build system load.
+       |  timefactor =  1.0
+       |
+       |  # Duration to wait in expectMsg and friends outside of within() block
+       |  # by default.
+       |  # Dilated by the timefactor.
+       |  single-expect-default = 10s
+       |
+       |  # Duration to wait in expectNoMessage by default.
+       |  # Dilated by the timefactor.
+       |  expect-no-message-default = 1000ms
+       |
+       |  # The timeout that is used as an implicit Timeout.
+       |  # Dilated by the timefactor.
+       |  default-timeout = 5s
+       |
+       |  # Default timeout for shutting down the actor system (used when no explicit timeout specified).
+       |  # Dilated by the timefactor.
+       |  system-shutdown-default=60s
+       |
+       |  # Throw an exception on shutdown if the timeout is hit, if false an error is printed to stdout instead.
+       |  throw-on-shutdown-timeout=false
+       |
+       |  # Duration to wait for all required logging events in LoggingTestKit.expect.
+       |  # Dilated by the timefactor.
+       |  filter-leeway = 3s
+       |
+       |}
+       |
+       |""".stripMargin + additionalConfig
 
   /** @return
-    *   additional configuration
-    */
+   * additional configuration
+   */
   def additionalConfig: String = ""
 
   lazy val akkaConfig: Config = ConfigFactory.parseString(akka)
@@ -159,7 +160,7 @@ trait PersistenceTestKit
   def typedSystem(): ActorSystem[Nothing] = system
 
   /** `PatienceConfig` from [[_root_.akka.actor.testkit.typed.TestKitSettings#DefaultTimeout]]
-    */
+   */
   implicit val patience: PatienceConfig =
     PatienceConfig(Settings.DefaultTimeout, Span(100, org.scalatest.time.Millis))
 
@@ -174,11 +175,11 @@ trait PersistenceTestKit
   }
 
   /** init and join cluster
-    */
+   */
   final def initAndJoinCluster(): Unit = {
     testKit.spawn(setup(), "guardian")
     // let the nodes join and become Up
-    blockUntil("let the nodes join and become Up", 30, 2000)(() =>
+    blockUntil("the nodes join and become Up", 30, 2000)(() =>
       Cluster(system).selfMember.status == MemberStatus.Up
     )
   }

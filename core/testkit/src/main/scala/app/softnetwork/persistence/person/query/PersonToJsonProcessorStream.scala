@@ -6,7 +6,7 @@ import app.softnetwork.persistence.query.{InMemoryJournalProvider, InMemoryOffse
 import java.nio.file.{Files, Paths}
 
 trait PersonToJsonProcessorStream
-    extends PersonToExternalProcessorStream
+  extends PersonToExternalProcessorStream
     with InMemoryJournalProvider
     with InMemoryOffsetProvider
     with JsonProvider[Person] {

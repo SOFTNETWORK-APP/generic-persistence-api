@@ -1,11 +1,17 @@
 import app.softnetwork.*
 
-lazy val scala212 = "2.12.20"
-lazy val scala213 = "2.13.16"
-
 /////////////////////////////////
 // Defaults
 /////////////////////////////////
+
+lazy val scala212 = "2.12.20"
+lazy val scala213 = "2.13.16"
+lazy val javacCompilerVersion = "1.8"
+lazy val scalacCompilerOptions = Seq(
+  "-deprecation",
+  "-feature",
+  s"-target:jvm-$javacCompilerVersion"
+)
 
 ThisBuild / organization := "app.softnetwork"
 
@@ -17,18 +23,18 @@ lazy val moduleSettings = Seq(
   crossScalaVersions := Seq(scala212, scala213),
   scalacOptions ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
-      case Some((2, 12)) => Seq("-deprecation", "-feature", "-target:jvm-1.8", "-Ypartial-unification")
-      case Some((2, 13)) => Seq("-deprecation", "-feature", "-target:jvm-1.8")
+      case Some((2, 12)) => scalacCompilerOptions :+ "-Ypartial-unification"
+      case Some((2, 13)) => scalacCompilerOptions
       case _             => Seq.empty
     }
   }
 )
 
+ThisBuild / javacOptions ++= Seq("-source", javacCompilerVersion, "-target", javacCompilerVersion)
+
 ThisBuild / scalaVersion := scala212
 
 //ThisBuild / versionScheme := Some("early-semver")
-
-ThisBuild / javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
 ThisBuild / resolvers ++= Seq(
   "Softnetwork Server" at "https://softnetwork.jfrog.io/artifactory/releases/",
