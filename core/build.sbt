@@ -40,7 +40,7 @@ val kryo = Seq(
 )
 
 val chill = Seq(
-  "com.twitter" % "chill-akka_2.12" % Versions.chill excludeAll ExclusionRule(organization = "com.typesafe.akka")
+  "com.twitter" %% "chill-akka" % Versions.chill excludeAll ExclusionRule(organization = "com.typesafe.akka")
 )
 
 val logback = Seq(

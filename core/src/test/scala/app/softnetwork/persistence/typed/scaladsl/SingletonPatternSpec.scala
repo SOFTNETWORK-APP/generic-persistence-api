@@ -27,7 +27,7 @@ class SingletonPatternSpec extends SamplePattern with AnyWordSpecLike with Befor
 
   implicit lazy val system: ActorSystem[Nothing] = testKit.system
 
-  def ask(): Unit = this ? TestSample complete () match {
+  def ask(): Unit = (this ? TestSample).complete() match {
     case Success(s) =>
       s match {
         case SampleTested => log.info("sample tested !")

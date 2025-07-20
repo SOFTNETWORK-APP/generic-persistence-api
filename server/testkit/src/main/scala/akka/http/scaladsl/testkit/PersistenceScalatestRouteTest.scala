@@ -19,15 +19,16 @@ import org.scalatest.Suite
 import scala.concurrent.ExecutionContextExecutor
 
 /** Created by smanciot on 24/04/2020.
-  */
+ */
 trait PersistenceScalatestRouteTest
-    extends ApiServer
+  extends ApiServer
     with ServerTestKit
     with PersistenceTestKit
     with PersistenceRouteTest
     with TestFrameworkInterface
     with ScalatestUtils
-    with Json4sSupport { this: Suite with ApiRoutes with Schema =>
+    with Json4sSupport {
+  this: Suite with ApiRoutes with Schema =>
 
   override protected def createActorSystem(): ActorSystem = {
     typedSystem()
@@ -73,7 +74,7 @@ trait PersistenceScalatestRouteTest
   @deprecated("this method has been replaced by findHeader and will be removed", since = "0.3.1.1")
   def findCookie(name: String): HttpHeader => Option[HttpCookiePair] = {
     case Cookie(cookies) => cookies.find(_.name == name)
-    case _               => None
+    case _ => None
   }
 
   def extractHeaders(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
@@ -107,15 +108,15 @@ trait PersistenceScalatestRouteTest
   }
 
   def headerValue(name: String): HttpHeader => Option[String] = {
-    case Cookie(cookies)                => cookies.find(_.name == name).map(_.value)
+    case Cookie(cookies) => cookies.find(_.name == name).map(_.value)
     case r: RawHeader if r.name == name => Some(r.value)
-    case _                              => None
+    case _ => None
   }
 
   def findHeader(name: String): HttpHeader => Option[HttpHeader] = {
     case c: Cookie if c.cookies.exists(_.name == name) => Some(c)
-    case other if other.name() == name                 => Some(other)
-    case _                                             => None
+    case other if other.name() == name => Some(other)
+    case _ => None
   }
 
   def existHeader(name: String): HttpHeader => Boolean = header =>
@@ -123,7 +124,7 @@ trait PersistenceScalatestRouteTest
 }
 
 trait InMemoryPersistenceScalatestRouteTest
-    extends PersistenceScalatestRouteTest
+  extends PersistenceScalatestRouteTest
     with InMemoryPersistenceTestKit {
   _: Suite with ApiRoutes =>
 }
@@ -132,7 +133,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding
 import akka.http.scaladsl.model.HttpEntity.ChunkStreamPart
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{ Host, Upgrade, `Sec-WebSocket-Protocol` }
+import akka.http.scaladsl.model.headers.{Host, Upgrade, `Sec-WebSocket-Protocol`}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.settings.ParserSettings
 import akka.http.scaladsl.settings.RoutingSettings
@@ -142,11 +143,11 @@ import akka.http.scaladsl.util.FastFuture._
 import akka.stream.scaladsl.Source
 import akka.testkit.TestKit
 import akka.util.ConstantFun
-import com.typesafe.config.{ Config, ConfigFactory }
+import com.typesafe.config.{Config, ConfigFactory}
 
 import scala.collection.immutable
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 import scala.util.DynamicVariable
 
@@ -164,11 +165,13 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
       .filter(_ != '$')
 
   def testConfigSource: String = ""
+
   def testConfig: Config = {
     val source = testConfigSource
     val config = if (source.isEmpty) ConfigFactory.empty() else ConfigFactory.parseString(source)
     config.withFallback(ConfigFactory.load())
   }
+
   implicit lazy val system: ActorSystem = createActorSystem()
   implicit lazy val executor: ExecutionContextExecutor = system.dispatcher
   implicit lazy val materializer: Materializer = SystemMaterializer(system).materializer
@@ -176,6 +179,7 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
   def cleanUp(): Unit = TestKit.shutdownActorSystem(system)
 
   private val dynRR = new DynamicVariable[RouteTestResult](null)
+
   private def result =
     if (dynRR.value ne null) dynRR.value
     else sys.error("This value is only available inside of a `check` construct!")
@@ -185,38 +189,57 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
   private def responseSafe = if (dynRR.value ne null) dynRR.value.response else "<not available anymore>"
 
   def handled: Boolean = result.handled
+
   def response: HttpResponse = result.response
+
   def responseEntity: HttpEntity = result.entity
+
   private def rawResponse: HttpResponse = result.rawResponse
+
   def chunks: immutable.Seq[HttpEntity.ChunkStreamPart] = result.chunks
+
   def chunksStream: Source[ChunkStreamPart, Any] = result.chunksStream
-  def entityAs[T: FromEntityUnmarshaller: ClassTag](implicit timeout: Duration = 1.second): T = {
+
+  def entityAs[T: FromEntityUnmarshaller : ClassTag](implicit timeout: Duration = 1.second): T = {
     def msg(e: Throwable) = s"Could not unmarshal entity to type '${implicitly[ClassTag[T]]}' for `entityAs` assertion: $e\n\nResponse was: $responseSafe"
+
     Await.result(Unmarshal(responseEntity).to[T].fast.recover[T] { case error => failTest(msg(error)) }, timeout)
   }
-  def responseAs[T: FromResponseUnmarshaller: ClassTag](implicit timeout: Duration = 1.second): T = {
+
+  def responseAs[T: FromResponseUnmarshaller : ClassTag](implicit timeout: Duration = 1.second): T = {
     def msg(e: Throwable) = s"Could not unmarshal response to type '${implicitly[ClassTag[T]]}' for `responseAs` assertion: $e\n\nResponse was: $responseSafe"
+
     Await.result(Unmarshal(response).to[T].fast.recover[T] { case error => failTest(msg(error)) }, timeout)
   }
+
   def contentType: ContentType = rawResponse.entity.contentType
+
   def mediaType: MediaType = contentType.mediaType
+
   def charsetOption: Option[HttpCharset] = contentType.charsetOption
+
   def charset: HttpCharset = charsetOption getOrElse sys.error("Binary entity does not have charset")
+
   def headers: immutable.Seq[HttpHeader] = rawResponse.headers
-  def header[T >: Null <: HttpHeader: ClassTag]: Option[T] = rawResponse.header[T](implicitly[ClassTag[T]])
+
+  def header[T >: Null <: HttpHeader : ClassTag]: Option[T] = rawResponse.header[T](implicitly[ClassTag[T]])
+
   def header(name: String): Option[HttpHeader] = rawResponse.headers.find(_.is(name.toLowerCase))
+
   def status: StatusCode = rawResponse.status
 
   def closingExtension: String = chunks.lastOption match {
     case Some(HttpEntity.LastChunk(extension, _)) => extension
-    case _                                        => ""
+    case _ => ""
   }
+
   def trailer: immutable.Seq[HttpHeader] = chunks.lastOption match {
     case Some(HttpEntity.LastChunk(_, trailer)) => trailer
-    case _                                      => Nil
+    case _ => Nil
   }
 
   def rejections: immutable.Seq[Rejection] = result.rejections
+
   def rejection: Rejection = {
     val r = rejections
     if (r.size == 1) r.head else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))
@@ -265,21 +288,27 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
 
   abstract class TildeArrow[A, B] {
     type Out
+
     def apply(request: HttpRequest, f: A => B): Out
   }
 
   case class DefaultHostInfo(host: Host, securedConnection: Boolean)
+
   object DefaultHostInfo {
     implicit def defaultHost: DefaultHostInfo = DefaultHostInfo(Host("example.com"), securedConnection = false)
   }
+
   object TildeArrow {
     implicit object InjectIntoRequestTransformer extends TildeArrow[HttpRequest, HttpRequest] {
       type Out = HttpRequest
+
       def apply(request: HttpRequest, f: HttpRequest => HttpRequest) = f(request)
     }
-    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, defaultHostInfo: DefaultHostInfo): TildeArrow[RequestContext, Future[RouteResult]] { type Out = RouteTestResult } =
+
+    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, defaultHostInfo: DefaultHostInfo): TildeArrow[RequestContext, Future[RouteResult]] {type Out = RouteTestResult} =
       new TildeArrow[RequestContext, Future[RouteResult]] {
         type Out = RouteTestResult
+
         def apply(request: HttpRequest, route: Route): Out = {
           if (request.method == HttpMethods.HEAD && ServerSettings(system).transparentHeadRequests)
             failTest("`akka.http.server.transparent-head-requests = on` not supported in PersistenceRouteTest using `~>`. Use `~!>` instead " +
@@ -310,13 +339,15 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
 
   abstract class TildeBangArrow[A, B] {
     type Out
+
     def apply(request: HttpRequest, f: A => B): Out
   }
 
   object TildeBangArrow {
-    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, serverSettings: ServerSettings): TildeBangArrow[RequestContext, Future[RouteResult]] { type Out = RouteTestResult } =
+    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, serverSettings: ServerSettings): TildeBangArrow[RequestContext, Future[RouteResult]] {type Out = RouteTestResult} =
       new TildeBangArrow[RequestContext, Future[RouteResult]] {
         type Out = RouteTestResult
+
         def apply(request: HttpRequest, route: Route): Out = {
           val routeTestResult = new RouteTestResult(timeout.duration)
           val responseF = PersistenceRouteTest.runRouteClientServer(request, route, serverSettings)
@@ -327,6 +358,7 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
       }
   }
 }
+
 private[http] object PersistenceRouteTest {
   def runRouteClientServer(request: HttpRequest, route: Route, serverSettings: ServerSettings)(implicit system: ActorSystem): Future[HttpResponse] = {
     import system.dispatcher

@@ -31,7 +31,7 @@ trait JwtClaimsEncoder extends SessionEncoder[JwtClaims] with Completion {
     )
     (updatedJwtClaims.iss match {
       case Some(iss) =>
-        (loadApiKey(iss) complete ()).toOption.flatten
+        loadApiKey(iss).complete().toOption.flatten
       case _ => None
     }) match {
       case Some(apiKey) if apiKey.clientSecret.isDefined =>
@@ -51,7 +51,7 @@ trait JwtClaimsEncoder extends SessionEncoder[JwtClaims] with Completion {
       else jwtClaims.iss
     val innerConfig = (maybeClientId match {
       case Some(clientId) =>
-        (loadApiKey(clientId) complete ()).toOption.flatten.flatMap(_.clientSecret)
+        loadApiKey(clientId).complete().toOption.flatten.flatMap(_.clientSecret)
       case _ => None
     }) match {
       case Some(clientSecret) =>

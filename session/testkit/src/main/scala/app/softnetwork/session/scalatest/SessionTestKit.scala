@@ -48,7 +48,7 @@ trait SessionTestKit[T <: SessionData with SessionDataDecorator[T]]
     }
     lines += "***** End Client Headers *****"
     log.info(lines)
-    request.withHeaders(request.headers ++ clientHeaders: _*)
+    request.withHeaders(request.headers ++ clientHeaders)
   }
 
   def createSession(

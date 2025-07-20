@@ -151,7 +151,7 @@ trait SingletonPattern[C <: Command, R <: CommandResult]
       val maybeSingletonRef = Option(singletonRef)
       if (maybeSingletonRef.isEmpty) {
         log.warn(s"actorRef for [$name] is undefined")
-        system.receptionist ? Find(key) complete () match {
+        (system.receptionist ? Find(key)).complete() match {
           case Success(s) => maybeActorRef = s.serviceInstances(key).headOption
           case Failure(f) =>
             log.error(f.getMessage, f)
@@ -164,7 +164,7 @@ trait SingletonPattern[C <: Command, R <: CommandResult]
       log.info(s"spawn supervisor for singleton [$name]")
       import app.softnetwork.persistence._
       val supervisorRef = system.systemActorOf(supervisor, generateUUID())
-      supervisorRef ? SingletonRef complete () match {
+      (supervisorRef ? SingletonRef).complete() match {
         case Success(s) =>
           maybeActorRef = Some(s.singletonRef)
           log.info(s"actorRef for [$name] has been loaded -> ${s.singletonRef.path}")

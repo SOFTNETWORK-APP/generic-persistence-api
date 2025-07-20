@@ -69,7 +69,7 @@ package object concurrent {
     def retry(fn: => Future[T])(implicit ec: ExecutionContext): Future[T] = retry(nbTries)(fn)
 
     def retry(n: Int)(fn: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
-      val p = Promise[T]
+      val p = Promise[T]()
       fn onComplete {
         case Success(x) => p.success(x)
         case _ if n > 1 => p.completeWith(retry(n - 1)(fn))

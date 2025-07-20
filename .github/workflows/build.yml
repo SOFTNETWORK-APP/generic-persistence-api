@@ -23,8 +23,8 @@ permissions:
 
 jobs:
   test:
-    runs-on: self-hosted
-#    runs-on: ubuntu-latest
+#    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       # define Java options for both official sbt and sbt-extras
       JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
@@ -38,12 +38,14 @@ jobs:
         java-version: '8'
         distribution: 'temurin'
 #        cache: 'sbt'
+    - name: Setup sbt launcher
+      uses: sbt/setup-sbt@v1
     - name: Run tests & Coverage Report
       run: sbt coverage test coverageReport
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
-        files: common/target/scala-2.12/coverage-report/cobertura.xml,core/target/scala-2.12/coverage-report/cobertura.xml,teskit/target/scala-2.12/coverage-report/cobertura.xml
+        files: common/target/scala-2.12/coverage-report/cobertura.xml,common/testkit/target/scala-2.12/coverage-report/cobertura.xml,core/target/scala-2.12/coverage-report/cobertura.xml,core/teskit/target/scala-2.12/coverage-report/cobertura.xml,jdbc/target/scala-2.12/coverage-report/cobertura.xml,jdbc/teskit/target/scala-2.12/coverage-report/cobertura.xml,counter/target/scala-2.12/coverage-report/cobertura.xml,kv/target/scala-2.12/coverage-report/cobertura.xml,kv/target/scala-2.12/coverage-report/cobertura.xml,session/testkit/target/scala-2.12/coverage-report/cobertura.xml
         flags: unittests
         fail_ci_if_error: true
         verbose: true
@@ -59,5 +61,7 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
 #          cache: 'sbt'
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
       - name: Formatting
-        run: sbt scalafmtSbtCheck scalafmtCheck test:scalafmtCheck
+        run: sbt scalafmtSbtCheck scalafmtCheck Test/scalafmtCheck

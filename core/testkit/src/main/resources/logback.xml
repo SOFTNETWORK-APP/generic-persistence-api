@@ -32,6 +32,8 @@
 
     <logger name="app.softnetwork" level="INFO"/>
 
+    <logger name="com.github" level="INFO"/>
+
     <root level="INFO">
         <appender-ref ref="ASYNC"/>
         <appender-ref ref="STDOUT"/>

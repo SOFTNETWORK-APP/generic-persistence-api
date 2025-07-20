@@ -1,36 +1,38 @@
 object Versions {
 
-  val akka = "2.6.20"
+  val akka = "2.6.20" // TODO 2.6.20 -> 2.8.3
 
-  val akkaHttp = "10.2.10"
+  val akkaHttp = "10.2.10" // TODO 10.2.10 -> 10.5.3
 
   val akkaHttpJson4s = "1.39.2" //1.37.0 -> 1.39.2
 
-  val akkaHttpSession = "0.7.0"
+  val akkaHttpSession = "0.7.1" // 0.7.0 -> 0.7.1
 
   val tapir = "1.7.0"
 
   val tapirHttpSession = "0.2.0"
 
-  val akkaPersistenceJdbc = "5.0.4"
+  val akkaPersistenceJdbc = "5.0.4" // TODO 5.0.4 -> 5.2.1
 
-  val akkaManagement = "1.1.4" // 1.1.4 -> 1.2
+  val akkaManagement = "1.1.4" // TODO 1.1.4 -> 1.4.1
 
-  val postgresql = "42.2.18"
+  val postgresql = "42.2.18" // TODO 42.2.18 -> 42.7.7
 
-  val scalatest = "3.2.16"
+  val mysql = "8.4.0" // 8.0.33 -> 8.4.0
 
-  val typesafeConfig = "1.4.2"
+  val scalatest = "3.2.19" // 3.2.16 -> 3.2.19
 
-  val kxbmap = "0.4.4"
+  val typesafeConfig = "1.4.3"
 
-  val jackson = "2.12.7" // 2.11.4 -> 2.12.7
+  val kxbmap = "0.6.1"
+
+  val jackson = "2.19.0" // 2.12.7 -> 2.19.0
 
   val json4s = "4.0.6" // 3.6.12 -> 4.0.6
 
   val scalaLogging = "3.9.2"
 
-  val logback = "1.2.3"
+  val logback = "1.2.3" // TODO 1.2.3 -> 1.5.6
 
   val slf4j = "1.7.36"
 

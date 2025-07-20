@@ -10,7 +10,7 @@ val akkaPersistenceJdbc = Seq(
   "com.typesafe.slick" %% "slick" % Versions.slick,
   "com.typesafe.slick" %% "slick-hikaricp" % Versions.slick,
   "org.postgresql"       % "postgresql"  % Versions.postgresql,
-  "com.mysql" % "mysql-connector-j" % "8.0.33"
+  "com.mysql" % "mysql-connector-j" % Versions.mysql
 )
 
 libraryDependencies ++= akkaPersistenceJdbc

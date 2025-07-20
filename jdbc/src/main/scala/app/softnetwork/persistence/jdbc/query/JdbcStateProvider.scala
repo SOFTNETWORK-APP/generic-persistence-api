@@ -243,7 +243,7 @@ trait JdbcStateProvider[T <: Timestamped]
   ): Boolean = {
     val action =
       (states += (uuid, lastUpdated, deleted, state)).map(_ > 0)
-    db.run(action) complete () match {
+    db.run(action).complete() match {
       case Success(value) =>
         log.debug(s"Insert to $tableFullName with $uuid -> $value")
         value
@@ -278,7 +278,7 @@ trait JdbcStateProvider[T <: Timestamped]
         (uuid, lastUpdated, deleted, state)
       )
       .map(_ > 0)
-    db.run(action) complete () match {
+    db.run(action).complete() match {
       case Success(value) =>
         if (deleted) {
           log.debug(s"Delete from $tableFullName with $uuid -> $value")
@@ -301,7 +301,7 @@ trait JdbcStateProvider[T <: Timestamped]
     */
   def destroy(uuid: String): Boolean = {
     val action = states.filter(_.uuid === uuid).delete.map(_ > 0)
-    db.run(action) complete () match {
+    db.run(action).complete() match {
       case Success(value) =>
         log.debug(s"Delete from $tableFullName with $uuid -> $value")
         value
@@ -321,7 +321,7 @@ trait JdbcStateProvider[T <: Timestamped]
   def load(uuid: String): Option[T] = {
     implicit val manifest: Manifest[T] = manifestWrapper.wrapped
     val action = states.filter(_.uuid === uuid).result.headOption
-    db.run(action) complete () match {
+    db.run(action).complete() match {
       case Success(value) =>
         value match {
           case Some(document) =>
@@ -361,7 +361,7 @@ trait JdbcStateProvider[T <: Timestamped]
         SELECT state FROM $tableFullName WHERE $query
       """.as[String].map(_.toList)
     }
-    db.run(action) complete () match {
+    db.run(action).complete() match {
       case Success(value) =>
         log.debug(s"Search $tableFullName with $query -> $value")
         value.map(readState)

@@ -38,7 +38,7 @@ class SingletonServiceSpec
 
   "SingletonService" must {
     "run commands" in {
-      run(TestSample) complete () match {
+      run(TestSample).complete() match {
         case Success(s) =>
           s match {
             case SampleTested => log.info("sample tested !")
