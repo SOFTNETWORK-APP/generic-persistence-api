@@ -20,6 +20,20 @@ trait SlickDatabase extends ClasspathResources {
 
   def config: Config
 
+  /** Provides a DataSource for use by Flyway migrations. Extracted from the underlying HikariCP
+    * connection pool. Override this method if using a non-HikariCP connection pool.
+    */
+  lazy val dataSource: javax.sql.DataSource = {
+    db.source match {
+      case hikari: slick.jdbc.hikaricp.HikariCPJdbcDataSource => hikari.ds
+      case other =>
+        throw new IllegalStateException(
+          s"Expected HikariCP data source for Flyway, got ${other.getClass.getName}. " +
+          "Configure slick-hikaricp or override the dataSource method."
+        )
+    }
+  }
+
   lazy val slickProfile: String = config.getString("slick.profile")
 
   lazy val db: Database = {

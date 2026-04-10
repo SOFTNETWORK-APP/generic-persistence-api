@@ -23,9 +23,9 @@ import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 /** Created by smanciot on 04/01/2020.
- */
+  */
 trait PersistenceTestKit
-  extends PersistenceGuardian
+    extends PersistenceGuardian
     with BeforeAndAfterAll
     with Eventually
     with CompletionTestKit
@@ -61,8 +61,8 @@ trait PersistenceTestKit
   }
 
   /** @return
-   * roles associated with this node
-   */
+    *   roles associated with this node
+    */
   def roles: Seq[String] = Seq.empty
 
   final lazy val akka: String =
@@ -145,8 +145,8 @@ trait PersistenceTestKit
        |""".stripMargin + additionalConfig
 
   /** @return
-   * additional configuration
-   */
+    *   additional configuration
+    */
   def additionalConfig: String = ""
 
   lazy val akkaConfig: Config = ConfigFactory.parseString(akka)
@@ -160,7 +160,7 @@ trait PersistenceTestKit
   def typedSystem(): ActorSystem[Nothing] = system
 
   /** `PatienceConfig` from [[_root_.akka.actor.testkit.typed.TestKitSettings#DefaultTimeout]]
-   */
+    */
   implicit val patience: PatienceConfig =
     PatienceConfig(Settings.DefaultTimeout, Span(100, org.scalatest.time.Millis))
 
@@ -175,7 +175,7 @@ trait PersistenceTestKit
   }
 
   /** init and join cluster
-   */
+    */
   final def initAndJoinCluster(): Unit = {
     testKit.spawn(setup(), "guardian")
     // let the nodes join and become Up

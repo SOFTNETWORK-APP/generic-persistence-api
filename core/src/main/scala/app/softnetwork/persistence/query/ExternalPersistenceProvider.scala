@@ -58,6 +58,16 @@ trait ExternalPersistenceProvider[T <: Timestamped] { _: ManifestWrapper[T] =>
     */
   def deleteDocument(uuid: String): Boolean = false
 
+  /** Hard-deletes the underlying document referenced by its uuid from the external system. Use for
+    * GDPR compliance or permanent data removal.
+    *
+    * @param uuid
+    *   - the uuid of the document to destroy
+    * @return
+    *   whether the operation is successful or not
+    */
+  def destroy(uuid: String): Boolean = false
+
   /** Load the document referenced by its uuid
     *
     * @param uuid

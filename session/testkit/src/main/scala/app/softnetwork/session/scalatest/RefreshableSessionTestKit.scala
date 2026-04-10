@@ -19,7 +19,8 @@ trait RefreshableSessionTestKit[T <: SessionData with SessionDataDecorator[T]]
     value match {
       case Some(value) =>
         refreshable.refreshTokenManager
-          .sessionFromValue(value).complete() match {
+          .sessionFromValue(value)
+          .complete() match {
           case Success(value) =>
             value match {
               case _ @SessionResult.CreatedFromToken(session) => Some(session)
