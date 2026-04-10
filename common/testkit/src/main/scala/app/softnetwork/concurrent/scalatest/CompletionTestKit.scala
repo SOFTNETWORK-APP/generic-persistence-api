@@ -12,9 +12,9 @@ import scala.util.{Failure, Success, Try}
 import scala.language.reflectiveCalls
 
 /** Created by smanciot on 12/04/2021.
- */
+  */
 trait CompletionTestKit extends Completion with Assertions {
-  _: {def log: Logger} =>
+  _: { def log: Logger } =>
 
   implicit class AwaitAssertion[T](future: Future[T])(implicit atMost: Duration = defaultTimeout) {
     def assert(fun: T => Assertion): Assertion =

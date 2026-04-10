@@ -6,25 +6,24 @@ import app.softnetwork.*
 
 lazy val scala212 = "2.12.20"
 lazy val scala213 = "2.13.16"
-lazy val javacCompilerVersion = "1.8"
+lazy val javacCompilerVersion = "17"
 lazy val scalacCompilerOptions = Seq(
   "-deprecation",
-  "-feature",
-  s"-target:jvm-$javacCompilerVersion"
+  "-feature"
 )
 
 ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.8.0"
+ThisBuild / version := "0.8-SNAPSHOT"
 
 lazy val moduleSettings = Seq(
   crossScalaVersions := Seq(scala212, scala213),
   scalacOptions ++= {
     CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 12)) => scalacCompilerOptions :+ "-Ypartial-unification"
-      case Some((2, 13)) => scalacCompilerOptions
+      case Some((2, 13)) => scalacCompilerOptions :+ s"-release:$javacCompilerVersion"
       case _             => Seq.empty
     }
   }
@@ -54,6 +53,24 @@ ThisBuild / dependencyOverrides ++= Seq(
   "com.github.jnr" % "jffi"    % "1.3.13" classifier "native",
   "org.lmdbjava" % "lmdbjava" % "0.9.1" exclude("org.slf4j", "slf4j-api"),
 )
+
+ThisBuild / javaOptions ++= Seq(
+  "--add-opens=java.base/java.util=ALL-UNNAMED",
+  "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+  "--add-opens=java.base/java.lang=ALL-UNNAMED",
+  "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+  "--add-opens=java.base/java.math=ALL-UNNAMED",
+  "--add-opens=java.base/java.io=ALL-UNNAMED",
+  "--add-opens=java.base/java.net=ALL-UNNAMED",
+  "--add-opens=java.base/java.nio=ALL-UNNAMED",
+  "--add-opens=java.base/java.text=ALL-UNNAMED",
+  "--add-opens=java.base/java.time=ALL-UNNAMED",
+  "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
+)
+
+ThisBuild / Test / fork := true
+
+Test / javaOptions ++= javaOptions.value
 
 Test / parallelExecution := false
 

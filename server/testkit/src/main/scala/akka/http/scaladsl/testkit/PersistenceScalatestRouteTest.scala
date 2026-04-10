@@ -2,7 +2,7 @@ package akka.http.scaladsl.testkit
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpHeader
-import akka.http.scaladsl.model.headers.{Cookie, HttpCookiePair, RawHeader, `Set-Cookie`}
+import akka.http.scaladsl.model.headers.{`Set-Cookie`, Cookie, HttpCookiePair, RawHeader}
 import akka.http.scaladsl.server.directives.RouteDirectives
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.stream.{Materializer, SystemMaterializer}
@@ -19,9 +19,9 @@ import org.scalatest.Suite
 import scala.concurrent.ExecutionContextExecutor
 
 /** Created by smanciot on 24/04/2020.
- */
+  */
 trait PersistenceScalatestRouteTest
-  extends ApiServer
+    extends ApiServer
     with ServerTestKit
     with PersistenceTestKit
     with PersistenceRouteTest
@@ -74,7 +74,7 @@ trait PersistenceScalatestRouteTest
   @deprecated("this method has been replaced by findHeader and will be removed", since = "0.3.1.1")
   def findCookie(name: String): HttpHeader => Option[HttpCookiePair] = {
     case Cookie(cookies) => cookies.find(_.name == name)
-    case _ => None
+    case _               => None
   }
 
   def extractHeaders(headers: Seq[HttpHeader]): Seq[HttpHeader] = {
@@ -108,15 +108,15 @@ trait PersistenceScalatestRouteTest
   }
 
   def headerValue(name: String): HttpHeader => Option[String] = {
-    case Cookie(cookies) => cookies.find(_.name == name).map(_.value)
+    case Cookie(cookies)                => cookies.find(_.name == name).map(_.value)
     case r: RawHeader if r.name == name => Some(r.value)
-    case _ => None
+    case _                              => None
   }
 
   def findHeader(name: String): HttpHeader => Option[HttpHeader] = {
     case c: Cookie if c.cookies.exists(_.name == name) => Some(c)
-    case other if other.name() == name => Some(other)
-    case _ => None
+    case other if other.name() == name                 => Some(other)
+    case _                                             => None
   }
 
   def existHeader(name: String): HttpHeader => Boolean = header =>
@@ -124,7 +124,7 @@ trait PersistenceScalatestRouteTest
 }
 
 trait InMemoryPersistenceScalatestRouteTest
-  extends PersistenceScalatestRouteTest
+    extends PersistenceScalatestRouteTest
     with InMemoryPersistenceTestKit {
   _: Suite with ApiRoutes =>
 }
@@ -133,7 +133,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding
 import akka.http.scaladsl.model.HttpEntity.ChunkStreamPart
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Host, Upgrade, `Sec-WebSocket-Protocol`}
+import akka.http.scaladsl.model.headers.{`Sec-WebSocket-Protocol`, Host, Upgrade}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.settings.ParserSettings
 import akka.http.scaladsl.settings.RoutingSettings
@@ -151,7 +151,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 import scala.util.DynamicVariable
 
-trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding with RouteTestResultComponent with MarshallingTestUtils {
+trait PersistenceRouteTest
+    extends RequestBuilding
+    with WSTestRequestBuilding
+    with RouteTestResultComponent
+    with MarshallingTestUtils {
   this: TestFrameworkInterface =>
 
   /** Override to supply a custom ActorSystem */
@@ -184,9 +188,11 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
     if (dynRR.value ne null) dynRR.value
     else sys.error("This value is only available inside of a `check` construct!")
 
-  def check[T](body: => T): RouteTestResult => T = result => dynRR.withValue(result.awaitResult)(body)
+  def check[T](body: => T): RouteTestResult => T = result =>
+    dynRR.withValue(result.awaitResult)(body)
 
-  private def responseSafe = if (dynRR.value ne null) dynRR.value.response else "<not available anymore>"
+  private def responseSafe =
+    if (dynRR.value ne null) dynRR.value.response else "<not available anymore>"
 
   def handled: Boolean = result.handled
 
@@ -200,16 +206,26 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
 
   def chunksStream: Source[ChunkStreamPart, Any] = result.chunksStream
 
-  def entityAs[T: FromEntityUnmarshaller : ClassTag](implicit timeout: Duration = 1.second): T = {
-    def msg(e: Throwable) = s"Could not unmarshal entity to type '${implicitly[ClassTag[T]]}' for `entityAs` assertion: $e\n\nResponse was: $responseSafe"
+  def entityAs[T: FromEntityUnmarshaller: ClassTag](implicit timeout: Duration = 1.second): T = {
+    def msg(e: Throwable) =
+      s"Could not unmarshal entity to type '${implicitly[ClassTag[T]]}' for `entityAs` assertion: $e\n\nResponse was: $responseSafe"
 
-    Await.result(Unmarshal(responseEntity).to[T].fast.recover[T] { case error => failTest(msg(error)) }, timeout)
+    Await.result(
+      Unmarshal(responseEntity).to[T].fast.recover[T] { case error => failTest(msg(error)) },
+      timeout
+    )
   }
 
-  def responseAs[T: FromResponseUnmarshaller : ClassTag](implicit timeout: Duration = 1.second): T = {
-    def msg(e: Throwable) = s"Could not unmarshal response to type '${implicitly[ClassTag[T]]}' for `responseAs` assertion: $e\n\nResponse was: $responseSafe"
+  def responseAs[T: FromResponseUnmarshaller: ClassTag](implicit
+    timeout: Duration = 1.second
+  ): T = {
+    def msg(e: Throwable) =
+      s"Could not unmarshal response to type '${implicitly[ClassTag[T]]}' for `responseAs` assertion: $e\n\nResponse was: $responseSafe"
 
-    Await.result(Unmarshal(response).to[T].fast.recover[T] { case error => failTest(msg(error)) }, timeout)
+    Await.result(
+      Unmarshal(response).to[T].fast.recover[T] { case error => failTest(msg(error)) },
+      timeout
+    )
   }
 
   def contentType: ContentType = rawResponse.entity.contentType
@@ -218,11 +234,13 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
 
   def charsetOption: Option[HttpCharset] = contentType.charsetOption
 
-  def charset: HttpCharset = charsetOption getOrElse sys.error("Binary entity does not have charset")
+  def charset: HttpCharset =
+    charsetOption getOrElse sys.error("Binary entity does not have charset")
 
   def headers: immutable.Seq[HttpHeader] = rawResponse.headers
 
-  def header[T >: Null <: HttpHeader : ClassTag]: Option[T] = rawResponse.header[T](implicitly[ClassTag[T]])
+  def header[T >: Null <: HttpHeader: ClassTag]: Option[T] =
+    rawResponse.header[T](implicitly[ClassTag[T]])
 
   def header(name: String): Option[HttpHeader] = rawResponse.headers.find(_.is(name.toLowerCase))
 
@@ -230,28 +248,28 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
 
   def closingExtension: String = chunks.lastOption match {
     case Some(HttpEntity.LastChunk(extension, _)) => extension
-    case _ => ""
+    case _                                        => ""
   }
 
   def trailer: immutable.Seq[HttpHeader] = chunks.lastOption match {
     case Some(HttpEntity.LastChunk(_, trailer)) => trailer
-    case _ => Nil
+    case _                                      => Nil
   }
 
   def rejections: immutable.Seq[Rejection] = result.rejections
 
   def rejection: Rejection = {
     val r = rejections
-    if (r.size == 1) r.head else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))
+    if (r.size == 1) r.head
+    else failTest("Expected a single rejection but got %s (%s)".format(r.size, r))
   }
 
   def isWebSocketUpgrade: Boolean =
     status == StatusCodes.SwitchingProtocols && header[Upgrade].exists(_.hasWebSocket)
 
-  /**
-   * Asserts that the received response is a WebSocket upgrade response and the extracts
-   * the chosen subprotocol and passes it to the handler.
-   */
+  /** Asserts that the received response is a WebSocket upgrade response and the extracts the chosen
+    * subprotocol and passes it to the handler.
+    */
   def expectWebSocketUpgradeWithProtocol(body: String => Unit): Unit = {
     if (!isWebSocketUpgrade) failTest("Response was no WebSocket Upgrade response")
     header[`Sec-WebSocket-Protocol`] match {
@@ -260,29 +278,27 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
     }
   }
 
-  /**
-   * A dummy that can be used as `~> runRoute` to run the route but without blocking for the result.
-   * The result of the pipeline is the result that can later be checked with `check`. See the
-   * "separate running route from checking" example from ScalatestRouteTestSpec.scala.
-   */
+  /** A dummy that can be used as `~> runRoute` to run the route but without blocking for the
+    * result. The result of the pipeline is the result that can later be checked with `check`. See
+    * the "separate running route from checking" example from ScalatestRouteTestSpec.scala.
+    */
   def runRoute: RouteTestResult => RouteTestResult = ConstantFun.scalaIdentityFunction
 
   // there is already an implicit class WithTransformation in scope (inherited from akka.http.scaladsl.testkit.TransformerPipelineSupport)
   // however, this one takes precedence
   implicit class WithTransformation2(request: HttpRequest) {
-    /**
-     * Apply request to given routes for further inspection in `check { }` block.
-     */
+
+    /** Apply request to given routes for further inspection in `check { }` block.
+      */
     def ~>[A, B](f: A => B)(implicit ta: TildeArrow[A, B]): ta.Out = ta(request, f)
 
-    /**
-     * Evaluate request against routes run in server mode for further
-     * inspection in `check { }` block.
-     *
-     * Compared to [[~>]], the given routes are run in a fully fledged
-     * server, which allows more types of directives to be tested at the
-     * cost of additional overhead related with server setup.
-     */
+    /** Evaluate request against routes run in server mode for further inspection in `check { }`
+      * block.
+      *
+      * Compared to [[~>]], the given routes are run in a fully fledged server, which allows more
+      * types of directives to be tested at the cost of additional overhead related with server
+      * setup.
+      */
     def ~!>[A, B](f: A => B)(implicit tba: TildeBangArrow[A, B]): tba.Out = tba(request, f)
   }
 
@@ -295,7 +311,8 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
   case class DefaultHostInfo(host: Host, securedConnection: Boolean)
 
   object DefaultHostInfo {
-    implicit def defaultHost: DefaultHostInfo = DefaultHostInfo(Host("example.com"), securedConnection = false)
+    implicit def defaultHost: DefaultHostInfo =
+      DefaultHostInfo(Host("example.com"), securedConnection = false)
   }
 
   object TildeArrow {
@@ -305,14 +322,19 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
       def apply(request: HttpRequest, f: HttpRequest => HttpRequest) = f(request)
     }
 
-    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, defaultHostInfo: DefaultHostInfo): TildeArrow[RequestContext, Future[RouteResult]] {type Out = RouteTestResult} =
+    implicit def injectIntoRoute(implicit
+      timeout: RouteTestTimeout,
+      defaultHostInfo: DefaultHostInfo
+    ): TildeArrow[RequestContext, Future[RouteResult]] { type Out = RouteTestResult } =
       new TildeArrow[RequestContext, Future[RouteResult]] {
         type Out = RouteTestResult
 
         def apply(request: HttpRequest, route: Route): Out = {
           if (request.method == HttpMethods.HEAD && ServerSettings(system).transparentHeadRequests)
-            failTest("`akka.http.server.transparent-head-requests = on` not supported in PersistenceRouteTest using `~>`. Use `~!>` instead " +
-              "for a full-stack test, e.g. `req ~!> route ~> check {...}`")
+            failTest(
+              "`akka.http.server.transparent-head-requests = on` not supported in PersistenceRouteTest using `~>`. Use `~!>` instead " +
+              "for a full-stack test, e.g. `req ~!> route ~> check {...}`"
+            )
 
           implicit val executionContext: ExecutionContext = system.classicSystem.dispatcher
           val routingSettings = RoutingSettings(system)
@@ -322,9 +344,15 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
           val effectiveRequest =
             request.withEffectiveUri(
               securedConnection = defaultHostInfo.securedConnection,
-              defaultHostHeader = defaultHostInfo.host)
+              defaultHostHeader = defaultHostInfo.host
+            )
           val parserSettings = ParserSettings.forServer(system)
-          val ctx = new RequestContextImpl(effectiveRequest, routingLog.requestLog(effectiveRequest), routingSettings, parserSettings)
+          val ctx = new RequestContextImpl(
+            effectiveRequest,
+            routingLog.requestLog(effectiveRequest),
+            routingSettings,
+            parserSettings
+          )
 
           val sealedExceptionHandler = ExceptionHandler.seal(testExceptionHandler)
 
@@ -344,7 +372,10 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
   }
 
   object TildeBangArrow {
-    implicit def injectIntoRoute(implicit timeout: RouteTestTimeout, serverSettings: ServerSettings): TildeBangArrow[RequestContext, Future[RouteResult]] {type Out = RouteTestResult} =
+    implicit def injectIntoRoute(implicit
+      timeout: RouteTestTimeout,
+      serverSettings: ServerSettings
+    ): TildeBangArrow[RequestContext, Future[RouteResult]] { type Out = RouteTestResult } =
       new TildeBangArrow[RequestContext, Future[RouteResult]] {
         type Out = RouteTestResult
 
@@ -360,10 +391,15 @@ trait PersistenceRouteTest extends RequestBuilding with WSTestRequestBuilding wi
 }
 
 private[http] object PersistenceRouteTest {
-  def runRouteClientServer(request: HttpRequest, route: Route, serverSettings: ServerSettings)(implicit system: ActorSystem): Future[HttpResponse] = {
+  def runRouteClientServer(request: HttpRequest, route: Route, serverSettings: ServerSettings)(
+    implicit system: ActorSystem
+  ): Future[HttpResponse] = {
     import system.dispatcher
     for {
-      binding <- Http().newServerAt("127.0.0.1", 0).withSettings(settings = serverSettings).bind(route)
+      binding <- Http()
+        .newServerAt("127.0.0.1", 0)
+        .withSettings(settings = serverSettings)
+        .bind(route)
       port = binding.localAddress.getPort
       targetUri = request.uri.withHost("127.0.0.1").withPort(port).withScheme("http")
 

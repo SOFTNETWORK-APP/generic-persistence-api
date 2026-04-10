@@ -299,7 +299,7 @@ trait JdbcStateProvider[T <: Timestamped]
     * @return
     *   whether the operation is successful or not
     */
-  def destroy(uuid: String): Boolean = {
+  override def destroy(uuid: String): Boolean = {
     val action = states.filter(_.uuid === uuid).delete.map(_ > 0)
     db.run(action).complete() match {
       case Success(value) =>

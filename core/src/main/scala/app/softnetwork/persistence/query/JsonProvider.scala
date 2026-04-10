@@ -1,7 +1,12 @@
 package app.softnetwork.persistence.query
 
 import app.softnetwork.persistence.ManifestWrapper
-import app.softnetwork.persistence.model.{CamelCaseString, StateWrapper, StateWrappertReader, Timestamped}
+import app.softnetwork.persistence.model.{
+  CamelCaseString,
+  StateWrapper,
+  StateWrappertReader,
+  Timestamped
+}
 import app.softnetwork.serialization.{commonFormats, serialization, updateCaseClass}
 import com.typesafe.config.{Config, ConfigFactory}
 import org.json4s.Formats
@@ -167,10 +172,9 @@ trait JsonProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] {
         } match {
           case Success(value) if value.uuid != uuid => // do nothing
           case Success(value) if value.uuid == uuid && value.state.isDefined || value.deleted =>
-            if(value.deleted){
+            if (value.deleted) {
               lastMatchingLine = None
-            }
-            else{
+            } else {
               lastMatchingLine = value.state // return the state
             }
           case _ =>
@@ -184,19 +188,18 @@ trait JsonProvider[T <: Timestamped] extends ExternalPersistenceProvider[T] {
                 case Some(d) => d.toString.toBoolean
                 case _       => false
               }
-              if(deleted){
+              if (deleted) {
                 lastMatchingLine = None
-              }
-              else{
+              } else {
                 parsed.get("state") match {
                   case Some(updated: Map[String, Any]) =>
                     lastMatchingLine match {
                       case Some(l)
-                        if updated
-                          .get("lastUpdated")
-                          .map(lu => Instant.parse(lu.toString))
-                          .getOrElse(Instant.MIN)
-                          .isAfter(l.lastUpdated) => // update the state
+                          if updated
+                            .get("lastUpdated")
+                            .map(lu => Instant.parse(lu.toString))
+                            .getOrElse(Instant.MIN)
+                            .isAfter(l.lastUpdated) => // update the state
                         Try(updateCaseClass(l, updated)) match {
                           case Success(updated: T) =>
                             lastMatchingLine = Some(updated)

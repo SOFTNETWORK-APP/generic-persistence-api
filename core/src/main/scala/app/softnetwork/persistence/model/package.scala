@@ -45,7 +45,7 @@ package object model {
         acc + char
       }
     }
-    def $: String = toSnakeCase
+    def $ : String = toSnakeCase
   }
 
   case class StateWrapper[T <: State](
