@@ -71,8 +71,8 @@ trait ColumnMappedJdbcStateProvider[T <: Timestamped]
 
   implicit def formats: Formats = commonFormats
 
-  /** The table name, used for raw SQL search queries and logging.
-    * Derived from the entity type name, converted to snake_case.
+  /** The table name, used for raw SQL search queries and logging. Derived from the entity type
+    * name, converted to snake_case.
     */
   lazy val tableName: String =
     manifestWrapper.wrapped.runtimeClass.getSimpleName
@@ -104,9 +104,9 @@ trait ColumnMappedJdbcStateProvider[T <: Timestamped]
     case _       => tableName
   }
 
-  /** Column list for `searchDocuments` raw SQL. Override with explicit column names
-    * (e.g., `"uuid, last_updated, name, email, status, deleted"`) when adding Flyway
-    * migrations that change column order, to keep `GetResult` aligned.
+  /** Column list for `searchDocuments` raw SQL. Override with explicit column names (e.g., `"uuid,
+    * last_updated, name, email, status, deleted"`) when adding Flyway migrations that change column
+    * order, to keep `GetResult` aligned.
     */
   protected def selectColumns: String = "*"
 
@@ -196,9 +196,8 @@ trait ColumnMappedJdbcStateProvider[T <: Timestamped]
     * requiring retry).
     *
     * The load-then-update is intentionally tolerant of concurrent removal: if another
-    * thread/process deletes the row between `loadDocument` and the UPDATE, the update
-    * affects 0 rows but we still return `true` because the end state (entity gone) is
-    * what the caller wanted.
+    * thread/process deletes the row between `loadDocument` and the UPDATE, the update affects 0
+    * rows but we still return `true` because the end state (entity gone) is what the caller wanted.
     */
   override final def deleteDocument(uuid: String): Boolean = {
     loadDocument(uuid) match {
@@ -228,8 +227,8 @@ trait ColumnMappedJdbcStateProvider[T <: Timestamped]
     * data removal.
     *
     * Note: this method is not part of the `ExternalPersistenceProvider` interface and must be
-    * called on the concrete provider type. For pipeline-driven hard deletes, downcast the
-    * provider or use a dedicated command handler.
+    * called on the concrete provider type. For pipeline-driven hard deletes, downcast the provider
+    * or use a dedicated command handler.
     */
   override def destroy(uuid: String): Boolean = {
     val action = tableQuery.filter(r => rowUuidColumn(r) === uuid).delete.map(_ > 0)

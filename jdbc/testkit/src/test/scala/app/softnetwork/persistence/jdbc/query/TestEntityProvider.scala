@@ -6,8 +6,8 @@ import slick.jdbc.{GetResult, JdbcProfile}
 import java.time.Instant
 import scala.util.Success
 
-/** Test implementation of ColumnMappedJdbcStateProvider, database-agnostic.
-  * The concrete test spec mixes in the desired JdbcProfile (H2Profile, PostgresProfile, etc.).
+/** Test implementation of ColumnMappedJdbcStateProvider, database-agnostic. The concrete test spec
+  * mixes in the desired JdbcProfile (H2Profile, PostgresProfile, etc.).
   */
 trait TestEntityProvider
     extends ColumnMappedJdbcStateProvider[TestEntity]
@@ -16,7 +16,16 @@ trait TestEntityProvider
 
   override val manifestWrapper: ManifestW = ManifestW()
 
-  override type RowType = (String, Instant, Instant, String, String, String, Boolean) // uuid, createdDate, lastUpdated, ...
+  override type RowType =
+    (
+      String,
+      Instant,
+      Instant,
+      String,
+      String,
+      String,
+      Boolean
+    ) // uuid, createdDate, lastUpdated, ...
   override type TableType = TestEntities
 
   import api._
