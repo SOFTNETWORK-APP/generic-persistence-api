@@ -7,6 +7,7 @@ import org.scalatest.BeforeAndAfterAll
 import slick.jdbc.H2Profile
 
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext
 
 class ColumnMappedJdbcStateProviderSpec
@@ -24,7 +25,7 @@ class ColumnMappedJdbcStateProviderSpec
     initTable()
   }
 
-  private val now = Instant.now()
+  private val now = Instant.now().truncatedTo(ChronoUnit.MICROS)
   private val alice =
     TestEntity("id-1", now, now, "Alice", "alice@acme.com", "active")
   private val bob =
