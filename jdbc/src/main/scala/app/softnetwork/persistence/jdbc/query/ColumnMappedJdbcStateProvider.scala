@@ -303,12 +303,17 @@ trait ColumnMappedJdbcStateProvider[T <: Timestamped]
       validateIdentifier(d)
       log.info(s"Setting up dataset $d")
       withStatement { stmt =>
-        try {
+        Try(
           stmt.executeUpdate(s"CREATE SCHEMA IF NOT EXISTS $d")
-          log.debug(s"Setup dataset $d")
-        } catch {
-          case _: java.sql.SQLSyntaxErrorException => // suppress known errors
-          case other: Throwable                    => log.error(other.getMessage)
+        ) match {
+          case Success(_) =>
+            log.debug(s"Dataset $d is ready")
+          case Failure(e: java.sql.SQLSyntaxErrorException) =>
+            // Suppress known syntax errors (e.g., if the database doesn't support schemas)
+            log.warn(s"Could not create schema $d, it may not be supported by the database", e)
+          case Failure(other) =>
+            log.error(s"Error while creating schema $d", other)
+            throw other
         }
       }
     }
