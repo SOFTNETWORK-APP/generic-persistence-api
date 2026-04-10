@@ -10,6 +10,7 @@ migration folder: `db/migration/{tablename}/`
 `V{version}__{description}.sql` (double underscore)
 
 Examples:
+
 - `V1__create_api_keys.sql`
 - `V2__add_revoked_at_column.sql`
 
