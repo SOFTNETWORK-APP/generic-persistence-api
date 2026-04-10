@@ -68,6 +68,10 @@ ThisBuild / javaOptions ++= Seq(
   "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED"
 )
 
+ThisBuild / Test / fork := true
+
+Test / javaOptions ++= javaOptions.value
+
 Test / parallelExecution := false
 
 lazy val common = project.in(file("common"))
