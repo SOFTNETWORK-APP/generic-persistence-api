@@ -11,6 +11,6 @@ val jacksonExclusions = Seq(
 
 libraryDependencies ++= Seq(
   "com.h2database" % "h2" % "2.1.210",
-  "org.testcontainers" % "postgresql" % Versions.testContainers excludeAll(jacksonExclusions:_*),
-  "org.testcontainers" % "mysql" % Versions.testContainers excludeAll(jacksonExclusions:_*)
+  "org.testcontainers" % "testcontainers-postgresql" % Versions.testContainers excludeAll(jacksonExclusions:_*),
+  "org.testcontainers" % "testcontainers-mysql" % Versions.testContainers excludeAll(jacksonExclusions:_*)
 )
