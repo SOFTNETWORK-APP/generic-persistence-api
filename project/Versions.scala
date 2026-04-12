@@ -54,5 +54,5 @@ object Versions {
 
   val flyway = "11.8.1"
 
-  val testContainers = "1.20.6"
+  val testContainers = "2.0.4"
 }
