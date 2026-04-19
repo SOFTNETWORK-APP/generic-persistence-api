@@ -133,6 +133,12 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
         .and(header[ApiErrors.Found](HeaderNames.Location).description("Redirect address"))
     )
 
+  val conflictVariant: EndpointOutput.OneOfVariant[ApiErrors.Conflict] =
+    oneOfVariant(
+      statusCode(StatusCode.Conflict)
+        .and(jsonBody[ApiErrors.Conflict].description("Conflict"))
+    )
+
   val badRequestVariant: EndpointOutput.OneOfVariant[ApiErrors.BadRequest] =
     oneOfVariant(
       statusCode(StatusCode.BadRequest)
@@ -168,6 +174,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
       unauthorizedWithChallengeVariant,
       notFoundVariant,
       foundVariant,
+      conflictVariant,
       badRequestVariant,
       internalServerErrorVariant,
       // default case below.
@@ -204,6 +211,12 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
         StatusCode.Found,
         header[Left[ApiErrors.Found, T]]("Location").description("Redirect address")
       ) { case Left(ApiErrors.Found(_)) =>
+        true
+      },
+      oneOfVariantValueMatcher(
+        StatusCode.Conflict,
+        jsonBody[Left[ApiErrors.Conflict, T]].description("Conflict")
+      ) { case Left(ApiErrors.Conflict(_)) =>
         true
       },
       oneOfVariantValueMatcher(
@@ -254,6 +267,7 @@ object ApiErrors extends SchemaDerivation with TapirJson4s {
       unauthorizedWithChallengeVariant,
       notFoundVariant,
       foundVariant,
+      conflictVariant,
       badRequestVariant,
       internalServerErrorVariant,
       defaultErrorVariant
