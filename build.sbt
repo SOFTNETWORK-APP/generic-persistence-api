@@ -16,7 +16,7 @@ ThisBuild / organization := "app.softnetwork"
 
 name := "generic-persistence-api"
 
-ThisBuild / version := "0.8.2"
+ThisBuild / version := "0.8.3"
 
 lazy val moduleSettings = Seq(
   crossScalaVersions := Seq(scala212, scala213),
