@@ -311,6 +311,9 @@ trait ColumnMappedJdbcStateProvider[T <: Timestamped]
           case Failure(e: java.sql.SQLSyntaxErrorException) =>
             // Suppress known syntax errors (e.g., if the database doesn't support schemas)
             log.warn(s"Could not create schema $d, it may not be supported by the database", e)
+          case Failure(e: java.sql.SQLException) if e.getSQLState == "23505" =>
+            // Duplicate key (race condition with concurrent CREATE SCHEMA IF NOT EXISTS)
+            log.debug(s"Schema $d already exists (concurrent creation)")
           case Failure(other) =>
             log.error(s"Error while creating schema $d", other)
             throw other
