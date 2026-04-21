@@ -212,14 +212,15 @@ trait JdbcStateProvider[T <: Timestamped]
         }
     }
     (if (!to_update) {
+       log.debug(s"Inserting document ${document.uuid} with data $state")
        insert(document.uuid, document.lastUpdated, document.deleted, state)
      } else {
        log.debug(s"Updating document ${document.uuid} with data $state")
        update(document.uuid, document.lastUpdated, document.deleted, state)
-     }) && writeToFile(
+     }) || writeToFile(
       document,
       data
-    ) // write to file as well
+    ) // write to file if writing to db fails
   }
 
   /** Creates the underlying document to the database
