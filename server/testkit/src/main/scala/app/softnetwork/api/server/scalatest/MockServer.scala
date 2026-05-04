@@ -23,21 +23,39 @@ trait MockServer extends Completion {
 
   protected def stop(): Future[Done]
 
-  final def init(): Boolean = {
+  /** Start the mock server and register a shutdown hook to gracefully stop it when the application
+    * is terminated.
+    * @param coordinatedShutdown
+    *   whether to register a shutdown hook with Akka's CoordinatedShutdown
+    * @return
+    *   true if the server was successfully started, false otherwise
+    */
+  final def init(coordinatedShutdown: Boolean = true): Boolean = {
     val started = start()
     if (started) {
       log.info(s"Mock Server $name started")
-      implicit val classicSystem: _root_.akka.actor.ActorSystem = system
-      val shutdown = CoordinatedShutdown(classicSystem)
-      shutdown.addTask(
-        CoordinatedShutdown.PhaseServiceRequestsDone,
-        s"$name-graceful-terminate"
-      ) { () =>
-        log.info(s"Stopping Mock Server $name ...")
-        stop()
+      if (coordinatedShutdown) {
+        implicit val classicSystem: _root_.akka.actor.ActorSystem = system
+        val shutdown = CoordinatedShutdown(classicSystem)
+        shutdown.addTask(
+          CoordinatedShutdown.PhaseServiceRequestsDone,
+          s"$name-graceful-terminate"
+        ) { () =>
+          log.info(s"Stopping Mock Server $name ...")
+          stop()
+        }
       }
     }
     started
   }
 
+  /** Gracefully shutdown the mock server, allowing it to complete any ongoing requests before
+    * stopping.
+    * @return
+    *   a Future that completes when the server has been fully stopped
+    */
+  final def shutdown(): Future[Done] = {
+    log.info(s"Shutting down Mock Server $name ...")
+    stop()
+  }
 }
