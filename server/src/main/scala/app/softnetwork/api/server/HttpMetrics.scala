@@ -33,14 +33,17 @@ object HttpMetrics {
     duration.labelValues(method, p).observe(seconds)
   }
 
+  private val HexLike = "^[0-9a-fA-F-]+$".r
+  private val DigitsOnly = "^[0-9]+$".r
+
   /** Collapse id-like segments (UUID/hex >= 8 chars, or all-digits) to `:id`. */
   def normalizePath(path: String): String =
     path
       .split("/", -1)
       .map { seg =>
         if (seg.isEmpty) seg
-        else if (seg.length >= 8 && seg.matches("[0-9a-fA-F-]+")) ":id"
-        else if (seg.matches("[0-9]+")) ":id"
+        else if (seg.length >= 8 && HexLike.pattern.matcher(seg).matches()) ":id"
+        else if (DigitsOnly.pattern.matcher(seg).matches()) ":id"
         else seg
       }
       .mkString("/")
