@@ -54,26 +54,31 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
 
   final def mainRoutes: ActorSystem[_] => Route = system => {
     val routes = concat((HealthCheckService :: apiRoutes(system)).map(_.route): _*)
-    handleRejections(rejectionHandler) {
-      handleExceptions(exceptionHandler) {
-        logRequestResult("RestAll") {
-          pathPrefix(config.ServerSettings.RootPath) {
-            Try(
-              respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
-                routes
-              }
-            ) match {
-              case Success(s) => s
-              case Failure(f) =>
-                log.error(f.getMessage, f.getCause)
-                complete(
-                  HttpResponse(
-                    StatusCodes.InternalServerError,
-                    entity = f.getMessage
+    // Story 13.6 Phase B — record method / normalised-path / status + latency for every request into
+    // PrometheusRegistry.defaultRegistry. Wraps the WHOLE pipeline (outside handleRejections /
+    // handleExceptions) so the final response — rejection/exception ones included — is observed.
+    HttpMetrics.withMetrics {
+      handleRejections(rejectionHandler) {
+        handleExceptions(exceptionHandler) {
+          logRequestResult("RestAll") {
+            pathPrefix(config.ServerSettings.RootPath) {
+              Try(
+                respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
+                  routes
+                }
+              ) match {
+                case Success(s) => s
+                case Failure(f) =>
+                  log.error(f.getMessage, f.getCause)
+                  complete(
+                    HttpResponse(
+                      StatusCodes.InternalServerError,
+                      entity = f.getMessage
+                    )
                   )
-                )
-            }
-          } ~ grpcRoutes(system)
+              }
+            } ~ grpcRoutes(system)
+          }
         }
       }
     }

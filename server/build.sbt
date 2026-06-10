@@ -19,4 +19,17 @@ val tapir = Seq(
   "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % Versions.tapir
 )
 
-libraryDependencies ++= akkaHttp ++ tapir
+// Story 13.6 Phase B — record HTTP-route rate+latency into PrometheusRegistry.defaultRegistry.
+val prometheus = Seq(
+  "io.prometheus" % "prometheus-metrics-core" % Versions.prometheus
+)
+
+// Route-level test for the HttpMetrics directive (akka-http-testkit + text exposition to assert
+// registry samples). Test-scope only.
+val httpMetricsTest = Seq(
+  "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % Test,
+  "io.prometheus" % "prometheus-metrics-exposition-textformats" % Versions.prometheus % Test,
+  "org.scalatest" %% "scalatest" % Versions.scalatest % Test
+)
+
+libraryDependencies ++= akkaHttp ++ tapir ++ prometheus ++ httpMetricsTest
