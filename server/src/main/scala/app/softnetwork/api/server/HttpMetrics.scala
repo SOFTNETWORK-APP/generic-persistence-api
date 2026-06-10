@@ -3,9 +3,9 @@ package app.softnetwork.api.server
 import io.prometheus.metrics.core.metrics.{Counter, Histogram}
 
 /** Story 13.6 Phase B — HTTP request rate + latency, recorded into the global
-  * `PrometheusRegistry.defaultRegistry`. A downstream service's `/metrics` endpoint (served from the
-  * same default registry) exposes these series; the `service` label is added at scrape time by the
-  * ServiceMonitor relabeling (these are library-defined series with a fixed label set).
+  * `PrometheusRegistry.defaultRegistry`. A downstream service's `/metrics` endpoint (served from
+  * the same default registry) exposes these series; the `service` label is added at scrape time by
+  * the ServiceMonitor relabeling (these are library-defined series with a fixed label set).
   *
   * `path` is normalised (id-like segments collapsed to `:id`) to bound cardinality, since the raw
   * request path can embed UUIDs / numeric ids.
