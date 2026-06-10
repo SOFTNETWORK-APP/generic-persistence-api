@@ -53,18 +53,33 @@ object HttpMetrics {
       }(inner)
     }
 
-  private val HexLike = "^[0-9a-fA-F-]+$".r
+  // akka-http 10.2.x exposes no matched-route template at this top-level wrapper, so cardinality is
+  // bounded by collapsing every *dynamic-looking* segment to `:id` — reducing the `path` label space
+  // to the static route vocabulary plus `:id` for realistic id/token traffic. (A literal router
+  // template would require instrumenting each leaf route — a larger refactor.) A digit is required for
+  // the hex/alnum cases so static words built only of a–f or letters — `database`, `deadbeef` — are
+  // NOT mis-collapsed.
   private val DigitsOnly = "^[0-9]+$".r
+  private val Uuid =
+    "(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$".r
+  private val LongHex = "^[0-9a-fA-F]{8,}$".r // compact hex id (UUID w/o dashes, object id)
+  private val AlnumToken = "^[0-9A-Za-z_-]{16,}$".r // ULID / base62 / JWT-ish opaque token
 
-  /** Collapse id-like segments (UUID/hex >= 8 chars, or all-digits) to `:id`. */
+  /** Collapse id-like segments (UUID, all-digits, long hex/alnum-with-digit, percent-encoded) to
+    * `:id`.
+    */
   def normalizePath(path: String): String =
     path
       .split("/", -1)
-      .map { seg =>
-        if (seg.isEmpty) seg
-        else if (seg.length >= 8 && HexLike.pattern.matcher(seg).matches()) ":id"
-        else if (DigitsOnly.pattern.matcher(seg).matches()) ":id"
-        else seg
-      }
+      .map(seg => if (seg.nonEmpty && isDynamic(seg)) ":id" else seg)
       .mkString("/")
+
+  private def isDynamic(seg: String): Boolean = {
+    val hasDigit = seg.exists(_.isDigit)
+    DigitsOnly.pattern.matcher(seg).matches() ||
+    Uuid.pattern.matcher(seg).matches() ||
+    (hasDigit && LongHex.pattern.matcher(seg).matches()) ||
+    (hasDigit && AlnumToken.pattern.matcher(seg).matches()) ||
+    seg.indexOf('%') >= 0 // percent-encoded (e.g. an email used as a path id)
+  }
 }
