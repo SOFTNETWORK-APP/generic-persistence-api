@@ -19,4 +19,9 @@ val tapir = Seq(
   "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % Versions.tapir
 )
 
-libraryDependencies ++= akkaHttp ++ tapir
+// Story 13.6 Phase B — record HTTP-route rate+latency into PrometheusRegistry.defaultRegistry.
+val prometheus = Seq(
+  "io.prometheus" % "prometheus-metrics-core" % Versions.prometheus
+)
+
+libraryDependencies ++= akkaHttp ++ tapir ++ prometheus

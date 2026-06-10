@@ -2,6 +2,10 @@ object Versions {
 
   val akka = "2.6.20" // TODO 2.6.20 -> 2.8.3
 
+  // Prometheus client_java 1.x — HTTP-route metrics recorded into PrometheusRegistry.defaultRegistry
+  // (the shared registry a downstream /metrics endpoint serves). Story 13.6 Phase B.
+  val prometheus = "1.7.0"
+
   val akkaHttp = "10.2.10" // TODO 10.2.10 -> 10.5.3
 
   val akkaHttpJson4s = "1.39.2" //1.37.0 -> 1.39.2
