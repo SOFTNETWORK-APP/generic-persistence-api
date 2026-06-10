@@ -24,4 +24,12 @@ val prometheus = Seq(
   "io.prometheus" % "prometheus-metrics-core" % Versions.prometheus
 )
 
-libraryDependencies ++= akkaHttp ++ tapir ++ prometheus
+// Route-level test for the HttpMetrics directive (akka-http-testkit + text exposition to assert
+// registry samples). Test-scope only.
+val httpMetricsTest = Seq(
+  "com.typesafe.akka" %% "akka-http-testkit" % Versions.akkaHttp % Test,
+  "io.prometheus" % "prometheus-metrics-exposition-textformats" % Versions.prometheus % Test,
+  "org.scalatest" %% "scalatest" % Versions.scalatest % Test
+)
+
+libraryDependencies ++= akkaHttp ++ tapir ++ prometheus ++ httpMetricsTest

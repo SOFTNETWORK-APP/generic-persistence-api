@@ -1,5 +1,7 @@
 package app.softnetwork.api.server
 
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import io.prometheus.metrics.core.metrics.{Counter, Histogram}
 
 /** Story 13.6 Phase B — HTTP request rate + latency, recorded into the global
@@ -32,6 +34,24 @@ object HttpMetrics {
     requests.labelValues(method, p, status.toString).inc()
     duration.labelValues(method, p).observe(seconds)
   }
+
+  /** akka-http directive: times the request and records method / normalised-path / status + latency
+    * when the inner route completes. Wrap it OUTSIDE rejection/exception handling so `mapResponse`
+    * observes the FINAL response (rejection- and exception-derived responses included).
+    */
+  def withMetrics(inner: Route): Route =
+    extractRequest { req =>
+      val startNanos = System.nanoTime()
+      mapResponse { resp =>
+        record(
+          req.method.value,
+          req.uri.path.toString,
+          resp.status.intValue(),
+          (System.nanoTime() - startNanos) / 1e9d
+        )
+        resp
+      }(inner)
+    }
 
   private val HexLike = "^[0-9a-fA-F-]+$".r
   private val DigitsOnly = "^[0-9]+$".r
