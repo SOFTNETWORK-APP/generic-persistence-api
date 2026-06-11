@@ -116,7 +116,7 @@ trait ColumnMappedJdbcStateProvider[T <: Timestamped]
 
   override final def createDocument(document: T)(implicit t: ClassTag[T]): Boolean = {
     val row = toRow(document)
-    val action = (tableQuery += row).map(_ > 0)
+    val action = tableQuery.insertOrUpdate(row).map(_ > 0)
     db.run(action).complete() match {
       case Success(value) =>
         log.debug(s"Insert $tableFullName ${document.uuid} -> $value")
