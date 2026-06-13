@@ -55,6 +55,17 @@ trait EntityCommandHandler[C <: Command, S <: State, E <: Event, R <: CommandRes
   )(implicit
     context: ActorContext[C]
   ): Effect[E, Option[S]]
+
+  /** Story 13.7 — stamp a correlation id onto an auditable event before it is persisted (the
+    * durable hop for the cross-service audit trail). The ScalaPB-generated `withCorrelationId`
+    * returns the concrete message type at runtime but is typed `Auditable` through the trait, so we
+    * re-narrow to `Evt`. No-op when no id has been propagated onto the command.
+    */
+  protected def withCid[Evt <: app.softnetwork.persistence.message.AuditableEvent](
+    event: Evt,
+    correlationId: Option[String]
+  ): Evt =
+    correlationId.fold(event)(cid => event.withCorrelationId(cid).asInstanceOf[Evt])
 }
 
 trait EntityEventHandler[S <: State, E <: Event] {

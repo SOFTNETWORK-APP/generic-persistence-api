@@ -123,4 +123,47 @@ package object message {
   /** Cbor events Marker trait for serializing an event using Jackson CBOR Serializer
     */
   trait CborEvent extends Event
+
+  /** Correlation/audit capability shared by commands and events (Story 13.7 — cross-service audit
+    * trail). `correlationId` is abstract so each side backs it with the storage matching its
+    * lifecycle:
+    *   - commands are plain case classes, transient, (Kryo-)serialized only in transit → a mutable
+    *     `var` (no constructor churn; set once before dispatch).
+    *   - events are immutable, journaled (ScalaPB) → backed by the generated proto `correlation_id`
+    *     field, the durable hop that survives the journal + replay.
+    */
+  trait Auditable {
+
+    /** ABSTRACT — backed by a `var` (commands) or a generated proto field (events). */
+    def correlationId: Option[String]
+
+    /** True once a correlation id has been set/propagated. */
+    def auditable: Boolean = correlationId.nonEmpty
+
+    /** Returns a value carrying `correlationId` — in place for commands (`this`), or an immutable
+      * copy for ScalaPB events (the generated builder).
+      */
+    def withCorrelationId(correlationId: String): Auditable
+  }
+
+  /** Commands: the `var` adds NO constructor parameter to the case classes mixing it in, and
+    * `withCorrelationId` mutates in place + returns `this`, so the caller keeps the concrete
+    * command type for `!?`. Carried across the cluster-sharding boundary by the (chill/Kryo)
+    * FieldSerializer.
+    */
+  trait AuditableCommand extends Command with Auditable {
+
+    var correlationId: Option[String] = None
+
+    override def withCorrelationId(correlationId: String): AuditableCommand = {
+      this.correlationId = Some(correlationId)
+      this
+    }
+  }
+
+  /** Events: marker only — `correlationId` / `withCorrelationId` are SUPPLIED by ScalaPB from the
+    * `optional string correlation_id` field (wired via `option (scalapb.message).extends`), so the
+    * durable value lives in the immutable message (survives journal + replay), not in a `var`.
+    */
+  trait AuditableEvent extends Event with Auditable
 }
