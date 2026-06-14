@@ -12,9 +12,9 @@ object Versions {
 
   val akkaHttpSession = "0.7.1" // 0.7.0 -> 0.7.1
 
-  val tapir = "1.7.0"
+  val tapir = "1.8.5"
 
-  val tapirHttpSession = "0.2.0"
+  val tapirHttpSession = "0.3.0"
 
   val akkaPersistenceJdbc = "5.0.4" // TODO 5.0.4 -> 5.2.1
 
@@ -36,7 +36,12 @@ object Versions {
 
   val scalaLogging = "3.9.2"
 
-  val logback = "1.2.3" // TODO 1.2.3 -> 1.5.6
+  val logback = "1.4.14" // TODO 1.4.14 -> 1.5.6
+
+  // Story 13.7 — structured audit trail. Provides StructuredArguments.kv (used by AuditLog) and, at
+  // runtime in the service images, LogstashEncoder + MaskingJsonGeneratorDecorator. 8.1 is the newest
+  // line on logback 1.3/1.4 + Jackson 2.x (Java 11+); 9.x requires logback 1.5 + Jackson 3.
+  val logstashEncoder = "8.1"
 
   val slf4j = "1.7.36"
 

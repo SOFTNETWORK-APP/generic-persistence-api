@@ -5,3 +5,9 @@ target
 .vagrant
 .metals
 *.log
+.bloop/
+.jvmopts
+.sbtopts
+*.sc
+.bsp/
+.vscode/

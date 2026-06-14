@@ -4,16 +4,7 @@ import java.util.concurrent.TimeoutException
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.http.scaladsl.server.{
-  AuthorizationFailedRejection,
-  Directives,
-  ExceptionHandler,
-  MethodRejection,
-  MissingCookieRejection,
-  RejectionHandler,
-  Route,
-  ValidationRejection
-}
+import akka.http.scaladsl.server.{Directives, ExceptionHandler, RejectionHandler, Route}
 import akka.http.scaladsl.settings.RoutingSettings
 import app.softnetwork.api.server.config.ServerSettings
 import org.json4s.Formats
@@ -58,26 +49,32 @@ trait ApiRoutes extends Directives with GrpcServices with DefaultComplete {
     // PrometheusRegistry.defaultRegistry. Wraps the WHOLE pipeline (outside handleRejections /
     // handleExceptions) so the final response — rejection/exception ones included — is observed.
     HttpMetrics.withMetrics {
-      handleRejections(rejectionHandler) {
-        handleExceptions(exceptionHandler) {
-          logRequestResult("RestAll") {
-            pathPrefix(config.ServerSettings.RootPath) {
-              Try(
-                respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
-                  routes
-                }
-              ) match {
-                case Success(s) => s
-                case Failure(f) =>
-                  log.error(f.getMessage, f.getCause)
-                  complete(
-                    HttpResponse(
-                      StatusCodes.InternalServerError,
-                      entity = f.getMessage
+      // Story 13.7 Phase B (gate #1) — extract-or-generate X-Correlation-Id, MDC-stamp the
+      // synchronous request thread, re-inject the canonical id onto the request (so downstream tapir
+      // `HttpCorrelation.correlationInput` reads it), and echo it on the response. Inside withMetrics
+      // so the latency timing still wraps the whole pipeline.
+      HttpCorrelation.withCorrelation {
+        handleRejections(rejectionHandler) {
+          handleExceptions(exceptionHandler) {
+            logRequestResult("RestAll") {
+              pathPrefix(config.ServerSettings.RootPath) {
+                Try(
+                  respondWithHeaders(RawHeader("Api-Version", applicationVersion)) {
+                    routes
+                  }
+                ) match {
+                  case Success(s) => s
+                  case Failure(f) =>
+                    log.error(f.getMessage, f.getCause)
+                    complete(
+                      HttpResponse(
+                        StatusCodes.InternalServerError,
+                        entity = f.getMessage
+                      )
                     )
-                  )
-              }
-            } ~ grpcRoutes(system)
+                }
+              } ~ grpcRoutes(system)
+            }
           }
         }
       }
