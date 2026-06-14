@@ -31,7 +31,9 @@ import java.util.UUID
   * diverge, even when the client sent no header.
   *
   * Mirrors [[HttpMetrics.withMetrics]]; apply at the same `ApiRoutes.mainRoutes` attach point:
-  * {{{HttpMetrics.withMetrics { HttpCorrelation.withCorrelation { ... } }}}}
+  * {{{
+  * HttpMetrics.withMetrics { HttpCorrelation.withCorrelation { ... }}
+  * }}}
   */
 object HttpCorrelation {
 
