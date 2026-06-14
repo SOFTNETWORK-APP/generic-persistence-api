@@ -22,6 +22,11 @@ object Endpoint {
     endpoints: List[ServerEndpoint[AkkaStreams with WebSockets, Future]]
   )(implicit
     ec: ExecutionContext
-  ): Route = AkkaHttpServerInterpreter().toRoute(endpoints)
+  ): Route =
+    // Story 13.7 — wrap the interpreted tapir route so every endpoint set generates-or-extracts the
+    // correlation id, echoes it on the response and feeds HttpCorrelation.correlationInput, even when
+    // mounted outside ApiRoutes.mainRoutes. withCorrelation is re-entrant, so nesting under mainRoutes
+    // stays a single header + one MDC scope.
+    HttpCorrelation.withCorrelation(AkkaHttpServerInterpreter().toRoute(endpoints))
 
 }
