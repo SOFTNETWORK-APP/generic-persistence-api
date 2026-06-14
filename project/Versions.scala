@@ -38,6 +38,11 @@ object Versions {
 
   val logback = "1.4.14" // TODO 1.4.14 -> 1.5.6
 
+  // Story 13.7 — structured audit trail. Provides StructuredArguments.kv (used by AuditLog) and, at
+  // runtime in the service images, LogstashEncoder + MaskingJsonGeneratorDecorator. 8.1 is the newest
+  // line on logback 1.3/1.4 + Jackson 2.x (Java 11+); 9.x requires logback 1.5 + Jackson 3.
+  val logstashEncoder = "8.1"
+
   val slf4j = "1.7.36"
 
   val log4s = "1.8.2"

@@ -97,7 +97,10 @@ lazy val core = project.in(file("core"))
   .settings(
     Defaults.itSettings,
     app.softnetwork.Info.infoSettings,
-    moduleSettings
+    moduleSettings,
+    // Story 13.7 — AuditLog uses net.logstash.logback.argument.StructuredArguments.kv; co-located
+    // with the Auditable/AuditableEvent carriers in this module.
+    libraryDependencies += "net.logstash.logback" % "logstash-logback-encoder" % Versions.logstashEncoder
   )
   .dependsOn(
     common % "compile->compile;test->test;it->it"

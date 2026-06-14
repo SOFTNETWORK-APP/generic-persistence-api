@@ -4,16 +4,7 @@ import java.util.concurrent.TimeoutException
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
-import akka.http.scaladsl.server.{
-  AuthorizationFailedRejection,
-  Directives,
-  ExceptionHandler,
-  MethodRejection,
-  MissingCookieRejection,
-  RejectionHandler,
-  Route,
-  ValidationRejection
-}
+import akka.http.scaladsl.server.{Directives, ExceptionHandler, RejectionHandler, Route}
 import akka.http.scaladsl.settings.RoutingSettings
 import app.softnetwork.api.server.config.ServerSettings
 import org.json4s.Formats
