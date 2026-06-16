@@ -153,11 +153,13 @@ package object message {
     */
   trait AuditableCommand extends Command with Auditable {
 
+    type T <: AuditableCommand
+
     var correlationId: Option[String] = None
 
-    override def withCorrelationId(correlationId: String): AuditableCommand = {
+    override def withCorrelationId(correlationId: String): T = {
       this.correlationId = Some(correlationId)
-      this
+      this.asInstanceOf[T]
     }
   }
 
